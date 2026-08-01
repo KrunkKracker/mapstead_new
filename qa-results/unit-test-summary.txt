@@ -1,18 +1,18 @@
 JVM Unit Test Summary
-Phase: 2.2h5R1 (Final Basemap Runtime Closure)
+Phase: 2.2h5R2 (Camera Identity and Repair Closure)
 Result: SUCCESS
-Total: 573
-Passed: 573
+Total: 580
+Passed: 580
 Failed: 0
 Skipped: 0
-Date: 2026-07-31
+Date: 2026-08-01
 
 Verified key basemap scenarios:
-- Session-aware camera interaction guard (latest-session-wins)
-- Reactive style restoration (AcceptedBasemapStyleEvent)
-- Terminal attempt closure (TIMEOUT/FAILURE tracking)
-- Strict multi-field main map validation
-- Stale style repair key (loop prevention)
-- Resilient secondary loader ID separation and repair
-- Unconfigured provider safety (no-key verification)
-- Redaction robustness
+- Session-matched camera interaction guard (Fingerprint matching)
+- Authoritative pre-load camera snapshot restoration
+- Repair epoch lifecycle (IN_FLIGHT/EXHAUSTED) loop prevention
+- Strict main map callback validation (Generation/Session/Source/Provider/Role)
+- Typed terminal tracking (TIMEOUT/PROVIDER_FAILURE/SUPERSEDED/DISPOSED)
+- Resilient secondary loader with separate accepted source attribution
+- Unconfigured provider safety (no-key verification: PASSED)
+- Baseline readiness and recreation state restoration

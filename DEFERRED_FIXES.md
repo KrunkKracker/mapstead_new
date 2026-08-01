@@ -8,6 +8,10 @@
 
 **Status**: Resolved. The `AddPropertyViewModel.uiState` aggregation has been refactored to use typed batch combinations, removing all positional casting.
 
+## Basemap Runtime Closure and Camera Identity (RESOLVED 2026-08-01)
+
+**Status**: Resolved. Implemented session-matched camera controller (fingerprinting), snapshot-based style restoration, repair epoch epochs, and strict callback validation.
+
 ## Basemap Runtime Closure and Interaction Guard (RESOLVED 2026-07-31)
 
 **Status**: Resolved. Implemented session-aware programmatic camera controller, reactive style restoration (AcceptedBasemapStyleEvent), terminal attempt closure, and strict main/secondary map validation.

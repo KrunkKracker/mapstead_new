@@ -5,12 +5,13 @@
 Mapstead is a local-first, private property management tool designed for homeowners, small-scale farmers, and rural property owners. It allows you to create high-precision maps of your land, document infrastructure and operational records (wells, septic, electrical), and track maintenance schedules without relying on third-party cloud services.
 
 > [!WARNING]
-> This is unreleased development software (v0.01) — **Beginner-First UX Redesign Phase 3A**. It is currently in a details unification pass.
+> This is unreleased development software (v0.01). It is currently in a basemap runtime hardening pass.
 
 ## Current Development Status
-- **Phase 2.2h5R1 (Final Basemap Runtime Closure)**: COMPLETE. Session-aware guards, reactive restoration, and terminal closure verified via automated gates.
-- **Phase 2.2h5R (Basemap Runtime Closure)**: COMPLETE.
-- **Phase 2.2h (Basemap Acceptance Closure)**: COMPLETE / INSTALLED ACCEPTANCE PENDING.
+- **Phase 2.2h5R2 (Camera and Repair Closure)**: COMPLETE. Session matching, snapshot restoration, and repair epochs verified via automated gates.
+- **Phase 2.2h5R1 (Basemap Runtime Closure)**: COMPLETE.
+- **Phase 2.2h (Basemap Implementation)**: COMPLETE / INSTALLED ACCEPTANCE PENDING.
+- **Phase 3A (Unified Item Details)**: NOT STARTED.
 
 ## Core Features
 - **MapTiler Integration**: High-quality Streets, Topo, and Satellite Hybrid imagery with resilient OpenFreeMap fallback.

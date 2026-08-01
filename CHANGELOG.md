@@ -3,6 +3,23 @@
 ## [0.01] - Unreleased
 
 ### Added
+- **Beginner-First UX Redesign Phase 2.2h5R2 — Camera Identity, Style Restoration, Repair, Test, and Documentation Closure**:
+    - **Session-Matched Camera Guard**: Implementing stable "latest-session-wins" programmatic camera control with exact movement identity and gesture cancellation.
+    - **Snapshot-Based Style Restoration**: Replacing no-op restoration with authoritative pre-load camera snapshots and reactive event-driven restoration.
+    - **Repair Epoch & Loop Prevention**: Implementing bounded authoritative repair logic to prevent recursive style reassertions.
+    - **Typed Terminal Tracking**: Hardening failure reporting with TIMEOUT, FAILURE, SUPERSEDED, and DISPOSED states.
+    - **Authoritative Secondary Validation**: Refactoring secondary loaders with strict identity truth and separated accepted source attribution.
+    - **QA Truth Synchronization**: Correcting documentation statuses and derived test counts across all project artifacts.
+
+- **Beginner-First UX Redesign Phase 2.2h5R2 — Camera Identity, Style Restoration, Repair, Test, and Documentation Closure**:
+    - **Session-Matched Camera Guard**: Implemented movement fingerprinting (Target, Zoom, Bearing, Tilt) to ensure programmatic idles only consume matching sessions.
+    - **Pre-Load Camera Snapshots**: Authoritative restoration using actual captured position instead of post-load MapLibre state.
+    - **Repair Epoch Lifecycle**: Implemented IN_FLIGHT and EXHAUSTED states to prevent recursive repair loops and bounded registry storage.
+    - **Typed Terminal Tracking**: Hardened failure reporting with explicit TIMEOUT, PROVIDER_FAILURE, SUPERSEDED, and DISPOSED reasons.
+    - **Strict Callback Validation**: Authoritative multi-field identity check for all Main and Secondary map callbacks.
+    - **Secondary Attribution Truth**: Separated requested and accepted sources to drive attribution and logo visibility only upon successful style application.
+    - **Baseline Restoration**: Restored 33+ JVM unit tests and added comprehensive behavioral coverage for camera and repair epochs.
+
 - **Beginner-First UX Redesign Phase 2.2h5R1 — Final Basemap Runtime and QA Closure**:
     - **Session-Aware Interaction Guard**: Implemented a stable "latest-session-wins" `ProgrammaticCameraController` that correctly cancels suppression on customer gestures and matches idle events to specific movements.
     - **Reactive Style Restoration**: Replaced non-reactive state-flow waits with a typed `AcceptedBasemapStyleEvent` mechanism, ensuring camera restoration runs exactly once and only when identity truth is preserved.

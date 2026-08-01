@@ -1,30 +1,42 @@
 package com.jumastappworks.mapstead.ui.mapping
 
 import java.util.UUID
+import kotlin.math.abs
+
+import org.maplibre.android.maps.MapLibreMap
 
 /**
- * Unique identifier for a programmatic camera movement session.
- */
-data class ProgrammaticCameraSession(
-    val sessionId: UUID,
-    val generation: Long
-)
-
-/**
- * Manages session-based suppression of camera interaction events.
+ * Manages session-matched suppression of camera interaction events.
  * Implements a "latest-session-wins" policy to ensure that programmatic movements
  * do not falsely trigger user-interaction or persistence logic.
  */
 class ProgrammaticCameraController {
     private var currentSession: ProgrammaticCameraSession? = null
-    private var generation: Long = 0
 
     /**
      * Begins a new programmatic movement session, superseding any existing one.
      */
-    fun beginProgrammaticMove(): ProgrammaticCameraSession {
-        generation++
-        val session = ProgrammaticCameraSession(UUID.randomUUID(), generation)
+    fun beginProgrammaticMove(
+        renderSessionId: UUID,
+        expectedLatitude: Double,
+        expectedLongitude: Double,
+        expectedZoom: Double,
+        expectedBearing: Double,
+        expectedTilt: Double,
+        startSequence: Long,
+        movementType: ProgrammaticCameraMovementType
+    ): ProgrammaticCameraSession {
+        val session = ProgrammaticCameraSession(
+            sessionId = UUID.randomUUID(),
+            renderSessionId = renderSessionId,
+            expectedLatitude = expectedLatitude,
+            expectedLongitude = expectedLongitude,
+            expectedZoom = expectedZoom,
+            expectedBearing = expectedBearing,
+            expectedTilt = expectedTilt,
+            startSequence = startSequence,
+            movementType = movementType
+        )
         currentSession = session
         return session
     }
@@ -32,27 +44,49 @@ class ProgrammaticCameraController {
     /**
      * Called when a camera move starts. If it was a customer gesture,
      * any active programmatic suppression is cancelled.
-     * 
-     * @param reason The move reason code from MapLibre.
      */
     fun onCameraMoveStarted(reason: Int) {
-        // MapLibre move reasons: 
-        // 1: REASON_API_ANIMATION
-        // 2: REASON_DEVELOPER_ANIMATION
-        // 3: REASON_GESTURE
-        if (reason == 3) { // REASON_GESTURE
+        if (reason == MapLibreMap.OnCameraMoveStartedListener.REASON_API_GESTURE) {
             cancelForCustomerGesture()
         }
     }
 
     /**
-     * Consumes the current programmatic suppression state.
-     * Returns true if a session was active and has been cleared.
+     * Consumes the current programmatic suppression state if the observed camera
+     * matches the expected fingerprint.
      */
-    fun consumeProgrammaticIdle(): Boolean {
-        val active = currentSession != null
-        currentSession = null
-        return active
+    fun consumeProgrammaticIdle(
+        observedLatitude: Double,
+        observedLongitude: Double,
+        observedZoom: Double,
+        observedBearing: Double,
+        observedTilt: Double,
+        renderSessionId: UUID
+    ): ProgrammaticIdleResult {
+        val session = currentSession ?: return ProgrammaticIdleResult.NO_PENDING_SESSION
+        
+        if (session.renderSessionId != renderSessionId) {
+            return ProgrammaticIdleResult.WRONG_RENDER_SESSION
+        }
+
+        val latMatch = abs(session.expectedLatitude - observedLatitude) < 1e-6
+        val lngMatch = abs(session.expectedLongitude - observedLongitude) < 1e-6
+        val zoomMatch = abs(session.expectedZoom - observedZoom) < 0.05
+        
+        // Normalize bearings for comparison
+        val b1 = (session.expectedBearing % 360 + 360) % 360
+        val b2 = (observedBearing % 360 + 360) % 360
+        val diff = abs(b1 - b2)
+        val bearingMatch = diff < 0.5 || diff > 359.5
+        
+        val tiltMatch = abs(session.expectedTilt - observedTilt) < 0.1
+
+        return if (latMatch && lngMatch && zoomMatch && bearingMatch && tiltMatch) {
+            currentSession = null
+            ProgrammaticIdleResult.MATCHED_CURRENT_SESSION
+        } else {
+            ProgrammaticIdleResult.CAMERA_DOES_NOT_MATCH
+        }
     }
 
     /**
@@ -74,6 +108,5 @@ class ProgrammaticCameraController {
      */
     fun clearForMapDisposal() {
         currentSession = null
-        generation = 0
     }
 }

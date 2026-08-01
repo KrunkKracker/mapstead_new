@@ -210,13 +210,13 @@ fun MapScreen(
             basemapProvider = basemapProvider,
             scope = mainScope,
             onStyleLoaded = { _, attempt ->
-                val result = viewModel.handleBasemapLoadSuccess(attempt.sourceId, attempt)
+                val result = viewModel.handleBasemapLoadSuccess(attempt)
                 if (!result.accepted && attempt.renderSessionId == renderSessionId) {
                     viewModel.handleStaleStyleApplied(attempt)
                 }
             },
-            onStyleFailed = { error, attempt ->
-                viewModel.handleBasemapLoadFailure(error, attempt)
+            onStyleTerminated = { reason, attempt ->
+                viewModel.handleBasemapLoadTerminated(reason, attempt)
             },
             onStaleStyleApplied = { attempt ->
                 if (attempt.renderSessionId == renderSessionId) {
@@ -237,6 +237,19 @@ fun MapScreen(
         val attempt = state.currentAttempt ?: return@LaunchedEffect
         if (attempt.renderSessionId != renderSessionId) return@LaunchedEffect
 
+        // Capture actual camera position immediately before style load
+        val pos = map.cameraPosition
+        pos.target?.let { target ->
+            viewModel.captureCameraSnapshot(
+                latitude = target.latitude,
+                longitude = target.longitude,
+                zoom = pos.zoom,
+                bearing = pos.bearing,
+                tilt = pos.tilt,
+                attempt = attempt
+            )
+        }
+
         basemapLoader.loadStyle(
             mapView = mapView,
             map = map,
@@ -256,10 +269,29 @@ fun MapScreen(
         // Final identity validation
         if (state.activeSourceId != event.attempt.sourceId) return@LaunchedEffect
 
+        val snapshot = viewModel.getCameraSnapshot(event.attempt) ?: return@LaunchedEffect
+        viewModel.consumeCameraSnapshot(event.attempt)
+
         // Restore camera if user hasn't moved it since attempt began
-        if (state.cameraInteractionSequence == event.attempt.capturedSequence) {
-            viewModel.programmaticCameraController.beginProgrammaticMove()
-            map.moveCamera(CameraUpdateFactory.newCameraPosition(map.cameraPosition))
+        if (state.cameraInteractionSequence == snapshot.customerInteractionSequence) {
+            val restoredPos = CameraPosition.Builder()
+                .target(LatLng(snapshot.latitude, snapshot.longitude))
+                .zoom(snapshot.zoom)
+                .bearing(snapshot.bearing)
+                .tilt(snapshot.tilt)
+                .build()
+            
+            viewModel.programmaticCameraController.beginProgrammaticMove(
+                renderSessionId = renderSessionId,
+                expectedLatitude = snapshot.latitude,
+                expectedLongitude = snapshot.longitude,
+                expectedZoom = snapshot.zoom,
+                expectedBearing = snapshot.bearing,
+                expectedTilt = snapshot.tilt,
+                startSequence = state.cameraInteractionSequence,
+                movementType = ProgrammaticCameraMovementType.RESTORATION
+            )
+            map.moveCamera(CameraUpdateFactory.newCameraPosition(restoredPos))
         }
     }
 
@@ -306,7 +338,15 @@ fun MapScreen(
         val idleListener = MapLibreMap.OnCameraIdleListener {
             val pos = map.cameraPosition
             pos.target?.let { target ->
-                if (!viewModel.programmaticCameraController.consumeProgrammaticIdle()) {
+                val result = viewModel.programmaticCameraController.consumeProgrammaticIdle(
+                    observedLatitude = target.latitude,
+                    observedLongitude = target.longitude,
+                    observedZoom = pos.zoom,
+                    observedBearing = pos.bearing,
+                    observedTilt = pos.tilt,
+                    renderSessionId = renderSessionId
+                )
+                if (result != ProgrammaticIdleResult.MATCHED_CURRENT_SESSION) {
                     viewModel.onCameraInteraction()
                     viewModel.onCameraMoved(target.latitude, target.longitude, pos.zoom, pos.bearing)
                 }
@@ -356,7 +396,16 @@ fun MapScreen(
                         .zoom(focus.zoom.toDouble())
                         .bearing(CameraValidation.normalizeBearing(focus.bearing))
                         .build()
-                    viewModel.programmaticCameraController.beginProgrammaticMove()
+                    viewModel.programmaticCameraController.beginProgrammaticMove(
+                        renderSessionId = renderSessionId,
+                        expectedLatitude = focus.latitude,
+                        expectedLongitude = focus.longitude,
+                        expectedZoom = focus.zoom.toDouble(),
+                        expectedBearing = CameraValidation.normalizeBearing(focus.bearing),
+                        expectedTilt = 0.0,
+                        startSequence = state.cameraInteractionSequence,
+                        movementType = ProgrammaticCameraMovementType.INITIAL_FOCUS
+                    )
                     if (initialCameraApplied) {
                         map.animateCamera(CameraUpdateFactory.newCameraPosition(pos))
                     } else {
@@ -369,7 +418,29 @@ fun MapScreen(
                         .include(LatLng(focus.sw.second, focus.sw.first))
                         .include(LatLng(focus.ne.second, focus.ne.first))
                         .build()
-                    viewModel.programmaticCameraController.beginProgrammaticMove()
+                    
+                    // Fingerprinting bounds is harder without knowing the resulting camera position.
+                    // We'll mark it as a generic session that wins by generation for now,
+                    // or MapLibre might provide a better way to fingerprint the resulting target.
+                    // For now, we'll use a broad tolerance if needed or just skip fingerprinting for bounds
+                    // and rely on generation.
+                    // But our Controller requires fingerprint.
+                    
+                    // Actually, MapLibre's getCameraForLatLngBounds can give us the target.
+                    val targetPos = map.getCameraForLatLngBounds(bounds, intArrayOf(focus.padding, focus.padding, focus.padding, focus.padding))
+                    targetPos?.target?.let { target ->
+                        viewModel.programmaticCameraController.beginProgrammaticMove(
+                            renderSessionId = renderSessionId,
+                            expectedLatitude = target.latitude,
+                            expectedLongitude = target.longitude,
+                            expectedZoom = targetPos.zoom,
+                            expectedBearing = targetPos.bearing,
+                            expectedTilt = targetPos.tilt,
+                            startSequence = state.cameraInteractionSequence,
+                            movementType = ProgrammaticCameraMovementType.INITIAL_FOCUS
+                        )
+                    }
+
                     if (initialCameraApplied) {
                         map.animateCamera(CameraUpdateFactory.newLatLngBounds(bounds, focus.padding))
                     } else {
@@ -399,7 +470,16 @@ fun MapScreen(
                 .zoom(17.0)
                 .bearing(0.0)
                 .build()
-            viewModel.programmaticCameraController.beginProgrammaticMove()
+            viewModel.programmaticCameraController.beginProgrammaticMove(
+                renderSessionId = renderSessionId,
+                expectedLatitude = loc.latitude,
+                expectedLongitude = loc.longitude,
+                expectedZoom = 17.0,
+                expectedBearing = 0.0,
+                expectedTilt = 0.0,
+                startSequence = state.cameraInteractionSequence,
+                movementType = ProgrammaticCameraMovementType.MY_LOCATION
+            )
             map.animateCamera(CameraUpdateFactory.newCameraPosition(pos)) 
         }
     }

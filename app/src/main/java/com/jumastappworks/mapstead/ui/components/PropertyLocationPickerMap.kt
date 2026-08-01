@@ -43,6 +43,25 @@ fun PropertyLocationPickerMap(
     var currentStatus by remember { mutableStateOf(SecondaryMapStatus.IDLE) }
     var retryNonce by remember { mutableIntStateOf(0) }
 
+    val currentOnCameraMoved by rememberUpdatedState(onCameraMoved)
+    DisposableEffect(mapLibreMap) {
+        val map = mapLibreMap ?: return@DisposableEffect onDispose {}
+        
+        val idleListener = MapLibreMap.OnCameraIdleListener {
+            val pos = map.cameraPosition
+            val target = pos.target
+            if (target != null) {
+                currentCameraTarget = target
+                currentOnCameraMoved(target.latitude, target.longitude, pos.zoom)
+            }
+        }
+        map.addOnCameraIdleListener(idleListener)
+        
+        onDispose {
+            map.removeOnCameraIdleListener(idleListener)
+        }
+    }
+
     Box(modifier = modifier) {
         LifecycleManagedMapView(
             modifier = Modifier.fillMaxSize(),
@@ -55,16 +74,6 @@ fun PropertyLocationPickerMap(
                         .zoom(zoom)
                         .build()
                 ))
-
-                val idleListener = MapLibreMap.OnCameraIdleListener {
-                    val pos = map.cameraPosition
-                    val target = pos.target
-                    if (target != null) {
-                        currentCameraTarget = target
-                        onCameraMoved(target.latitude, target.longitude, pos.zoom)
-                    }
-                }
-                map.addOnCameraIdleListener(idleListener)
             },
             onMapViewCreated = { mv -> mapViewInstance = mv }
         )

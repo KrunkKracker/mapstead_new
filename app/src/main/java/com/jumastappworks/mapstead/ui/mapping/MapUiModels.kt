@@ -18,6 +18,8 @@ enum class BasemapLoadAttemptReason { INITIAL, BACKUP, RECREATION, REPAIR, RETRY
 
 enum class BasemapTerminalReason { TIMEOUT, PROVIDER_FAILURE, SUPERSEDED, DISPOSED }
 
+enum class BasemapRepairEpochState { IN_FLIGHT, EXHAUSTED }
+
 enum class BasemapLoadRejectionReason {
     STALE_SESSION,
     TERMINAL_ATTEMPT,
@@ -26,7 +28,9 @@ enum class BasemapLoadRejectionReason {
     STATUS_MISMATCH,
     GENERATION_MISMATCH,
     ID_MISMATCH,
-    SOURCE_MISMATCH
+    SOURCE_MISMATCH,
+    DEFINITION_MISMATCH,
+    REQUESTED_SOURCE_MISMATCH
 }
 
 data class BasemapAttemptKey(
@@ -60,8 +64,6 @@ data class AcceptedBasemapStyleEvent(
 data class BasemapRepairKey(
     val renderSessionId: UUID,
     val semanticGeneration: Long,
-    val staleAttemptId: Long,
-    val staleSourceId: BasemapSourceId,
     val authoritativeSourceId: BasemapSourceId
 )
 
@@ -72,6 +74,68 @@ data class BasemapLoadSuccessResult(
     val role: BasemapRole? = null,
     val rejectionReason: BasemapLoadRejectionReason? = null
 )
+
+data class CameraSnapshot(
+    val latitude: Double,
+    val longitude: Double,
+    val zoom: Double,
+    val bearing: Double,
+    val tilt: Double,
+    val customerInteractionSequence: Long,
+    val attemptKey: BasemapAttemptKey
+)
+
+enum class ProgrammaticCameraMovementType {
+    RESTORATION,
+    INITIAL_FOCUS,
+    MY_LOCATION,
+    SEARCH_RESULT
+}
+
+enum class ProgrammaticCameraSessionState {
+    PENDING,
+    CONSUMED,
+    CANCELLED,
+    DISPOSED
+}
+
+data class ProgrammaticCameraSession(
+    val sessionId: UUID,
+    val renderSessionId: UUID,
+    val expectedLatitude: Double,
+    val expectedLongitude: Double,
+    val expectedZoom: Double,
+    val expectedBearing: Double,
+    val expectedTilt: Double,
+    val latTolerance: Double = 1e-6,
+    val lngTolerance: Double = 1e-6,
+    val zoomTolerance: Double = 0.05,
+    val bearingTolerance: Double = 0.5,
+    val tiltTolerance: Double = 0.1,
+    val startSequence: Long,
+    val movementType: ProgrammaticCameraMovementType,
+    val state: ProgrammaticCameraSessionState = ProgrammaticCameraSessionState.PENDING
+)
+
+enum class ProgrammaticIdleResult {
+    MATCHED_CURRENT_SESSION,
+    CAMERA_DOES_NOT_MATCH,
+    WRONG_RENDER_SESSION,
+    NO_PENDING_SESSION
+}
+
+enum class SecondaryValidationResult {
+    ACCEPTED,
+    STALE_SESSION,
+    TERMINAL_ATTEMPT,
+    SOURCE_MISMATCH,
+    PROVIDER_MISMATCH,
+    ROLE_MISMATCH,
+    STATUS_MISMATCH,
+    GENERATION_MISMATCH,
+    ID_MISMATCH,
+    DEFINITION_MISMATCH
+}
 
 enum class MapEditingMode { Select, AddPoint, AddLine, EditLine, AddPolygon, EditPolygon }
 

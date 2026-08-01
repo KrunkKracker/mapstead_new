@@ -334,7 +334,8 @@ class MapViewModel @Inject constructor(
     private var nextEventId = 1L
     
     private val terminalAttempts = mutableMapOf<BasemapAttemptKey, BasemapTerminalReason>()
-    private val repairKeys = mutableSetOf<BasemapRepairKey>()
+    private val repairEpochs = mutableMapOf<BasemapRepairKey, BasemapRepairEpochState>()
+    private val cameraSnapshots = mutableMapOf<BasemapAttemptKey, CameraSnapshot>()
     
     private val _currentPhoneLocation = MutableStateFlow<LocationResult.Success?>(null)
     private val _isLocatingPhone = MutableStateFlow(false)
@@ -1015,6 +1016,11 @@ class MapViewModel @Inject constructor(
 
     private fun issueAttempt(sourceId: BasemapSourceId, role: BasemapRole, reason: BasemapLoadAttemptReason) {
         val def = basemapProvider.getDefinition(sourceId) ?: return
+        
+        _currentAttempt.value?.let { prev ->
+             terminalAttempts[prev.toKey()] = BasemapTerminalReason.SUPERSEDED
+        }
+
         val attemptId = nextAttemptId++
         
         val attempt = BasemapLoadAttempt(
@@ -1716,44 +1722,46 @@ class MapViewModel @Inject constructor(
     }
 
     private fun validateAttempt(attempt: BasemapLoadAttempt, expectedStatus: BasemapLoadStatus): BasemapLoadSuccessResult {
+        val key = attempt.toKey()
+        
+        // 1. Check terminal state first
+        val terminalReason = terminalAttempts[key]
+        if (terminalReason != null) {
+            return BasemapLoadSuccessResult(false, attempt.sourceId, rejectionReason = BasemapLoadRejectionReason.TERMINAL_ATTEMPT)
+        }
+
         if (attempt.renderSessionId != _renderSessionId.value) {
-            println("TestDebug: Session mismatch. Attempt: ${attempt.renderSessionId}, Current: ${_renderSessionId.value}")
             return BasemapLoadSuccessResult(false, attempt.sourceId, rejectionReason = BasemapLoadRejectionReason.STALE_SESSION)
         }
         if (attempt.semanticGeneration != _basemapGeneration.value) {
-            println("TestDebug: Generation mismatch. Attempt: ${attempt.semanticGeneration}, Current: ${_basemapGeneration.value}")
             return BasemapLoadSuccessResult(false, attempt.sourceId, rejectionReason = BasemapLoadRejectionReason.GENERATION_MISMATCH)
         }
         if (attempt.attemptId != _currentAttempt.value?.attemptId) {
-            println("TestDebug: ID mismatch. Attempt: ${attempt.attemptId}, Current: ${_currentAttempt.value?.attemptId}")
             return BasemapLoadSuccessResult(false, attempt.sourceId, rejectionReason = BasemapLoadRejectionReason.ID_MISMATCH)
         }
         if (attempt.sourceId != _requestedSourceId.value) {
-             println("TestDebug: Source mismatch. Attempt: ${attempt.sourceId}, Requested: ${_requestedSourceId.value}")
              return BasemapLoadSuccessResult(false, attempt.sourceId, rejectionReason = BasemapLoadRejectionReason.SOURCE_MISMATCH)
         }
         if (_basemapStatus.value != expectedStatus) {
-            println("TestDebug: Status mismatch. Current: ${_basemapStatus.value}, Expected: $expectedStatus")
             return BasemapLoadSuccessResult(false, attempt.sourceId, rejectionReason = BasemapLoadRejectionReason.STATUS_MISMATCH)
         }
         
         val def = basemapProvider.getDefinition(attempt.sourceId)
-        if (def == null) return BasemapLoadSuccessResult(false, attempt.sourceId, rejectionReason = BasemapLoadRejectionReason.SOURCE_MISMATCH)
+        if (def == null) return BasemapLoadSuccessResult(false, attempt.sourceId, rejectionReason = BasemapLoadRejectionReason.DEFINITION_MISMATCH)
         if (def.provider != attempt.provider) return BasemapLoadSuccessResult(false, attempt.sourceId, rejectionReason = BasemapLoadRejectionReason.PROVIDER_MISMATCH)
         if (def.role != attempt.role) return BasemapLoadSuccessResult(false, attempt.sourceId, rejectionReason = BasemapLoadRejectionReason.ROLE_MISMATCH)
-        
-        if (terminalAttempts.containsKey(attempt.toKey())) {
-            return BasemapLoadSuccessResult(false, attempt.sourceId, rejectionReason = BasemapLoadRejectionReason.TERMINAL_ATTEMPT)
-        }
         
         return BasemapLoadSuccessResult(true, attempt.sourceId, def.provider, def.role)
     }
 
-    fun handleBasemapLoadSuccess(sourceId: BasemapSourceId, attempt: BasemapLoadAttempt): BasemapLoadSuccessResult {
+    fun handleBasemapLoadSuccess(attempt: BasemapLoadAttempt): BasemapLoadSuccessResult {
         val expectedStatus = if (attempt.role == BasemapRole.PRIMARY) BasemapLoadStatus.LOADING_PRIMARY else BasemapLoadStatus.LOADING_BACKUP
         val result = validateAttempt(attempt, expectedStatus)
         
         if (!result.accepted) return result
+        
+        // Source identity truth: derived from attempt which passed validation
+        val sourceId = attempt.sourceId
         
         _activeSourceId.value = sourceId
         _requestedSourceId.value = null
@@ -1770,34 +1778,122 @@ class MapViewModel @Inject constructor(
             _retryPrimaryAvailable.value = true
         }
         
+        // Close repair epoch if it was one
+        val repairKey = BasemapRepairKey(attempt.renderSessionId!!, attempt.semanticGeneration, sourceId)
+        repairEpochs[repairKey] = BasemapRepairEpochState.EXHAUSTED
+
         _acceptedStyleEvent.value = AcceptedBasemapStyleEvent(nextEventId++, attempt)
         
         return result
     }
 
-    fun handleBasemapLoadFailure(error: String, attempt: BasemapLoadAttempt) {
+    fun handleBasemapLoadTerminated(reason: BasemapTerminalReason, attempt: BasemapLoadAttempt) {
         val expectedStatus = if (attempt.role == BasemapRole.PRIMARY) BasemapLoadStatus.LOADING_PRIMARY else BasemapLoadStatus.LOADING_BACKUP
         val result = validateAttempt(attempt, expectedStatus)
-        if (!result.accepted) return
         
-        terminalAttempts[attempt.toKey()] = if (error.contains("timeout", ignoreCase = true)) BasemapTerminalReason.TIMEOUT else BasemapTerminalReason.PROVIDER_FAILURE
-        if (terminalAttempts.size > 50) terminalAttempts.remove(terminalAttempts.keys.first())
+        val key = attempt.toKey()
+        terminalAttempts[key] = reason
+        if (terminalAttempts.size > 100) terminalAttempts.remove(terminalAttempts.keys.first())
         
-        if (attempt.role == BasemapRole.PRIMARY) {
-            if (!_fallbackAttempted.value) {
-                _fallbackAttempted.value = true
-                val backupSourceId = basemapProvider.resolveDefaultBackup(_preferredBasemapId.value)
-                issueAttempt(backupSourceId, BasemapRole.BACKUP, BasemapLoadAttemptReason.BACKUP)
+        // Remove snapshots for terminal attempts
+        cameraSnapshots.remove(key)
+
+        if (!result.accepted) {
+            // If it was the current repair attempt that failed, exhaust the epoch
+            if (attempt.reason == BasemapLoadAttemptReason.REPAIR) {
+                val repairKey = BasemapRepairKey(attempt.renderSessionId!!, attempt.semanticGeneration, attempt.sourceId)
+                repairEpochs[repairKey] = BasemapRepairEpochState.EXHAUSTED
+            }
+            return
+        }
+        
+        if (reason == BasemapTerminalReason.TIMEOUT || reason == BasemapTerminalReason.PROVIDER_FAILURE) {
+            if (attempt.role == BasemapRole.PRIMARY) {
+                if (!_fallbackAttempted.value) {
+                    _fallbackAttempted.value = true
+                    val backupSourceId = basemapProvider.resolveDefaultBackup(_preferredBasemapId.value)
+                    issueAttempt(backupSourceId, BasemapRole.BACKUP, BasemapLoadAttemptReason.BACKUP)
+                } else {
+                    _basemapStatus.value = BasemapLoadStatus.FAILED
+                    _basemapErrorRes.value = R.string.failed_to_load_basemap
+                    _retryPrimaryAvailable.value = true
+                }
             } else {
                 _basemapStatus.value = BasemapLoadStatus.FAILED
                 _basemapErrorRes.value = R.string.failed_to_load_basemap
                 _retryPrimaryAvailable.value = true
             }
-        } else {
-            _basemapStatus.value = BasemapLoadStatus.FAILED
-            _basemapErrorRes.value = R.string.failed_to_load_basemap
-            _retryPrimaryAvailable.value = true
         }
+        
+        if (attempt.reason == BasemapLoadAttemptReason.REPAIR) {
+             val repairKey = BasemapRepairKey(attempt.renderSessionId!!, attempt.semanticGeneration, attempt.sourceId)
+             repairEpochs[repairKey] = BasemapRepairEpochState.EXHAUSTED
+        }
+    }
+
+    fun onRenderSessionDisposed(sessionId: UUID) {
+        if (_renderSessionId.value == sessionId) {
+            _currentAttempt.value?.let { attempt ->
+                handleBasemapLoadTerminated(BasemapTerminalReason.DISPOSED, attempt)
+            }
+        }
+    }
+
+    fun captureCameraSnapshot(
+        latitude: Double,
+        longitude: Double,
+        zoom: Double,
+        bearing: Double,
+        tilt: Double,
+        attempt: BasemapLoadAttempt
+    ) {
+        if (attempt.renderSessionId != _renderSessionId.value) return
+        val key = attempt.toKey()
+        cameraSnapshots[key] = CameraSnapshot(
+            latitude = latitude,
+            longitude = longitude,
+            zoom = zoom,
+            bearing = bearing,
+            tilt = tilt,
+            customerInteractionSequence = _cameraInteractionSequence.value,
+            attemptKey = key
+        )
+    }
+
+    fun getCameraSnapshot(attempt: BasemapLoadAttempt): CameraSnapshot? {
+        return cameraSnapshots[attempt.toKey()]
+    }
+
+    fun consumeCameraSnapshot(attempt: BasemapLoadAttempt) {
+        cameraSnapshots.remove(attempt.toKey())
+    }
+
+    fun retryPrimaryMap() {
+        startPrimaryLoad(_preferredBasemapId.value)
+    }
+
+    fun requestBackupBasemap(sourceId: BasemapSourceId) {
+        issueAttempt(sourceId, basemapProvider.getDefinition(sourceId)?.role ?: BasemapRole.BACKUP, BasemapLoadAttemptReason.RETRY)
+    }
+
+    fun handleStaleStyleApplied(attempt: BasemapLoadAttempt) {
+        if (attempt.renderSessionId != _renderSessionId.value) return
+        
+        val authoritativeSource = _requestedSourceId.value ?: _activeSourceId.value ?: return
+        
+        val repairKey = BasemapRepairKey(
+            renderSessionId = attempt.renderSessionId!!,
+            semanticGeneration = _basemapGeneration.value,
+            authoritativeSourceId = authoritativeSource
+        )
+        
+        val state = repairEpochs[repairKey]
+        if (state != null) return // Already IN_FLIGHT or EXHAUSTED
+        
+        repairEpochs[repairKey] = BasemapRepairEpochState.IN_FLIGHT
+        if (repairEpochs.size > 50) repairEpochs.remove(repairEpochs.keys.first())
+        
+        issueAttempt(authoritativeSource, basemapProvider.getDefinition(authoritativeSource)?.role ?: BasemapRole.PRIMARY, BasemapLoadAttemptReason.REPAIR)
     }
 
     fun requestBasemap(id: BasemapId) {
@@ -1824,7 +1920,7 @@ class MapViewModel @Inject constructor(
         _basemapGeneration.value = newGen
         _fallbackAttempted.value = false
         terminalAttempts.clear()
-        repairKeys.clear()
+        repairEpochs.clear()
         
         val primarySource = basemapProvider.getPrimaryBasemaps().find { it.preferredId == id }
         if (primarySource != null) {
@@ -1835,35 +1931,6 @@ class MapViewModel @Inject constructor(
             val backupSourceId = basemapProvider.resolveDefaultBackup(id)
             issueAttempt(backupSourceId, BasemapRole.BACKUP, BasemapLoadAttemptReason.BACKUP)
         }
-    }
-
-    fun retryPrimaryMap() {
-        startPrimaryLoad(_preferredBasemapId.value)
-    }
-    
-    fun requestBackupBasemap(sourceId: BasemapSourceId) {
-        issueAttempt(sourceId, BasemapRole.BACKUP, BasemapLoadAttemptReason.RETRY)
-    }
-    
-    fun handleStaleStyleApplied(attempt: BasemapLoadAttempt) {
-        if (attempt.renderSessionId != _renderSessionId.value) return
-        
-        val authoritativeSource = _requestedSourceId.value ?: _activeSourceId.value ?: return
-        
-        val repairKey = BasemapRepairKey(
-            renderSessionId = attempt.renderSessionId!!,
-            semanticGeneration = _basemapGeneration.value,
-            staleAttemptId = attempt.attemptId,
-            staleSourceId = attempt.sourceId,
-            authoritativeSourceId = authoritativeSource
-        )
-        
-        if (repairKeys.contains(repairKey)) return
-        
-        repairKeys.add(repairKey)
-        if (repairKeys.size > 50) repairKeys.remove(repairKeys.iterator().next())
-        
-        issueAttempt(authoritativeSource, basemapProvider.getDefinition(authoritativeSource)?.role ?: BasemapRole.PRIMARY, BasemapLoadAttemptReason.REPAIR)
     }
 
     fun clearBasemapError() { _basemapErrorRes.value = null }

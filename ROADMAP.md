@@ -51,8 +51,8 @@
 Purpose: Provide in-context assistance and finalize the onboarding experience.
 
 **COMPLETED WORK**:
-- Final Basemap Runtime Closure: Verified session-aware interaction guards, reactive style restoration, terminal tracking, and strict callback validation across main and secondary map surfaces.
-- Basemap Runtime Closure: Verified readiness architecture, status-specific recreation, strict attempt validation, terminal tracking, and stable programmatic camera tokens.
+- Camera and Repair Closure: Verified session-matched camera guards, authoritative snapshot restoration, repair epoch epochs, and strict callback validation across all map surfaces.
+- Final Basemap Runtime Closure: Verified session-aware interaction guards, reactive style restoration, terminal tracking, and strict callback validation.
 - Basemap Implementation: Resilient MapTiler v4 integration with bundled branding, attempt-scoped isolation, and automated style repair.
 - State Stabilization: ViewModel refactoring for typed state aggregation and removed error-prone casting.
 - Alpha Readiness: Naming service, system item policies, property-specific guidance, address lookup.
@@ -64,7 +64,7 @@ Purpose: Provide in-context assistance and finalize the onboarding experience.
 - Location: GPS permission recovery and request-state independence.
 
 **ACTIVE PHASE**:
-- **Redesign Phase 3A — Unified Item Details Foundation**: Unified detail headers, simplified status reporting, and streamlined record presentation. (IN PROGRESS)
+- **Phase 2.2h5R2 — Camera and Repair Closure**: Correcting gaps in camera identity, style restoration, repair logic, and test coverage. (IN PROGRESS)
 
 ---
 

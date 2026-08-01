@@ -5,7 +5,7 @@ import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
 import kotlinx.coroutines.*
-import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicReference
 
 /**
  * Shared component for resilient basemap loading.
@@ -15,12 +15,12 @@ class BasemapStyleLoader(
     private val basemapProvider: BasemapProvider,
     private val scope: CoroutineScope,
     private val onStyleLoaded: (Style, BasemapLoadAttempt) -> Unit,
-    private val onStyleFailed: (String, BasemapLoadAttempt) -> Unit,
+    private val onStyleTerminated: (BasemapTerminalReason, BasemapLoadAttempt) -> Unit,
     private val onStaleStyleApplied: (BasemapLoadAttempt) -> Unit = {}
 ) {
     private var lastFailureListener: MapView.OnDidFailLoadingMapListener? = null
     private var timeoutJob: Job? = null
-    private var activeAttemptId: Long? = null
+    private var activeAttempt: BasemapLoadAttempt? = null
 
     /**
      * Loads a basemap style with a timeout.
@@ -36,16 +36,20 @@ class BasemapStyleLoader(
         attempt: BasemapLoadAttempt,
         timeoutMs: Long = 15000L
     ) {
-        // 1. Supersede any previous in-flight loader activity
+        // 1. Terminate previous in-flight loader activity as SUPERSEDED
+        activeAttempt?.let { prev ->
+            onStyleTerminated(BasemapTerminalReason.SUPERSEDED, prev)
+        }
         cleanup(mapView)
-        activeAttemptId = attempt.attemptId
-        val isLoaderTerminal = AtomicBoolean(false)
+        
+        activeAttempt = attempt
+        val outcome = AtomicReference<BasemapTerminalReason?>(null)
 
         // 2. Create attempt-scoped failure listener
-        val failureListener = MapView.OnDidFailLoadingMapListener { error ->
-            if (activeAttemptId == attempt.attemptId && isLoaderTerminal.compareAndSet(false, true)) {
+        val failureListener = MapView.OnDidFailLoadingMapListener { _ ->
+            if (activeAttempt?.attemptId == attempt.attemptId && outcome.compareAndSet(null, BasemapTerminalReason.PROVIDER_FAILURE)) {
                 cleanup(mapView)
-                onStyleFailed(error ?: "Unknown MapLibre error", attempt)
+                onStyleTerminated(BasemapTerminalReason.PROVIDER_FAILURE, attempt)
             }
         }
         lastFailureListener = failureListener
@@ -54,9 +58,9 @@ class BasemapStyleLoader(
         // 3. Setup loader-level timeout
         timeoutJob = scope.launch {
             delay(timeoutMs)
-            if (activeAttemptId == attempt.attemptId && isLoaderTerminal.compareAndSet(false, true)) {
+            if (activeAttempt?.attemptId == attempt.attemptId && outcome.compareAndSet(null, BasemapTerminalReason.TIMEOUT)) {
                 cleanup(mapView)
-                onStyleFailed("Style load timeout", attempt)
+                onStyleTerminated(BasemapTerminalReason.TIMEOUT, attempt)
             }
         }
 
@@ -65,13 +69,12 @@ class BasemapStyleLoader(
 
         // 5. Request native style application
         map.setStyle(url) { style ->
-            // Check if this specific call still "owns" the loader state
-            if (activeAttemptId == attempt.attemptId && isLoaderTerminal.compareAndSet(false, true)) {
+            if (activeAttempt?.attemptId == attempt.attemptId && outcome.get() == null) {
+                // Success: this call still owns the loader state and is not terminal
                 cleanup(mapView)
                 onStyleLoaded(style, attempt)
             } else {
-                // Stale native completion (either superseded or already timed out/failed)
-                // Report so the ViewModel can decide on repair if it affected the active MapView
+                // Stale completion (superseded, timed out, or failed)
                 onStaleStyleApplied(attempt)
             }
         }
@@ -85,10 +88,13 @@ class BasemapStyleLoader(
     }
 
     /**
-     * Disposes the loader, cancelling any active jobs and listeners.
+     * Disposes the loader, marking any active attempt as DISPOSED.
      */
     fun dispose(mapView: MapView) {
+        activeAttempt?.let { attempt ->
+            onStyleTerminated(BasemapTerminalReason.DISPOSED, attempt)
+        }
         cleanup(mapView)
-        activeAttemptId = null
+        activeAttempt = null
     }
 }

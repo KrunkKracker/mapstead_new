@@ -32,7 +32,11 @@ android {
             fis.close()
         }
 
-        val maptilerApiKey = localProperties.getProperty("MAPTILER_API_KEY") ?: ""
+        val maptilerApiKey = if (project.hasProperty("MAPTILER_API_KEY")) {
+            project.property("MAPTILER_API_KEY") as String
+        } else {
+            localProperties.getProperty("MAPTILER_API_KEY") ?: ""
+        }
         val maptilerConfigured = maptilerApiKey.isNotBlank()
 
         buildConfigField("boolean", "GOOGLE_DRIVE_BACKUP_ENABLED", "false")
