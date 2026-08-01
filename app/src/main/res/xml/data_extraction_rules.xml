@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+   Data extraction rules configured for Mapstead.
+   Auto Backup is currently disabled in AndroidManifest.
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <!-- Standard cloud backup is excluded since cloud backup is disabled in manifest -->
+    </cloud-backup>
+    <device-transfer>
+        <!-- Standard device transfer options -->
+    </device-transfer>
+</data-extraction-rules>

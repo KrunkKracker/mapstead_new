@@ -1,0 +1,5 @@
+# Mapstead local configuration example
+# Copy this file to local.properties and fill in your keys.
+
+# MapTiler API Key (required for primary basemaps)
+MAPTILER_API_KEY=

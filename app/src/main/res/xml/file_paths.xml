@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- Managed attachments in files/mapstead_attachments -->
+    <files-path name="attachments" path="mapstead_attachments/" />
+    <!-- Temporary camera captures in cache/camera_captures -->
+    <cache-path name="camera_captures" path="camera_captures/" />
+    <!-- Generated property reports in cache/reports -->
+    <cache-path name="reports" path="reports/" />
+    <!-- Generated handoff packages in cache/handoff -->
+    <cache-path name="handoff_packages" path="handoff/" />
+</paths>

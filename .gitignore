@@ -1,0 +1,23 @@
+*.iml
+.gradle
+.agent/
+.artifacts/
+/local.properties
+/.idea/caches
+/.idea/libraries
+/.idea/modules.xml
+/.idea/workspace.xml
+/.idea/navEditor.xml
+/.idea/assetWizardSettings.xml
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+
+# JVM heap dumps
+*.hprof
+java_pid*.hprof
+
+.idea/

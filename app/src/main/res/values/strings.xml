@@ -1,0 +1,1175 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- App & General -->
+    <string name="app_name">Mapstead</string>
+    <string name="ok">OK</string>
+    <string name="cancel">Cancel</string>
+    <string name="back">Back</string>
+    <string name="dismiss">Dismiss</string>
+    <string name="clear">Clear</string>
+    <string name="acknowledge">I understand</string>
+    <string name="save">Save</string>
+    <string name="save_label">Save</string>
+    <string name="add">Add</string>
+    <string name="create_label">Create</string>
+    <string name="continue_label">Continue</string>
+    <string name="loading">Loading...</string>
+    <string name="retry">Retry</string>
+    <string name="optional">Optional</string>
+    <string name="confirm">Confirm</string>
+    <string name="settings">Settings</string>
+    <string name="view_all">View All</string>
+    <string name="undo">Undo</string>
+    <string name="delete">Delete</string>
+    <string name="description">Description</string>
+    <string name="approximate_disclaimer">Approximate reference location \u2014 not survey grade.</string>
+
+    <!-- Navigation -->
+    <string name="desc_open_emergency">Open Emergency</string>
+    <string name="desc_open_maintenance">Open Maintenance</string>
+    <string name="desc_open_map">Open Map</string>
+    <string name="desc_open_properties">Open Properties</string>
+    <string name="desc_open_settings">Open Settings</string>
+    <string name="nav_emergency_compact">Emerg</string>
+    <string name="nav_emergency_full">Emergency</string>
+    <string name="nav_maintenance_compact">Maint</string>
+    <string name="nav_maintenance_full">Maintenance</string>
+    <string name="nav_map_compact">Map</string>
+    <string name="nav_map_full">Map</string>
+    <string name="nav_properties_compact">Prop</string>
+    <string name="nav_properties_full">Properties</string>
+    <string name="nav_settings_compact">Set</string>
+    <string name="nav_settings_full">Settings</string>
+
+    <!-- Dashboards -->
+    <string name="property_dashboard">Property Dashboard</string>
+    <string name="property_status">Status</string>
+    <string name="plans">Maps</string>
+    <string name="emergency_items">Emergency Items</string>
+    <string name="due_count">%1$d Due</string>
+    <string name="no_due_tasks">No tasks due soon.</string>
+    <string name="files_card_title">Recent Files</string>
+    <string name="open_map_plans">Open Maps</string>
+    <string name="add_maintenance">Add Maintenance</string>
+    <string name="property_load_failed">Failed to load property data.</string>
+
+    <!-- Forms & Actions -->
+    <string name="add_label">Add</string>
+    <string name="add_attachment_title">Add Attachment</string>
+    <string name="edit_attachment_title">Edit Attachment</string>
+    <string name="add_item_title">Add Item</string>
+    <string name="edit_item_title">Edit Item</string>
+    <string name="add_maintenance_title">Add Maintenance</string>
+    <string name="edit_maintenance_title">Edit Maintenance</string>
+    <string name="add_reminder_title">Add Reminder</string>
+    <string name="edit_reminder_title">Edit Reminder</string>
+    <string name="edit_reminder">Edit Reminder</string>
+    <string name="create_property_map_title">New Map</string>
+    <string name="edit_property_map_title">Edit Map</string>
+    <string name="add_property">Add Property</string>
+    <string name="edit_property">Edit Property</string>
+    <string name="save_property">Save Property</string>
+    <string name="delete_property">Delete Property</string>
+    <string name="delete_item">Delete Item</string>
+    <string name="save_in_progress">Save in progress</string>
+    <string name="saving">Saving...</string>
+    <string name="mark_complete">Mark Complete</string>
+    <string name="reschedule">Reschedule</string>
+    <string name="select_date">Select Date</string>
+
+    <!-- Field Labels -->
+    <string name="property_name_label">Property Name</string>
+    <string name="property_name_hint">Home, Farm, Rental Property, or Workshop</string>
+    <string name="property_type_label">Property Type</string>
+    <string name="property_type_hint">Home, Farm, Rental, Commercial, or Other</string>
+    <string name="address_line_1_label">Address Line 1</string>
+    <string name="address_line_2_label">Address Line 2 (Optional)</string>
+    <string name="city_label">City</string>
+    <string name="state_region_label">State / Region</string>
+    <string name="postal_code_label">Postal Code</string>
+    <string name="country_code_label">Country Code</string>
+    <string name="parcel_number_label">Parcel Number</string>
+    <string name="parcel_number_hint">Optional number from tax records</string>
+    <string name="acreage_label">Acreage</string>
+    <string name="latitude_label">Latitude</string>
+    <string name="longitude_label">Longitude</string>
+    <string name="latitude_label_center">Center Latitude</string>
+    <string name="longitude_label_center">Center Longitude</string>
+    <string name="description_label">Description</string>
+    <string name="item_name_label">Item Name</string>
+    <string name="item_name_hint">e.g. Well Pump, Water Heater</string>
+    <string name="item_category">Category</string>
+    <string name="item_category_hint">e.g. Utility, Appliance</string>
+    <string name="item_subtype_label">Subtype / Type</string>
+    <string name="item_status_label">Status</string>
+    <string name="emergency_item_label">Emergency Item</string>
+    <string name="manufacturer_label">Manufacturer</string>
+    <string name="model_label">Model</string>
+    <string name="serial_number_label">Serial Number</string>
+    <string name="service_provider_label">Service Provider</string>
+    <string name="support_phone_label">Support Phone</string>
+    <string name="support_website_label">Support Website</string>
+    <string name="operating_instructions_label">Operating Instructions</string>
+    <string name="emergency_instructions_label">Emergency Instructions</string>
+    <string name="notes_label">Notes</string>
+    <string name="maintenance_title_label">Task Title</string>
+    <string name="maintenance_title_hint">e.g. Annual Inspection, Filter Change</string>
+    <string name="maintenance_category_label">Category</string>
+    <string name="maintenance_category_hint">e.g. Repair, Replacement</string>
+    <string name="service_date_label">Service Date</string>
+    <string name="due_date_label">Due Date</string>
+    <string name="maintenance_service_date_label">Service Date</string>
+    <string name="maintenance_next_due_label">Next Due Date (optional)</string>
+    <string name="maintenance_provider_label">Service Provider (optional)</string>
+    <string name="service_provider_hint">Who did the work?</string>
+    <string name="maintenance_cost_label">Cost (optional)</string>
+    <string name="maintenance_cost_hint">0.00</string>
+    <string name="maintenance_description_label">Description (optional)</string>
+    <string name="reminder_title_label">Reminder Title</string>
+    <string name="reminder_description_label">Reminder Description</string>
+    <string name="accuracy_label_unit">Accuracy (%1$s)</string>
+    <string name="unit_feet">feet</string>
+    <string name="unit_meters">meters</string>
+    <string name="item_status_active">Active</string>
+    <string name="item_status_inactive">Inactive</string>
+    <string name="item_status_damaged">Damaged</string>
+    <string name="item_status_retired">Retired</string>
+    <string name="direction_label">Direction</string>
+    <string name="direction_outgoing">Outgoing</string>
+    <string name="direction_incoming">Incoming</string>
+    <string name="select_item">Select Item</string>
+
+    <!-- Headers & Sections -->
+    <string name="general_info_header">General Information</string>
+    <string name="equipment_details_header">Equipment Details</string>
+    <string name="service_support_header">Service &amp; Support</string>
+    <string name="instructions_header">Instructions</string>
+    <string name="maintenance_history_section">Maintenance History</string>
+    <string name="child_items_header">Child Items</string>
+    <string name="parent_item_header">Parent Item</string>
+    <string name="no_child_components">No child components linked.</string>
+    <string name="remove_parent">Remove Parent</string>
+    <string name="open_owner_feature">View on Map</string>
+    <string name="relationships_header">Connections</string>
+    <string name="attachments_header">Attachments</string>
+    <string name="linked_item_header">Linked Item</string>
+    <string name="no_linked_item">No linked item</string>
+    <string name="files">Files</string>
+    <string name="maintenance_details_title">Maintenance Details</string>
+    <string name="edit_maintenance">Edit Maintenance</string>
+    <string name="reminders_label">Reminders</string>
+    <string name="add_reminder">Add Reminder</string>
+    <string name="emergency_item">Emergency Item</string>
+    <string name="connections_count_label">%1$d connections</string>
+
+    <!-- Infrastructure Actions -->
+    <string name="view_maintenance_button">View Maintenance</string>
+    <string name="add_maintenance_record_button">Add Record</string>
+
+    <!-- Attachments & Files -->
+    <string name="open_file">Open File</string>
+    <string name="attachment_details">Attachment Details</string>
+    <string name="open_owner">Open Related Item</string>
+    <string name="edit_attachment_metadata">Edit Details</string>
+    <string name="delete_attachment">Delete Attachment</string>
+    <string name="missing_file_title">File Missing</string>
+    <string name="missing_file_message">The file could not be found on this device.</string>
+    <string name="damaged_file_title">File Corrupted</string>
+    <string name="damaged_file_message">This file appears to be damaged or in an unsupported format.</string>
+    <string name="attachment_display_name">Display Name</string>
+    <string name="attachment_type">File Type</string>
+    <string name="caption_optional">Caption (Optional)</string>
+    <string name="attachment_owner_label">Attached To</string>
+    <string name="delete_attachment_confirm">Are you sure you want to permanently delete this attachment?</string>
+    <string name="no_files_yet">No files attached yet.</string>
+    <string name="files_description">Photos and documents related to this item.</string>
+    <string name="recent_attachments">Recent Files</string>
+    <string name="no_attachments">No attachments</string>
+    <string name="take_photo">Take Photo</string>
+    <string name="choose_photo">Choose Photo</string>
+    <string name="choose_document">Choose Document</string>
+    <string name="cover_photo_checkbox">Set as Cover Photo</string>
+
+    <!-- Map & Layers -->
+    <string name="search_hint">Search items...</string>
+    <string name="basemap">Basemap</string>
+    <string name="choose_basemap">Choose Basemap</string>
+    <string name="no_active_layer">No active layer selected.</string>
+    <string name="select_layer">Select Layer</string>
+    <string name="map_layers">Map Layers</string>
+    <string name="close_layers">Close Layers</string>
+    <string name="add_layer">Add Layer</string>
+    <string name="add_new_layer_title">New Layer</string>
+    <string name="layer_name_label">Layer Name</string>
+    <string name="layer_category_label">Category</string>
+    <string name="edit_layer_settings_title">Layer Settings</string>
+    <string name="opacity_label">Opacity</string>
+    <string name="delete_layer_title">Delete Layer</string>
+    <string name="toggle_visibility">Toggle Visibility</string>
+    <string name="toggle_lock">Toggle Lock</string>
+    <string name="move_layer_up">Move Up</string>
+    <string name="move_layer_down">Move Down</string>
+    <string name="layer_settings">Layer Settings</string>
+    <string name="layer_hidden_suffix"> (Hidden)</string>
+    <string name="show_layer_and_open">Show Layer &amp; Open</string>
+
+    <string name="add_to_map">Add Something</string>
+    <string name="add_point">Add Point</string>
+    <string name="advanced_mapping">Advanced Mapping</string>
+    <string name="gps_quality">GPS Quality</string>
+    <string name="gps_details_title">GPS Status</string>
+    <string name="location_status">Location Status</string>
+    <string name="status_live">Live Location</string>
+    <string name="status_cached">Cached Location</string>
+    <string name="unit_imperial">Imperial (Feet)</string>
+    <string name="unit_metric">Metric (Meters)</string>
+    <string name="advanced_mapping_desc">Generic tools for points, lines, and areas.</string>
+    <string name="custom_location">Custom Location</string>
+    <string name="custom_line">Custom Line</string>
+    <string name="custom_area">Custom Area</string>
+    <string name="custom_location_desc">Mark any single spot on the map</string>
+    <string name="custom_line_desc">Trace any path or route</string>
+    <string name="custom_area_desc">Outline any shape or area</string>
+    <string name="last_updated">Last Updated</string>
+    <string name="estimated_accuracy">Estimated Accuracy</string>
+    <string name="quality_good">Good</string>
+    <string name="quality_moderate">Moderate</string>
+    <string name="quality_poor">Poor</string>
+    <string name="display_units">Display Units</string>
+    <string name="accuracy_explanation">The blue circle shows the area where you are likely located. A smaller circle means a better GPS signal.</string>
+    <string name="tracking_records_included">Records included</string>
+    <string name="tracking_records_included_desc">You can add photos, documents, maintenance history, reminders, and emergency information after saving.</string>
+    <string name="tracking_keep_records">Keep records for this item</string>
+    <string name="tracking_keep_records_desc">Add photos, documents, maintenance history, and reminders.</string>
+    <string name="setup_review_new_title">New %1$s</string>
+    <string name="just_now">Less than a minute ago</string>
+    <string name="minutes_ago">%d minutes ago</string>
+    <string name="one_minute_ago">1 minute ago</string>
+    <string name="hours_ago">%d hours ago</string>
+    <string name="one_hour_ago">1 hour ago</string>
+    <string name="days_ago">%d days ago</string>
+    <string name="one_day_ago">1 day ago</string>
+    <string name="safety_limitations">Safety &amp; Limitations</string>
+    <string name="boundary_disclaimer_title">Boundary Disclaimer</string>
+    <string name="boundary_disclaimer_text">Mapstead provides approximate measurements for reference only. These are NOT legal land surveys or official utility locates. These maps are for approximate reference only and are not a land survey, title record, or legally binding. Professional verification is required for construction, legal, or safety-critical work.</string>
+    <string name="gps_limitations_title">GPS Limitations</string>
+    <string name="gps_limitations_text">Your phone\'s GPS can vary in accuracy based on weather, trees, and buildings. Always verify critical locations manually.</string>
+    <string name="verification_requirement">Verification for construction, excavation, permitting, legal disputes, and safety-critical work is required.</string>
+    <string name="layer_buildings">Buildings &amp; Boundaries</string>
+    <string name="layer_utilities">Utilities</string>
+    <string name="layer_outdoor">Outdoor Features</string>
+    <string name="layer_safety">Safety &amp; Emergency</string>
+    <string name="add_line">Add Line</string>
+    <string name="add_area">Add Area</string>
+    <string name="add_point_unavailable">Adding points is unavailable for this layer.</string>
+    <string name="finish_line">Finish Line</string>
+    <string name="cancel_line">Cancel Line</string>
+    <string name="finish_area">Finish Area</string>
+    <string name="moving_point">Moving Point</string>
+    <string name="tap_to_choose_location">Tap map to choose location</string>
+    <string name="drag_or_tap_to_move">Drag the point or tap a new location</string>
+    <string name="proposed_location">Proposed Location</string>
+    <string name="confirm_move">Confirm Move</string>
+    <string name="cancel_move">Cancel Move</string>
+    <string name="editing_area">Editing Area</string>
+    <string name="editing_line">Editing Line</string>
+    <string name="area_change_label">Area Changed</string>
+    <string name="delete_vertex">Delete Vertex</string>
+    <string name="undo_vertex">Undo Last Point</string>
+    <string name="move_point">Move Point</string>
+    <string name="edit_shape">Edit Shape</string>
+    <string name="capped_undo_history">Capped undo history (up to 50 items).</string>
+
+    <string name="poly_val_too_few">Outline must have at least 3 points.</string>
+    <string name="poly_val_invalid_coord">One or more points have invalid coordinates.</string>
+    <string name="poly_val_consecutive_dup">Duplicate consecutive points are not allowed.</string>
+    <string name="poly_val_dup_vertices">Duplicate points are not allowed in the outline.</string>
+    <string name="poly_val_zero_area">The outline does not enclose a valid area.</string>
+    <string name="poly_val_self_intersect">The outline cannot cross over itself.</string>
+    <string name="poly_val_unsupported_interior">Interior holes are not supported.</string>
+    <string name="poly_val_invalid_closure">The outline must be properly closed.</string>
+
+    <string name="desc_map_search">Search mapped items</string>
+    <string name="desc_map_layers">Manage map layers</string>
+    <string name="desc_map_add">Add new item to map</string>
+    <string name="desc_gps_status">View detailed GPS status</string>
+    <string name="desc_basemap_chooser">Change background map</string>
+    <string name="desc_map_help">Open map controls help</string>
+    <string name="desc_safety_limitations">View safety and legal limitations</string>
+
+    <string name="emergency_mode">Emergency Mode</string>
+    <string name="no_matches_found">No matches found.</string>
+    <string name="my_location">My Location</string>
+    <string name="use_phone_location">Use Phone Location</string>
+    <string name="accuracy">Accuracy: %1$.1f m</string>
+    <string name="vertices_count">%1$d vertices</string>
+
+    <!-- Map Feature Details -->
+    <string name="feature_details_locked">Feature is on a locked layer.</string>
+    <string name="feature_details_line">Line Feature</string>
+    <string name="area_details_title">Area Details</string>
+    <string name="feature_details_point">Point Feature</string>
+    <string name="feature_details_area">Area Feature</string>
+    <string name="locked_layer_read_only">Locked layer: Read-only</string>
+    <string name="approx_area_label">Approx. Area</string>
+    <string name="perimeter_label">Perimeter</string>
+    <string name="length_label">Length</string>
+    <string name="point_label">Location</string>
+    <string name="system_item_link_label">Linked System Item</string>
+    <string name="create_system_item">Create System Item</string>
+    <string name="create_and_link">Create &amp; Link</string>
+    <string name="linked_label">Linked</string>
+    <string name="linked_system_item_unavailable">Linked System Item unavailable</string>
+    <string name="create_system_item_checkbox">Create linked System Item</string>
+    <string name="suggested_item_label">Suggested Item</string>
+    <string name="system_item_explanation">A System Item tracks detailed maintenance, instructions, and equipment records for this mapped location.</string>
+    <string name="delete_feature_confirm">Are you sure you want to remove this item from the map? This action cannot be undone.</string>
+
+    <!-- Basemaps -->
+    <string name="street">Street</string>
+    <string name="satellite">Satellite</string>
+    <string name="outdoors">Outdoors</string>
+    <string name="light">Light</string>
+    <string name="dark">Dark</string>
+    <string name="use_street">Use Street Map</string>
+    <string name="basemap_street_desc">Standard street map</string>
+    <string name="basemap_satellite_desc">Aerial imagery with roads and labels for identifying real-world structures.</string>
+    <string name="basemap_outdoors_desc">Topographic map</string>
+    <string name="basemap_light_desc">Light-colored map</string>
+    <string name="basemap_dark_desc">Dark-colored map</string>
+
+    <!-- Basemaps Phase 2.2h -->
+    <string name="base_map">Base</string>
+    <string name="topo">Topo</string>
+    <string name="satellite_hybrid">Satellite Hybrid</string>
+    <string name="basemap_fallback_active">The primary map could not load. Mapstead is using a backup map.</string>
+    <string name="basemap_retry_primary">Retry Primary Map</string>
+    <string name="basemap_preferred_label">Preferred</string>
+    <string name="basemap_active_label">Active</string>
+    <string name="attribution_maptiler">© MapTiler</string>
+    <string name="attribution_osm">© OpenStreetMap contributors</string>
+    <string name="maptiler_logo_description">MapTiler Logo</string>
+    <string name="visit_maptiler">Visit MapTiler website</string>
+    <string name="view_copyright">View copyright information</string>
+    <string name="outdoor">Outdoor</string>
+    <string name="basemap_streets_desc">Detailed streets, buildings, and addresses for everyday property mapping.</string>
+    <string name="basemap_base_desc">A cleaner map that keeps Mapstead items easy to see.</string>
+    <string name="basemap_topo_desc">Terrain and elevation context for rural and larger properties.</string>
+    <string name="basemap_outdoor_desc">Trails and natural-land context for farms, woods, and recreational properties.</string>
+    <string name="satellite_hint">Can’t see your house or structure? Try Satellite Hybrid.</string>
+    <string name="basemap_fallback_notice">The primary map could not load. Mapstead is using a backup map.</string>
+    <string name="retry_primary_map">Retry Primary Map</string>
+    <string name="preferred_map_section">Preferred Maps</string>
+    <string name="backup_maps_section">Backup Maps</string>
+
+    <!-- Discards & Confirms -->
+    <string name="discard_changes_title">Discard Changes?</string>
+    <string name="discard_changes_message">You have unsaved changes. Discard them and go back?</string>
+    <string name="discard_changes">Discard Changes</string>
+    <string name="keep_editing">Keep Editing</string>
+    <string name="delete_item_confirm">Are you sure you want to delete \"%1$s\"?</string>
+    <string name="confirm_delete_item_title">Delete Item?</string>
+    <string name="delete_connection_title">Delete Connection</string>
+    <string name="delete_connection_message">Are you sure you want to remove this connection between items?</string>
+    <string name="confirm_delete_property_title">Remove Property?</string>
+    <string name="delete_property_confirm">Are you sure you want to remove \"%1$s\"?</string>
+    <string name="delete_record_title">Delete Record?</string>
+    <string name="delete_record_message">This action cannot be undone.</string>
+    <string name="confirm_delete_record_title">Delete Record?</string>
+    <string name="complete_confirmation_title">Mark as Complete?</string>
+    <string name="complete_confirmation_message">Are you sure you want to mark this task as complete?</string>
+    <string name="discard_line_shape_changes">Discard unsaved changes to this line?</string>
+    <string name="discard_area_shape_changes">Discard unsaved changes to this area?</string>
+    <string name="discard_property_mapping_changes">Discard unsaved changes and switch property?</string>
+    <string name="discard_plan_mapping_changes">Discard unsaved changes and switch plan?</string>
+    <string name="discard_guided_creation_title">Discard this item?</string>
+
+    <!-- Backup & Restore -->
+    <string name="backup_restore">Backup &amp; Restore</string>
+    <string name="google_drive_backups">Google Drive Backups</string>
+    <string name="clear_history">Clear History</string>
+    <string name="recovery_required_title">Recovery Required</string>
+    <string name="recovery_required_text">A backup operation was interrupted. Would you like to attempt recovery?</string>
+    <string name="retry_recovery">Retry Recovery</string>
+    <string name="drive_authorized">Google Drive Connected</string>
+    <string name="drive_not_authorized">Connect Google Drive</string>
+    <string name="connect_google_drive">Connect Google Drive</string>
+    <string name="backup_now">Backup Now</string>
+    <string name="restore_from_drive">Restore from Drive</string>
+    <string name="no_backups_found">No backups found in Google Drive.</string>
+    <string name="safety_backups">Safety Backups</string>
+    <string name="backup_history">Backup History</string>
+    <string name="restore_confirm_title">Restore Data?</string>
+    <string name="restore_confirm_text">This will replace all current data with the contents of the backup. This cannot be undone.</string>
+    <string name="drive_filename_label">Drive Filename</string>
+    <string name="backup_id_label">Backup ID</string>
+    <string name="created_label">Created</string>
+    <string name="device_info_label">Device Info</string>
+    <string name="schema_version_label">Schema Version</string>
+    <string name="properties_count_label">%1$d properties</string>
+    <string name="plans_count_label">%1$d maps</string>
+    <string name="layers_count_label">%1$d layers</string>
+    <string name="features_count_label">%1$d map features</string>
+    <string name="infrastructure_count_label">%1$d system items</string>
+    <string name="maintenance_count_label">%1$d maintenance records</string>
+    <string name="reminders_count_label">%1$d active reminders</string>
+    <string name="attachments_count_label">%1$d files</string>
+    <string name="relationships_count_label">%1$d connections</string>
+    <string name="attachments_size_label">Total Attachment Size</string>
+    <string name="manifest_warnings_label">Manifest Warnings</string>
+    <string name="restore_compatibility_warning">This backup uses a different schema version. Some data may be lost or converted.</string>
+    <string name="safety_backup_explanation">Safety backups are created automatically before major changes or restores.</string>
+    <string name="restore_now">Restore Now</string>
+    <string name="delete_backup_title">Delete Backup?</string>
+    <string name="delete_backup_confirm">Are you sure you want to delete this backup from Google Drive?</string>
+    <string name="delete_safety_backup_title">Delete Safety Backup?</string>
+    <string name="delete_safety_backup_confirm">Are you sure you want to delete this local safety backup?</string>
+    <string name="restore_safety_title">Restore Safety Backup?</string>
+    <string name="restore_safety_confirm">Are you sure you want to revert to this local safety backup?</string>
+    <string name="safety_backup_label">Safety Backup</string>
+    <string name="size_label">Size</string>
+    <string name="status_label">Status</string>
+
+    <!-- Reports & Handoff -->
+    <string name="reports_handoff_title">Reports &amp; Handoff</string>
+    <string name="pdf_report_section_title">PDF Property Report</string>
+    <string name="report_description">Generate a PDF report</string>
+    <string name="include_sections_title">Include Sections</string>
+    <string name="property_profile_section">Property Profile</string>
+    <string name="infrastructure_section">Systems &amp; Equipment</string>
+    <string name="range_label">Range:</string>
+    <string name="range_all">All</string>
+    <string name="range_last_12m">Last 12M</string>
+    <string name="range_this_year">This Year</string>
+    <string name="upcoming_tasks_section">Upcoming Tasks</string>
+    <string name="map_gis_summary_section">Map &amp; GIS Summary</string>
+    <string name="attachment_summary_section">Attachment Summary</string>
+    <string name="report_preview_title">Report Preview Summary</string>
+    <string name="item_count_label">%1$d items</string>
+    <string name="record_count_label">%1$d records</string>
+    <string name="task_count_label">%1$d tasks</string>
+    <string name="feature_count_label_simple">%1$d features</string>
+    <string name="attachment_count_label_simple">%1$d attachments</string>
+    <string name="error_no_sections_selected">Please select at least one section</string>
+    <string name="share_report_button">Share Property Report</string>
+    <string name="generate_report_button">Generate PDF Report</string>
+    <string name="handoff_package_section_title">Property Handoff Package</string>
+    <string name="handoff_description">Create a portable handoff archive</string>
+    <string name="handoff_include_pdf_label">Include PDF Report</string>
+    <string name="handoff_include_property_label">Property Photos/Docs</string>
+    <string name="handoff_include_infrastructure_label">Systems &amp; Equipment Photos/Docs</string>
+    <string name="handoff_include_maintenance_label">Maintenance Evidence</string>
+    <string name="handoff_include_map_label">Mapped Feature Photos</string>
+    <string name="error_handoff_nothing_selected">Select at least one component</string>
+    <string name="handoff_package_ready">Package Ready</string>
+    <string name="handoff_included_attachments_label">%1$d attachments included</string>
+    <string name="handoff_skipped_attachments_label">%1$d attachments skipped</string>
+    <string name="handoff_share_button">Share Handoff Package</string>
+    <string name="handoff_generate_button">Generate Handoff Package</string>
+    <string name="handoff_show_warnings_label">Show %1$d Export Warnings</string>
+    <string name="report_error_title">Report Error</string>
+    <string name="error_pdf_creation_failed">Failed to create PDF report</string>
+    <string name="error_storage_unavailable">Storage is not available</string>
+    <string name="error_generated_file_missing">Report file is missing</string>
+    <string name="error_share_unavailable">No apps to share the report</string>
+    <string name="error_share_permission_failed">Permission denied</string>
+    <string name="error_unexpected_report">Unexpected error</string>
+    <string name="handoff_error_title">Handoff Error</string>
+    <string name="error_handoff_report_failed">Failed to include report</string>
+    <string name="error_handoff_storage_failed">Storage access denied</string>
+    <string name="error_handoff_package_failed">Failed to create archive</string>
+    <string name="error_unexpected_handoff">Unexpected handoff error</string>
+    <string name="handoff_stage_loading">Loading property...</string>
+    <string name="handoff_stage_generating_report">Generating report...</string>
+    <string name="handoff_stage_validating">Validating attachments...</string>
+    <string name="handoff_stage_copying">Copying files (%1$d/%2$d)...</string>
+    <string name="handoff_stage_manifest">Writing manifest...</string>
+    <string name="handoff_stage_finalizing">Finalizing archive...</string>
+    <string name="handoff_stage_preparing">Preparing...</string>
+    <string name="report_share_subject">Property Report</string>
+    <string name="report_share_label">Report PDF</string>
+    <string name="report_share_chooser_title">Share Report</string>
+    <string name="handoff_share_subject">Property Handoff</string>
+    <string name="handoff_share_label">Handoff ZIP</string>
+    <string name="handoff_share_chooser_title">Share Handoff</string>
+
+    <string name="gps_good">Live GPS</string>
+    <string name="gps_moderate">Moderate GPS</string>
+    <string name="gps_poor">Poor GPS</string>
+    <string name="gps_accuracy_prefix">\u00b1</string>
+    <string name="location_details_title">Location Details</string>
+    <string name="location_status_label">Status</string>
+    <string name="location_fresh">Live GPS</string>
+    <string name="location_cached">Cached</string>
+    <string name="location_age_just_now">Less than a minute ago</string>
+    <string name="location_age_minutes">%1$d minutes ago</string>
+    <string name="location_age_hour">1 hour ago</string>
+    <string name="location_explanation_title">What is the accuracy circle?</string>
+    <string name="location_explanation_text">GPS accuracy varies by device, buildings, trees, surroundings, and satellite visibility. The accuracy circle shows the estimated area in which your device may be located.</string>
+    <string name="hide_location">Hide Location</string>
+    <string name="retry_location">Retry Location</string>
+
+    <string name="reminder_permission_choice_message">Mapstead can save this reminder without device notifications. You can enable notifications later by editing the reminder.</string>
+    <string name="notification_denied_retryable">Notification permission was not granted. You can try again or save this reminder without Android notifications.</string>
+    <string name="notification_denied_permanent">Notifications are disabled for Mapstead. Enable them in Android Settings, or save this reminder without notifications.</string>
+    <string name="notification_settings_failed">Mapstead could not open notification settings. Open Mapstead’s App Info screen manually from Android Settings.</string>
+    <string name="relationship_no_available_items">No other items found to link.</string>
+
+    <!-- Map Presets -->
+    <string name="preset_well">Well</string>
+    <string name="preset_well_desc">Water source well head</string>
+    <string name="label_well">Well</string>
+    <string name="label_default_point">Point</string>
+    <string name="label_default_line">Line</string>
+    <string name="label_default_area">Area</string>
+    <string name="preset_valve">Water Valve</string>
+    <string name="preset_valve_desc">Shut-off or control valve</string>
+    <string name="label_valve">Water Valve</string>
+    <string name="preset_panel">Electrical Panel</string>
+    <string name="preset_panel_desc">Main breaker or sub-panel</string>
+    <string name="label_panel">Electrical Panel</string>
+    <string name="preset_meter">Utility Meter</string>
+    <string name="preset_meter_desc">Electric, gas, or water meter</string>
+    <string name="label_meter">Utility Meter</string>
+    <string name="preset_septic">Septic Access</string>
+    <string name="preset_septic_desc">Septic tank lid or clean-out</string>
+    <string name="label_septic">Septic Access</string>
+    <string name="preset_gate">Gate</string>
+    <string name="preset_gate_desc">Entrance or property gate</string>
+    <string name="label_gate">Gate</string>
+    <string name="preset_extinguisher">Fire Extinguisher</string>
+    <string name="preset_extinguisher_desc">Fire safety equipment location</string>
+    <string name="label_extinguisher">Fire Extinguisher</string>
+    <string name="preset_tree">Tree</string>
+    <string name="preset_tree_desc">Significant tree or landmark</string>
+    <string name="label_tree">Tree</string>
+    <string name="preset_custom_loc">Custom Location</string>
+    <string name="preset_custom_loc_desc">Any other point of interest</string>
+    <string name="label_custom">Custom Item</string>
+
+    <string name="preset_fence">Fence</string>
+    <string name="preset_fence_desc">Fencing or enclosure line</string>
+    <string name="label_fence">Fence</string>
+    <string name="preset_water_line">Water Line</string>
+    <string name="preset_water_line_desc">Underground water pipe</string>
+    <string name="label_water_line">Water Line</string>
+    <string name="preset_elec_line">Electrical Line</string>
+    <string name="preset_elec_line_desc">Underground or overhead power</string>
+    <string name="label_elec_line">Electrical Line</string>
+    <string name="preset_gas_line">Gas Line</string>
+    <string name="preset_gas_line_desc">Natural gas or propane line</string>
+    <string name="label_gas_line">Gas Line</string>
+    <string name="preset_drainage">Drainage Route</string>
+    <string name="preset_drainage_desc">Culvert, ditch, or drain pipe</string>
+    <string name="label_drainage">Drainage</string>
+    <string name="preset_irrigation">Irrigation Line</string>
+    <string name="preset_irrigation_desc">Sprinkler or irrigation pipe</string>
+    <string name="label_irrigation">Irrigation Line</string>
+    <string name="preset_driveway_edge">Driveway Edge</string>
+    <string name="preset_driveway_edge_desc">Edge of driveway or path</string>
+    <string name="label_driveway">Driveway</string>
+    <string name="preset_property_edge">Property Edge</string>
+    <string name="preset_property_edge_desc">Boundary line or property edge</string>
+    <string name="label_property_edge">Property Edge</string>
+    <string name="preset_custom_line">Custom Line</string>
+    <string name="preset_custom_line_desc">Any other route or line</string>
+
+    <string name="preset_house">House or Building</string>
+    <string name="preset_house_desc">Main residence or structure</string>
+    <string name="label_house">Building</string>
+    <string name="preset_shed">Shed or Outbuilding</string>
+    <string name="preset_shed_desc">Storage shed, barn, or garage</string>
+    <string name="label_shed">Outbuilding</string>
+    <string name="preset_boundary">Property Boundary</string>
+    <string name="preset_boundary_desc">Outline of the entire property</string>
+    <string name="label_boundary">Property Boundary</string>
+    <string name="preset_septic_field">Septic Field</string>
+    <string name="preset_septic_field_desc">Drain field or septic area</string>
+    <string name="label_septic_field">Septic Field</string>
+    <string name="preset_pond">Pond or Water Feature</string>
+    <string name="preset_pond_desc">Pond, lake, or water area</string>
+    <string name="label_pond">Water Feature</string>
+    <string name="preset_driveway_area">Driveway or Parking Area</string>
+    <string name="preset_driveway_area_desc">Outlined parking or drive area</string>
+    <string name="preset_garden">Garden</string>
+    <string name="preset_garden_desc">Garden bed or landscaped area</string>
+    <string name="label_garden">Garden</string>
+    <string name="preset_pool">Pool</string>
+    <string name="preset_pool_desc">Swimming pool or spa area</string>
+    <string name="label_pool">Pool</string>
+    <string name="preset_custom_area">Custom Area</string>
+    <string name="preset_custom_area_desc">Any other outlined area</string>
+
+    <string name="guided_add_title">What would you like to add?</string>
+    <string name="group_locations">Mark a Location</string>
+    <string name="group_locations_desc">Important objects and places at one spot.</string>
+    <string name="group_routes">Draw a Route or Line</string>
+    <string name="group_routes_desc">Fences, utility lines, driveways, and paths.</string>
+    <string name="group_areas">Outline an Area</string>
+    <string name="group_areas_desc">Buildings, boundaries, gardens, and ponds.</string>
+
+    <string name="placement_method_title">How will you place it?</string>
+    <string name="method_my_location">Use My Location</string>
+    <string name="method_my_location_desc">Stand near the item and use your phone’s GPS.</string>
+    <string name="method_tap_map">Tap the Map</string>
+    <string name="method_tap_map_desc">Place the item by tapping its location on the map.</string>
+    <string name="method_trace_map">Trace on the Map</string>
+    <string name="method_trace_map_desc">Tap several points along the route or boundary.</string>
+    <string name="method_outline_map">Outline on the Map</string>
+    <string name="method_outline_map_desc">Tap around the outside edge of the structure or area.</string>
+
+    <string name="boundary_ack_title">Reference boundary only</string>
+    <string name="boundary_ack_message">Mapstead boundaries and measurements are approximate and intended for documentation and reference only. They are not a land survey or legally binding boundary.</string>
+    <string name="learn_more">Learn More</string>
+
+    <string name="starter_layers_title">Add starter layers?</string>
+    <string name="starter_layers_desc">Layers keep related map items together. For example, buildings can be kept separate from utilities.</string>
+    <string name="skip">Skip</string>
+
+    <string name="map_help_title">Map Controls</string>
+    <string name="help_my_location_title">My Location</string>
+    <string name="help_my_location_desc">Shows your phone’s estimated location and accuracy circle.</string>
+    <string name="help_add_to_map_title">Add to Map</string>
+    <string name="help_add_to_map_desc">Add a location, route, building, boundary, or other property item.</string>
+    <string name="help_search_title">Search</string>
+    <string name="help_search_desc">Find mapped items by name or category.</string>
+    <string name="help_basemap_title">Basemap</string>
+    <string name="help_basemap_desc">Changes the background map. Available detail varies by provider and location.</string>
+    <string name="help_layers_title">Layers</string>
+    <string name="help_layers_desc">Shows or hides groups of mapped property information.</string>
+    <string name="help_emergency_title">Emergency Mode</string>
+    <string name="help_emergency_desc">Quickly opens important property and safety information. It depends on information you have entered.</string>
+
+    <string name="guidance_start_mapping_title">Start mapping your property</string>
+    <string name="guidance_start_mapping_desc">Add a building, boundary, utility, or other important location.</string>
+    <string name="how_mapping_works">How Mapping Works</string>
+
+    <string name="item_type_label">Item Type</string>
+    <string name="suggested_name_label">Suggested Name</string>
+
+    <string name="basemap_explanation">Buildings and property details depend on the selected map provider and available map data.</string>
+
+    <!-- Errors & Warnings -->
+    <string name="error_name_required">Name is required.</string>
+    <string name="error_category_required">Category is required.</string>
+    <string name="filter_hierarchy">Hierarchy</string>
+    <string name="filter_connections">Connections</string>
+    <string name="filter_unconnected">Unconnected</string>
+
+    <string name="rel_type_feeds">Feeds</string>
+    <string name="rel_type_controls">Controls</string>
+    <string name="rel_type_protects">Protects</string>
+    <string name="rel_type_drains_to">Drains To</string>
+    <string name="rel_type_serves">Serves</string>
+    <string name="rel_type_depends_on">Depends On</string>
+    <string name="rel_type_connected_to">Connected To</string>
+    <string name="rel_type_other">Other</string>
+
+    <string name="accuracy_source_user_estimated">User Estimated</string>
+    <string name="accuracy_source_phone_gps">Phone GPS</string>
+    <string name="accuracy_source_measured_from_reference">Measured From Reference</string>
+    <string name="accuracy_source_imported_plan">Imported Plan</string>
+    <string name="accuracy_source_imported_survey">Imported Survey</string>
+    <string name="accuracy_source_professional_locate">Professional Utility Locate</string>
+    <string name="accuracy_source_professional_surveyed">Professionally Surveyed</string>
+    <string name="accuracy_source_unknown">Unknown</string>
+
+    <string name="accuracy_source_label">Accuracy Source</string>
+    <string name="remove_relationship_title">Remove Relationship</string>
+    <string name="remove_relationship_confirm">Are you sure you want to remove this connection?</string>
+    <string name="items_stat">Items</string>
+    <string name="links_stat">Links</string>
+    <string name="hierarchy_stat">Hierarchy</string>
+    <string name="unconnected_stat">Unconnected</string>
+    <string name="no_items_unconnected">All items are connected.</string>
+
+    <string name="error_invalid_latitude">Enter a valid latitude (-90 to 90).</string>
+    <string name="error_invalid_longitude">Enter a valid longitude (-180 to 180).</string>
+    <string name="error_invalid_number">Enter a valid number.</string>
+    <string name="error_invalid_cost">Enter a valid amount.</string>
+    <string name="error_invalid_query">Enter a search term.</string>
+    <string name="error_geocoder_unavailable">Address search is unavailable on this device.</string>
+    <string name="error_network_failure">Network error. Please check your connection.</string>
+    <string name="error_generic_location">Failed to get location.</string>
+    <string name="error_select_location">Please select a map location.</string>
+    <string name="error_no_address_matches">No matching addresses found.</string>
+    <string name="error_circular_hierarchy">Circular hierarchy detected.</string>
+    <string name="error_relationship_exists">This relationship already exists.</string>
+    <string name="error_circular_dependency">Circular dependency detected.</string>
+    <string name="error_relationship_save_failed">Failed to save connection.</string>
+    <string name="error_relationship_delete_failed">Failed to delete connection.</string>
+    <string name="error_parent_save_failed">Failed to update parent item.</string>
+    <string name="error_save_failed">The information could not be saved. Please try again.</string>
+    <string name="error_property_not_found">Property not found.</string>
+    <string name="property_not_found">Property not found.</string>
+    <string name="error_attachment_not_found">Attachment not found.</string>
+    <string name="error_settings_launch_failed">Could not open system settings. Please open them manually from your device launcher.</string>
+    <string name="error_invalid_owner">Ownership error.</string>
+    <string name="error_delete_failed_generic">The item could not be deleted.</string>
+    <string name="error_unsupported_type">This file type is not supported.</string>
+    <string name="error_file_too_large">File exceeds the size limit.</string>
+    <string name="error_file_copy_failed">Failed to save file.</string>
+    <string name="error_preview_load">Failed to load preview.</string>
+    <string name="retry_preview">Retry Preview</string>
+    <string name="error_no_viewer">No app found to open this file.</string>
+    <string name="error_feature_not_found">Item not found.</string>
+    <string name="error_delete_cleanup_warning">Data removed, but some files could not be cleaned up.</string>
+    <string name="error_delete_failed">An error occurred during deletion.</string>
+    <string name="error_drive_auth_expired">Google Drive session expired. Please reconnect.</string>
+    <string name="error_drive_network">Network error while accessing Google Drive.</string>
+    <string name="error_drive_not_found">Backup file not found in Google Drive.</string>
+    <string name="error_drive_quota">Google Drive storage quota exceeded.</string>
+    <string name="error_drive_permission">Insufficient permissions to access Google Drive.</string>
+    <string name="error_drive_invalid_response">Invalid response from Google Drive.</string>
+    <string name="error_drive_unknown">An unknown Google Drive error occurred.</string>
+    <string name="error_cover_update_failed">Failed to update cover photo.</string>
+    <string name="attachment_display_name_required">Display name is required.</string>
+
+    <string name="retrying_with_fallback">Retrying with fallback map...</string>
+    <string name="failed_to_load_basemap">Failed to load background map.</string>
+    <string name="layer_locked_or_unavailable">Layer locked or unavailable.</string>
+    <string name="exclusive_workflow_active">Finish current operation first.</string>
+    <string name="warning_metadata_saved_cover_failed">Information saved, but the cover photo could not be updated.</string>
+    <string name="property_created_with_photo_error">Your Property was created, but the photo could not be saved.</string>
+    <string name="feature_saved_with_photo_error">The item was saved, but the photo could not be added.</string>
+    <string name="retry_photo">Retry Photo</string>
+    <string name="continue_without_photo">Continue Without Photo</string>
+    <string name="cover_warning_message">Information saved, but the cover photo could not be updated.</string>
+    <string name="no_changes_to_save">No changes to save.</string>
+    <string name="invalid_geometry">Invalid shape geometry.</string>
+    <string name="feature_no_longer_exists">Feature no longer exists.</string>
+    <string name="feature_unavailable">Feature is currently unavailable.</string>
+    <string name="ownership_error">Data ownership mismatch.</string>
+    <string name="context_mismatch">Operation context mismatch.</string>
+    <string name="layer_not_found">Layer not found.</string>
+    <string name="layer_is_locked">Layer is locked.</string>
+    <string name="layer_is_hidden">Layer is hidden.</string>
+    <string name="property_plan_mismatch">Property and plan do not match.</string>
+    <string name="layer_was_deleted">The layer was deleted.</string>
+    <string name="emergency_map_in_use">Emergency map is already in use.</string>
+    <string name="save_failed">Save Failed</string>
+
+    <!-- Location Issues -->
+    <string name="location_issue_title">Location Issue</string>
+    <string name="location_issue_permission_denied">Location permission was denied. Mapstead needs this to show your position on the map.</string>
+    <string name="location_issue_permission_permanently_denied">Location permission is permanently denied. Please enable it in system settings to use GPS placement.</string>
+    <string name="location_issue_provider_disabled">Location services (GPS) are disabled on your device.</string>
+    <string name="location_issue_timeout">Timed out waiting for a GPS signal. You may be indoors or under heavy cover.</string>
+    <string name="location_issue_unavailable">Your current location could not be determined at this time.</string>
+    <string name="location_issue_cached">Using a saved location from a few minutes ago. This may not be your current position.</string>
+    <string name="location_issue_poor_accuracy">GPS signal is weak. The accuracy circle shows the estimated area.</string>
+    <string name="location_issue_cached_and_poor">Using an older, low-accuracy location. Standing in an open area may help.</string>
+    <string name="location_issue_generic">An unexpected error occurred while accessing GPS.</string>
+    <string name="retry_fresh">Retry Fresh</string>
+    <string name="use_anyway">Use Anyway</string>
+    <string name="use_cached">Use Cached</string>
+    <string name="open_settings">Open Settings</string>
+    <string name="open_location_settings">Location Settings</string>
+    <string name="continue_manual">Continue Manually</string>
+    <string name="location_access_title">Location Access</string>
+    <string name="cached_location">Using Cached Location</string>
+    <string name="good_accuracy">Good Accuracy</string>
+    <string name="moderate_accuracy">Moderate Accuracy</string>
+    <string name="poor_accuracy">Poor Accuracy</string>
+    <string name="location_permission_rationale">Mapstead needs your location to show where you are on the property map.</string>
+
+    <string name="label_custom_location">Custom Location</string>
+    <string name="label_custom_route">Custom Route</string>
+    <string name="label_custom_area">Custom Area</string>
+    <string name="choose_layer_before_add">Choose a visible, unlocked layer before adding an item.</string>
+
+    <!-- Reminders & Notifications -->
+    <string name="scheduling_warning_title">Scheduling Conflict</string>
+    <string name="scheduling_warning_message">This reminder conflicts with an existing schedule.</string>
+    <string name="maintenance_reschedule_scheduling_warning">The reminder could not be updated on the system, but the record was saved.</string>
+    <string name="reminder_saved_disabled_scheduling_failure">The reminder was saved but could not be scheduled. It has been disabled.</string>
+    <string name="enable_notification_label">Enable Notifications</string>
+    <string name="save_without_notifications">Save Without Notifications</string>
+    <string name="notification_permission_title">Notification Permission</string>
+    <string name="allow">Allow</string>
+    <string name="notification_permission_rationale">Mapstead needs permission to send reminders.</string>
+
+    <!-- Settings & Misc -->
+    <string name="app_theme">App Theme</string>
+    <string name="dynamic_color">Dynamic Color</string>
+    <string name="use_android_12_colors">Use Android 12+ Colors</string>
+    <string name="safety_information">Safety Information</string>
+    <string name="safety_text">Safety protocols and emergency info.</string>
+    <string name="privacy_information">Privacy Information</string>
+    <string name="privacy_text">Data handling and privacy policy.</string>
+    <string name="version_info_label">Version %1$s (%2$d)</string>
+    <string name="map_description_text">Visual representation of property assets, equipment, and systems.</string>
+    <string name="default_layer_info">Standard property mapping layer.</string>
+
+    <!-- Legacy / Essential mapping strings (Keep for safety) -->
+    <string name="app_version">Version %1$s</string>
+    <string name="add_attachment">Add Attachment</string>
+    <string name="add_item">Add Item</string>
+    <string name="edit_item">Edit Item</string>
+    <string name="infrastructure">Systems &amp; Equipment</string>
+    <string name="maintenance">Maintenance</string>
+    <string name="properties">Properties</string>
+    <string name="no_records_found">No records found</string>
+    <string name="error_occurred">Something went wrong</string>
+    <string name="map_name_label">Map Name</string>
+    <string name="map_name_hint">Enter map name</string>
+
+    <!-- Help Center -->
+    <string name="help_center_title">Help &amp; How-To</string>
+    <string name="help_search_placeholder">Search help topics...</string>
+    <string name="help_no_results">No results found for \"%1$s\"</string>
+    <string name="help_start_here">Start Here</string>
+    <string name="help_all_topics">All Topics</string>
+    <string name="help_topic_details">Topic Details</string>
+
+    <!-- Help Topics - Getting Started -->
+    <string name="help_topic_getting_started">Getting Started</string>
+    <string name="help_summary_getting_started">Learn the basics of documenting your property with Mapstead.</string>
+    <string name="help_gs_section_1">Welcome to Mapstead</string>
+    <string name="help_gs_body_1">Mapstead is designed to help you organize and find everything important about your property. Follow these basic steps to get started:</string>
+    <string name="help_gs_step_1">Create your first property profile.</string>
+    <string name="help_gs_step_2">Add a Property Map for your land or buildings.</string>
+    <string name="help_gs_step_3">Map your first building, boundary, utility, or spot.</string>
+    <string name="help_gs_step_4">Add System Items and link them to your map.</string>
+    <string name="help_gs_step_5">Add maintenance records and set reminders.</string>
+    <string name="help_gs_step_6">Add photos and documents for reference.</string>
+    <string name="help_gs_step_7">Review everything in Emergency Mode.</string>
+
+    <!-- Help Topics - Properties -->
+    <string name="help_topic_properties">Properties</string>
+    <string name="help_summary_properties">Manage property details, documents, and reports.</string>
+    <string name="help_prop_section_1">What is a Property?</string>
+    <string name="help_prop_body_1">A Property is the main place where Mapstead organizes your information. It represents a single physical location, such as your home, a farm, a workshop, or a rental. It stores basic details and serves as the container for all maps, equipment records, and files.</string>
+    <string name="help_prop_section_2">Property Location &amp; Maps</string>
+    <string name="help_prop_body_2">A Property location is optional, but confirming one allows Mapstead to automatically create your first Property Map. You can always add a location or more Maps later. Locations and measurements are approximate and for reference only.</string>
+    <string name="help_prop_section_3">Data &amp; Privacy</string>
+    <string name="help_prop_body_3">All working data is stored locally on this device. Mapstead is not a survey or legal boundary source. You should create periodic backups to stay safe. Files you export or share are outside of Mapstead\'s local storage.</string>
+
+    <!-- Help Topics - Property Maps -->
+    <string name="help_topic_property_maps">Property Maps</string>
+    <string name="help_summary_property_maps">Understand how maps, layers, and items work together.</string>
+    <string name="help_map_section_1">Mapping Basics</string>
+    <string name="help_map_body_1">Property Maps provide a visual reference for your land. You can create multiple Maps for a single property to show different details, such as outdoor utilities on one Map and building layouts on another.</string>
+    <string name="help_map_section_2">Basemaps</string>
+    <string name="help_map_body_2">Basemaps provide the background imagery. Detail varies by provider and location; some areas may show building footprints while others do not. You can outline your own structures using the mapping tools.</string>
+
+    <!-- Help Topics - Add to Map -->
+    <string name="help_topic_add_to_map">Add to Map</string>
+    <string name="help_summary_add_to_map">Learn how to map locations, routes, and areas.</string>
+    <string name="help_add_section_1">Geometry Types</string>
+    <string name="help_add_body_1">Locations mark a single spot (well heads, valves). Routes trace lines (fences, pipes, paths). Areas outline structures or regions (houses, gardens, boundaries).</string>
+    <string name="help_add_section_2">Presets and Custom Actions</string>
+    <string name="help_add_body_2">Presets like \"Well\" or \"Fence\" prefill the category and styling for you. Use \"Custom\" actions at the end of each category to map items not listed in the presets.</string>
+
+    <!-- Help Topics - GPS and Accuracy -->
+    <string name="help_topic_gps">GPS &amp; Accuracy</string>
+    <string name="help_summary_gps">Tips for using phone GPS and understanding the accuracy circle.</string>
+    <string name="help_gps_section_1">Understanding GPS</string>
+    <string name="help_gps_body_1">Phone GPS is approximate and can be affected by weather, tree cover, and nearby buildings. The blue circle shows the estimated area where your device is located.</string>
+    <string name="help_gps_section_2">Manual Placement</string>
+    <string name="help_gps_body_2">If your GPS signal is weak, use \"Tap the Map\" as an alternative. This allows you to place items precisely based on visual landmarks in the background map.</string>
+
+    <!-- Help Topics - Layers -->
+    <string name="help_topic_layers">Layers</string>
+    <string name="help_summary_layers">Organize your map by grouping related items.</string>
+    <string name="help_layers_section_1">Managing Layers</string>
+    <string name="help_layers_body_1">Layers keep your map organized. You can hide layers to reduce clutter, or lock them to prevent accidental changes. You can also change a layer\'s opacity to see through filled areas.</string>
+    <string name="help_layers_section_2">Starter Layers</string>
+    <string name="help_layers_body_2">New maps can start with standard layers like \"Buildings\", \"Utilities\", and \"Safety\" to help you categorize items from the beginning.</string>
+
+    <!-- Help Topics - Infrastructure -->
+    <string name="help_topic_infrastructure">Systems &amp; Equipment</string>
+    <string name="help_summary_infrastructure">Keep detailed records of your equipment and systems.</string>
+    <string name="help_infra_section_1">System Items</string>
+    <string name="help_infra_body_1">System Items are detailed records for things like pumps, panels, or appliances. They store model numbers, service history, and instructions.</string>
+    <string name="help_infra_section_2">Linking to the Map</string>
+    <string name="help_infra_body_2">You can link a mapped feature to a System Item. This allows you to tap an item on the map and jump directly to its detailed service records.</string>
+
+    <!-- Help Topics - Connections -->
+    <string name="help_topic_connections">Connections</string>
+    <string name="help_summary_connections">Define how systems work together.</string>
+    <string name="help_conn_section_1">System Relationships</string>
+    <string name="help_conn_body_1">Use Connections to show how systems relate. For example, a well pump might be \"Connected To\" a pressure tank. You can also define \"Feeds\" or \"Controls\" relationships.</string>
+
+    <!-- Help Topics - Photos & Files -->
+    <string name="help_topic_photos_files">Photos &amp; Files</string>
+    <string name="help_summary_photos_files">Organize receipts, manuals, and property photos.</string>
+    <string name="help_file_section_1">Local File Management</string>
+    <string name="help_file_body_1">Photos and documents are managed locally. If you delete or move a file on your device outside of the app, Mapstead will show a warning that the file is missing.</string>
+
+    <!-- Help Topics - Emergency Mode -->
+    <string name="help_topic_emergency">Emergency Mode</string>
+    <string name="help_summary_emergency">Quickly find safety and utility shut-off information.</string>
+    <string name="help_emerg_section_1">Critical Access</string>
+    <string name="help_emerg_body_1">Emergency Mode highlights items you\'ve marked as critical, such as gas shut-offs or fire extinguishers. It provides immediate access to their location and instructions.</string>
+    <string name="help_emerg_section_2">Accuracy Warning</string>
+    <string name="help_emerg_body_2">Emergency Mode depends on the accuracy of the data you enter. It does not contact emergency services automatically.</string>
+
+    <!-- Help Topics - Reports & Handoff -->
+    <string name="help_topic_reports">Reports &amp; Handoff</string>
+    <string name="help_summary_reports">Share property details with others.</string>
+    <string name="help_rep_section_1">Generating Reports</string>
+    <string name="help_rep_body_1">Create a PDF summary of your property records. Use the Handoff feature to bundle reports and all original photos/files into a single ZIP archive for sharing.</string>
+
+    <!-- Help Topics - Measurements & Units -->
+    <string name="help_topic_measurements">Measurements &amp; Units</string>
+    <string name="help_summary_measurements">Switch between Imperial and Metric units.</string>
+    <string name="help_meas_section_1">Unit Settings</string>
+    <string name="help_meas_body_1">Mapstead supports both Imperial (feet, acres) and Metric (meters, hectares) units. You can change this anytime in Settings.</string>
+
+    <!-- Help Topics - Backup & Restore -->
+    <string name="help_topic_backup">Backup &amp; Restore</string>
+    <string name="help_summary_backup">Current status of data protection features.</string>
+    <string name="help_back_section_1">Feature Status</string>
+    <string name="help_back_body_1">Backup and restore is currently unavailable in customer builds while destructive restore testing is completed. Development builds use a ZIP-based format with SHA-256 integrity checks. Google Drive backup is not currently active.</string>
+
+    <!-- Help Topics - Safety & Limitations -->
+    <string name="help_topic_safety_limitations">Safety &amp; Limitations</string>
+    <string name="help_summary_safety_limitations">Important legal and safety disclaimers.</string>
+    <string name="help_safe_section_1">Legal Disclaimer</string>
+    <string name="help_safe_body_1">Mapstead maps, measurements, GPS locations, property boundaries, and building outlines are approximate and intended for documentation and reference only. They are not a land survey, title record, utility locate, or legally binding boundary determination. Do not rely on them for construction, excavation, permitting, legal disputes, or safety-critical work. Verify important locations and boundaries with a licensed surveyor, utility-locate service, or other qualified professional.</string>
+    <string name="help_safe_section_2">Safety Precautions</string>
+    <string name="help_safe_body_2">Mapstead does not contact or replace emergency services. It does not replace a professional inspection. Customer-entered information may be incomplete, inaccurate, or outdated. Unmapped utilities and hazards may exist. Follow applicable utility-locate requirements before excavation.</string>
+
+    <!-- Getting Started Checklist -->
+    <string name="gs_checklist_title">Getting Started</string>
+    <string name="gs_step_property">Create your property</string>
+    <string name="gs_step_map">Set up your first Map</string>
+    <string name="gs_step_feature">Add your first mapped item</string>
+    <string name="gs_step_infra">Add a System Item</string>
+    <string name="gs_step_maint">Record maintenance information</string>
+    <string name="gs_step_photo">Add a photo or document</string>
+    <string name="gs_step_emergency">Review Emergency Mode</string>
+    <string name="gs_continue_setup">Continue Setup</string>
+    <string name="gs_checklist_dismiss">Dismiss Checklist</string>
+    <string name="gs_checklist_desc">Follow these steps to set up your property records.</string>
+    <string name="gs_checklist_show_again">Show Getting Started again</string>
+    <string name="gs_steps_completed">%1$d of %2$d steps completed</string>
+
+    <!-- Welcome Guidance -->
+    <string name="welcome_title">Welcome to Mapstead</string>
+    <string name="welcome_desc">Organize your property records, systems, and maps in one place. Document your property with ease.</string>
+    <string name="welcome_storage_note">Your data is currently stored primarily on the device. Maps, GPS positions, measurements, boundaries, and building outlines are approximate.</string>
+    <string name="welcome_action_create">Create My Property</string>
+    <string name="welcome_action_help">Explore Help Center</string>
+    <string name="not_now">Skip for Now</string>
+
+    <!-- Empty States -->
+    <string name="empty_properties_title">No Properties Yet</string>
+    <string name="empty_properties_desc">Start by adding a property you want to document.</string>
+    <string name="empty_maps_title">No Property Maps</string>
+    <string name="empty_maps_desc">Create a map to visually organize your property features, equipment, and systems.</string>
+    <string name="empty_features_title">No Mapped Items</string>
+    <string name="empty_features_desc">Use the map tools to mark important locations, routes, or areas on your property.</string>
+    <string name="empty_infra_title">No System Items Yet</string>
+    <string name="empty_infra_desc">Keep details about wells, electrical panels, HVAC systems, and other important property equipment.</string>
+    <string name="empty_maint_title">No Maintenance Records</string>
+    <string name="empty_maint_desc">Record completed service and schedule what needs attention next.</string>
+    <string name="empty_reminders_title">No Reminders</string>
+    <string name="empty_reminders_desc">Set up reminders for upcoming maintenance tasks.</string>
+    <string name="empty_attachments_title">No Files Attached</string>
+    <string name="empty_attachments_desc">Add photos, receipts, or manuals to keep everything organized.</string>
+    <string name="empty_relationships_title">No Connections Yet</string>
+    <string name="empty_relationships_desc">Link systems together to see how they feed or control each other.</string>
+    <string name="empty_reports_title">No Reports Generated</string>
+    <string name="empty_reports_desc">Generate PDF reports for your own records or for property handoff.</string>
+
+    <!-- Settings Reorg -->
+    <string name="settings_appearance">APPEARANCE</string>
+    <string name="settings_measurements">MEASUREMENTS</string>
+    <string name="settings_map_location">MAP &amp; LOCATION</string>
+    <string name="settings_guidance_help">GUIDANCE &amp; HELP</string>
+    <string name="settings_data_backup">DATA &amp; BACKUP</string>
+    <string name="settings_about_safety">ABOUT &amp; SAFETY</string>
+    <string name="settings_guidance_desc">Manage help and onboarding guidance.</string>
+    <string name="reset_guidance">Reset Dismissed Guidance</string>
+    <string name="reset_guidance_confirm">Restore all dismissed onboarding and checklist guidance?</string>
+    <string name="measurement_explanation">Maps and measurements will be displayed in your preferred units. Canonical data remains unchanged.</string>
+    <string name="local_storage_info">Data and attachments are managed locally on this device. Regular backups are recommended.</string>
+    <string name="reset_guidance_label">Restore Onboarding</string>
+    <string name="reset_boundary_ack">Reset Boundary Disclaimer</string>
+    <string name="reset_boundary_ack_confirm">Are you sure? The reference-boundary notice will appear again the next time you create a property boundary.</string>
+    <string name="reset_welcome_label">Restore Welcome</string>
+    <string name="reset_welcome_desc">Show the welcome screen again for empty properties.</string>
+    <string name="reset_map_guidance_label">Restore Map Tips</string>
+    <string name="reset_map_guidance_desc">Show first-use map guidance again.</string>
+    <string name="reset_label">Reset</string>
+    <string name="reset_complete_gs">Getting Started is available again.</string>
+    <string name="reset_complete_map">Map guidance will appear again.</string>
+    <string name="reset_complete_boundary">The boundary notice will appear next time.</string>
+    <string name="what_is_this">What is this?</string>
+    <string name="app_info">App Info</string>
+    <string name="privacy_policy">Privacy Policy</string>
+    <string name="theme_system">System</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
+    <string name="your_properties">Your Properties</string>
+    <string name="archived_properties">Archived Properties</string>
+    <string name="delete_property_confirm_perm">Are you sure you want to permanently delete \"%1$s\"? This cannot be undone.</string>
+    <string name="archive_property_desc">Archive Property</string>
+    <string name="systems_label">Systems</string>
+    <string name="connected_label">Connected</string>
+    <string name="basemap_limitations_title">Basemap Limitations</string>
+    <string name="basemap_limitations_text">Basemap detail varies by provider and location. Some maps may show buildings while others do not. User-created outlines remain approximate.</string>
+    <string name="critical_systems_warning">CRITICAL SYSTEMS - ACCESS ONLY IN EMERGENCY</string>
+
+    <!-- Help Topics - Reminders (Add Missing) -->
+    <string name="help_topic_reminders">Reminders</string>
+    <string name="help_summary_reminders">Set up device notifications for recurring tasks.</string>
+    <string name="help_rem_section_1">Task Notifications</string>
+    <string name="help_rem_body_1">If you grant the necessary permission, Mapstead can send you a notification when a maintenance task is due. Reminders can be linked to specific systems like filters or pumps.</string>
+    <string name="help_rem_section_2">Saving Without Notifications</string>
+    <string name="help_rem_body_2">If you prefer not to receive alerts on your device, you can still save reminders. They will be highlighted in the maintenance hub when they are due or overdue.</string>
+
+    <!-- Help Topics - Maintenance (Add Missing) -->
+    <string name="help_topic_maintenance">Maintenance</string>
+    <string name="help_summary_maintenance">Track service history and keep a log of all work performed.</string>
+    <string name="help_maint_section_1">Service Records</string>
+    <string name="help_maint_body_1">Document maintenance by recording the service date, provider, and cost. You can attach photos of the work or copies of receipts to keep all records in one place.</string>
+    <string name="help_maint_section_2">Next Due Dates</string>
+    <string name="help_maint_body_2">When adding a record, you can set an optional next due date. This helps you track upcoming tasks without setting up formal notifications.</string>
+
+    <!-- Privacy Screen -->
+    <string name="privacy_section_storage_title">Local Data Storage</string>
+    <string name="privacy_section_storage_body">Mapstead is designed as an offline-first application. All property details, equipment records, and maintenance logs are stored locally on your device\'s internal storage.</string>
+    <string name="privacy_section_files_title">Attachments &amp; Files</string>
+    <string name="privacy_section_files_body">Photos and documents you attach to property items remain on your device. Mapstead manages these files in its private data directory. If you delete an attachment in the app, the local file is also removed.</string>
+    <string name="privacy_section_cloud_title">No Cloud Synchronization</string>
+    <string name="privacy_section_cloud_body">Current customer builds of Mapstead do not perform automatic cloud synchronization. Your data is not uploaded to our servers. Backup functionality, when enabled, uses your own personal cloud storage (such as Google Drive) and is under your control.</string>
+    <string name="privacy_section_permissions_title">Permissions</string>
+    <string name="privacy_section_internet_label">INTERNET</string>
+    <string name="privacy_section_internet_body">Mapstead uses Internet access to download online basemap tiles and other map-provider content. Current customer builds do not automatically synchronize your property database or upload it to Mapstead servers.</string>
+    <string name="privacy_section_location_label">LOCATION</string>
+    <string name="privacy_section_location_body">Mapstead requests foreground location access when you choose a location feature, such as centering the map or placing an item using phone GPS.</string>
+    <string name="privacy_section_notifications_label">NOTIFICATIONS</string>
+    <string name="privacy_section_notifications_body">Mapstead may request notification permission when you enable maintenance reminders.</string>
+    <string name="privacy_section_media_label">PHOTOS AND DOCUMENTS</string>
+    <string name="privacy_section_media_body">Mapstead uses Android’s system photo, document, camera, and sharing interfaces. Selected files are copied into app-managed local storage.</string>
+    <string name="privacy_section_export_title">Sharing &amp; Export</string>
+    <string name="privacy_section_export_body">When you use the \'Property Handoff\' or \'PDF Report\' features, Mapstead generates files for you to share. You have full control over who receives these files through the Android share system.</string>
+    <string name="privacy_section_removal_title">Data Removal</string>
+    <string name="privacy_section_removal_body">Removing a property hides it from normal use by marking it deleted. Related records and app-managed files may remain until dedicated cleanup or permanent-deletion support is applied.</string>
+
+    <!-- About Screen -->
+    <string name="about_purpose_title">Our Purpose</string>
+    <string name="about_purpose_body">Mapstead helps you organize and document your property equipment, systems, and maintenance records locally.</string>
+    <string name="about_storage_body">All data is stored locally on this device. Use the Export or Handoff features to create backups of your records.</string>
+
+    <!-- Getting Started -->
+    <string name="gs_select_property_hint">Select a property to track setup progress.</string>
+    <string name="select_property">Select Property</string>
+    <string name="select_a_property">Select a Property</string>
+    <string name="property_location_title">Property Location</string>
+    <string name="map_center_location_title">Map Center Location</string>
+    <string name="use_my_location">Use My Location</string>
+    <string name="use_property_location">Use Property Location</string>
+    <string name="clear_location">Clear Location</string>
+    <string name="find_by_address">Find by Address</string>
+    <string name="find_from_address">Find from Address</string>
+    <string name="apply_coordinates">Apply Coordinates</string>
+    <string name="explore_example_property">Explore Example Property</string>
+    <string name="remove_example_property_action">Remove Example Property</string>
+    <string name="change_location">Change</string>
+    <string name="source_property_location">Source: Property Location</string>
+    <string name="source_address">Source: Address</string>
+    <string name="source_phone_location">Source: Phone Location</string>
+    <string name="source_entered_coordinates">Source: Entered Coordinates</string>
+    <string name="overwrite_coords_title">Overwrite coordinates?</string>
+    <string name="overwrite_coords_message">Using your location will replace the current coordinates. Continue?</string>
+    <string name="overwrite_coords_address_message">Applying these coordinates will replace the current ones. Continue?</string>
+    <string name="overwrite_label">Overwrite</string>
+    <string name="select_address">Select Address</string>
+    <string name="manual_coordinates">Coordinates</string>
+
+    <!-- Help Categories -->
+    <string name="help_category_basics">Basics</string>
+    <string name="help_category_mapping">Mapping</string>
+    <string name="help_category_property_records">Property Records</string>
+    <string name="help_category_maintenance_safety">Maintenance &amp; Safety</string>
+    <string name="help_category_data_app_info">Data &amp; App Information</string>
+    <string name="product_by_jumast">A Product of JuMaSt Appworks LLC</string>
+
+    <!-- Settings Feedback -->
+    <string name="welcome_guidance_reset">Welcome guidance reset.</string>
+
+    <!-- Removal Dialogs -->
+    <string name="remove_property_title">Remove property?</string>
+    <string name="remove_property_message">%1$s will be removed from normal use. Related records and app-managed files are not permanently erased by this action.</string>
+    <string name="remove_property_confirm">Remove Property</string>
+
+    <!-- Archive Confirmation -->
+    <string name="archive_property_title">Archive Property?</string>
+    <string name="archive_property_message">Archive \"%1$s\"? It will be hidden from your active properties list. You can restore it later from Archived Properties.</string>
+    <string name="archive_label">Archive</string>
+
+    <!-- Map Recovery -->
+    <string name="map_recovery_title">Map Connection Issue</string>
+    <string name="map_recovery_message">The map was unable to load its visual layers. You can retry loading or return to the property center.</string>
+    <string name="retry_map">Retry Map</string>
+    <string name="return_to_property">Return to Property</string>
+    <string name="error_basemap_load_failed">Failed to load background map.</string>
+    <string name="label_default_polygon">Area</string>
+    <string name="unfinished_item_not_saved">Your unfinished item was not saved. You can add it again.</string>
+
+    <!-- Accessibility Labels -->
+    <string name="movable_point_hint">Movable point. Drag or tap the map to reposition.</string>
+    <string name="original_location_label">Original point location.</string>
+    <string name="proposed_location_label">Proposed point location.</string>
+    <string name="map_view_label">Property map view</string>
+
+    <!-- Properties -->
+    <string name="remove_demo_property">Remove Demo Property</string>
+    <string name="no_archived_properties">No archived properties found.</string>
+    <string name="restore_label">Restore</string>
+    <string name="close_label">Close</string>
+    <string name="orientation_privacy_body">Mapstead works entirely offline. Your property details and photos are stored on this device, not on our servers.</string>
+    <string name="prop_type_home">Home</string>
+    <string name="prop_type_farm">Farm</string>
+    <string name="prop_type_ranch">Ranch</string>
+    <string name="prop_type_cabin">Cabin</string>
+    <string name="prop_type_rental">Rental</string>
+    <string name="prop_type_vacant">Vacant Land</string>
+    <string name="prop_type_hunting">Hunting Property</string>
+    <string name="prop_type_workshop">Workshop</string>
+    <string name="prop_type_commercial">Commercial Property</string>
+    <string name="prop_type_other">Other</string>
+
+    <string name="setup_step_1_title">Name Your Property</string>
+    <string name="setup_step_2_title">Locate Your Property</string>
+    <string name="setup_step_3_title">Review Your Property</string>
+    <string name="setup_basics_header">Property Basics</string>
+    <string name="setup_name_question">What should we call your property?</string>
+    <string name="setup_type_question">What kind of property is it?</string>
+    <string name="setup_locate_desc">Where is this property located?</string>
+    <string name="setup_confirm_create">Create Property</string>
+    <string name="setup_add_location_later">Add Location Later</string>
+    <string name="setup_location_deferred_label">Location will be added later</string>
+    <string name="setup_manual_coords">Manual Coordinates</string>
+    <string name="setup_more_options">More Options</string>
+    <string name="setup_confirmed_location_label">Confirmed Location</string>
+    <string name="setup_pinned_location">Pinned Location</string>
+    <string name="setup_current_location">Current Location</string>
+    <string name="setup_address_search">Search by Address</string>
+    <string name="setup_choose_on_map">Choose on Map</string>
+    <string name="setup_confirm_location">Confirm Property Location</string>
+    <string name="setup_map_selection_hint">Move the map to center the pin on your property.</string>
+    <string name="setup_map_preview_unavailable">Map preview unavailable. Your confirmed location will still be saved.</string>
+    <string name="setup_review_summary">Review your property details before finishing.</string>
+    <string name="setup_creating_property">Creating Property…</string>
+    <string name="setup_property_map_name">Property Map</string>
+    <string name="setup_add_location_cta">Add a location to start mapping this property.</string>
+    <string name="setup_getting_started_checklist">Getting Started</string>
+    <string name="setup_checklist_open_map">Open your Property Map</string>
+    <string name="setup_checklist_add_item">Add your first location</string>
+    <string name="setup_checklist_emergency">Add emergency information</string>
+    <string name="setup_checklist_maintenance">Add a maintenance record</string>
+    <string name="setup_checklist_add_location">Add Property Location</string>
+    <string name="setup_checklist_create_map">Create Property Map</string>
+    <string name="setup_enter_address_hint">Enter address...</string>
+    <string name="setup_review_none">None</string>
+    <string name="setup_add_photo_label">Add a photo (optional)</string>
+    <string name="setup_add_photo_action">Add a photo</string>
+    <string name="replace">Replace</string>
+    <string name="remove">Remove</string>
+    <string name="cancel_label">Cancel</string>
+</resources>
