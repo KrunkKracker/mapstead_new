@@ -12,6 +12,15 @@ private data class SecondaryRepairEpochKey(
     val authoritativeSourceId: BasemapSourceId
 )
 
+data class SecondaryControllerDebugState(
+    val currentStatus: SecondaryMapStatus,
+    val requestedSourceId: BasemapSourceId?,
+    val acceptedSourceId: BasemapSourceId?,
+    val terminalReasons: Map<BasemapAttemptKey, BasemapTerminalReason>,
+    val repairEpochs: Map<BasemapSourceId, BasemapRepairEpochState>,
+    val isDisposed: Boolean
+)
+
 /**
  * Controller for secondary basemap surfaces (Picker, Preview).
  * Encapsulates validation, repair, and source truth separation.
@@ -133,21 +142,30 @@ class SecondaryBasemapController(
 
     fun dispose() {
         if (isDisposed) return
-        isDisposed = true
         
-        // Mark current in-flight attempt as DISPOSED
-        val current = currentAttempt
-        if (current != null) {
-            val key = current.toKey()
-            if (!terminalAttempts.containsKey(key)) {
-                terminalAttempts[key] = BasemapTerminalReason.DISPOSED
+        // Mark current in-flight attempt as DISPOSED if it's LOADING
+        if (currentStatus == SecondaryMapStatus.LOADING_PRIMARY || currentStatus == SecondaryMapStatus.LOADING_BACKUP) {
+            currentAttempt?.let { attempt ->
+                val key = attempt.toKey()
+                terminalAttempts.putIfAbsent(key, BasemapTerminalReason.DISPOSED)
             }
         }
         
+        isDisposed = true
         currentAttempt = null
         requestedSourceId = null
         currentStatus = SecondaryMapStatus.IDLE
-        repairEpochs.clear()
+    }
+
+    fun getDebugState(): SecondaryControllerDebugState {
+        return SecondaryControllerDebugState(
+            currentStatus = currentStatus,
+            requestedSourceId = requestedSourceId,
+            acceptedSourceId = acceptedSourceId,
+            terminalReasons = terminalAttempts.toMap(),
+            repairEpochs = repairEpochs.mapKeys { it.key.authoritativeSourceId },
+            isDisposed = isDisposed
+        )
     }
 
     private fun triggerRepairDecision(attempt: BasemapLoadAttempt, validation: SecondaryValidationResult): SecondaryControllerAction {

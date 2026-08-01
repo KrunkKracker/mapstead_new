@@ -175,11 +175,47 @@ class SecondaryMapValidationTest {
         every { provider.getPrimaryBasemaps() } returns listOf(streetsDef)
         every { provider.getDefinition(BasemapSourceId.MAPTILER_STREETS) } returns streetsDef
 
-        controller.startLoad(BasemapId.STREETS)
+        val attempt = controller.startLoad(BasemapId.STREETS)!!
         controller.dispose()
         
         assertTrue(controller.isDisposed)
+        val debug = controller.getDebugState()
+        assertEquals(BasemapTerminalReason.DISPOSED, debug.terminalReasons[BasemapAttemptKey(attempt.semanticGeneration, attempt.attemptId, attempt.renderSessionId, attempt.sourceId)])
         assertNull(controller.requestedSourceId)
+    }
+
+    @Test
+    fun `Dispose does not overwrite earlier terminal reason`() {
+        val controller = SecondaryBasemapController(renderSessionId, provider)
+        val streetsDef = BasemapDefinition(BasemapSourceId.MAPTILER_STREETS, BasemapProviderType.MAPTILER, BasemapRole.PRIMARY, "url", 0, 0, true, BasemapId.STREETS)
+        every { provider.getPrimaryBasemaps() } returns listOf(streetsDef)
+        every { provider.getDefinition(BasemapSourceId.MAPTILER_STREETS) } returns streetsDef
+
+        val attempt = controller.startLoad(BasemapId.STREETS)!!
+        controller.handleTerminated(BasemapTerminalReason.TIMEOUT, attempt, BasemapId.STREETS)
+        
+        controller.dispose()
+        
+        val debug = controller.getDebugState()
+        val key = BasemapAttemptKey(attempt.semanticGeneration, attempt.attemptId, attempt.renderSessionId, attempt.sourceId)
+        assertEquals(BasemapTerminalReason.TIMEOUT, debug.terminalReasons[key])
+    }
+
+    @Test
+    fun `Dispose does not mark accepted success as DISPOSED`() {
+        val controller = SecondaryBasemapController(renderSessionId, provider)
+        val streetsDef = BasemapDefinition(BasemapSourceId.MAPTILER_STREETS, BasemapProviderType.MAPTILER, BasemapRole.PRIMARY, "url", 0, 0, true, BasemapId.STREETS)
+        every { provider.getPrimaryBasemaps() } returns listOf(streetsDef)
+        every { provider.getDefinition(BasemapSourceId.MAPTILER_STREETS) } returns streetsDef
+
+        val attempt = controller.startLoad(BasemapId.STREETS)!!
+        controller.handleSuccess(attempt)
+        
+        controller.dispose()
+        
+        val debug = controller.getDebugState()
+        val key = BasemapAttemptKey(attempt.semanticGeneration, attempt.attemptId, attempt.renderSessionId, attempt.sourceId)
+        assertNull("Successful attempt should not have terminal reason", debug.terminalReasons[key])
     }
 
     @Test

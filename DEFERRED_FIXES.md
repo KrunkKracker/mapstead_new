@@ -8,7 +8,11 @@
 
 **Status**: Resolved. The `AddPropertyViewModel.uiState` aggregation has been refactored to use typed batch combinations, removing all positional casting.
 
-## Recreation Lifecycle and Version Closure (IMPLEMENTED / EXTERNAL REVIEW PENDING 2026-08-01)
+## Recreation Lifecycle, Secondary Disposal Truth, and Evidence Closure (RESOLVED 2026-08-01)
+
+**Status**: Resolved. Implemented typed pending requests for deferred map loads, hardened secondary disposal logic, and synchronized all documentation to v0.02 Phase 2.2h5R6.
+
+## Recreation Lifecycle and Version Closure (RESOLVED 2026-08-01)
 
 **Status**: Implemented. Ensured state preservation during main MapView recreation, explicit secondary disposal, and bumped version to 0.02.
 

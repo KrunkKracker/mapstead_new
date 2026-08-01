@@ -51,9 +51,11 @@
 Purpose: Provide in-context assistance and finalize the onboarding experience.
 
 **ACTIVE PHASE**:
-- **Phase 2.2h5R5 — Recreation Lifecycle and Version Closure**: Finalizing main recreation state, secondary disposal, and evidence closure. (IN PROGRESS)
+- **Phase 3A — Unified Item Details**: Implementing a singular, high-integrity detail surface for all mapped infrastructure items. (NOT STARTED)
 
 **COMPLETED WORK**:
+- Recreation Lifecycle, Secondary Disposal Truth, and Evidence Closure: Implemented typed pending requests for deferred map loads, hardened secondary disposal logic with terminal reason preservation, and finalized Phase 2 documentation.
+- Recreation Lifecycle and Version Closure: Finalizing main recreation state, secondary disposal, and evidence closure.
 - Secondary Repair and Session Retirement: Verified full state transitions for secondary repairs, proper render-session retirement, and deferred map requests.
 - Loader Atomicity and Repair Epoch: Verified atomic outcomes, precise repair epochs, and session-scoped camera isolation.
 - Camera and Repair Closure: Verified session-matched camera guards, authoritative snapshot restoration, repair epoch epochs, and strict callback validation.

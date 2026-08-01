@@ -96,6 +96,11 @@ private data class Triple3<A, B, C>(val a: A, val b: B, val c: C)
 private data class Triple5<A, B, C, D, E>(val a: A, val b: B, val c: C, val d: D, val e: E)
 private data class Quad<A, B, C, D>(val a: A, val b: B, val c: C, val d: D)
 
+private data class PendingBasemapRequest(
+    val id: BasemapId,
+    val reason: BasemapLoadAttemptReason
+)
+
 private data class BasemapStatusBatch(
     val preferredBasemapId: BasemapId,
     val requestedSourceId: BasemapSourceId?,
@@ -358,6 +363,7 @@ class MapViewModel @Inject constructor(
     private val _renderSessionId = MutableStateFlow<UUID?>(null)
     private val _basemapStatus = MutableStateFlow(BasemapLoadStatus.IDLE)
     private val _basemapGeneration = MutableStateFlow(0L)
+    private val _pendingBasemapRequest = MutableStateFlow<PendingBasemapRequest?>(null)
     private val _basemapErrorRes = MutableStateFlow<Int?>(null)
     private val _isUsingFallback = MutableStateFlow(false)
     private val _fallbackAttempted = MutableStateFlow(false)
@@ -1125,6 +1131,16 @@ class MapViewModel @Inject constructor(
         _renderSessionId.value = sessionId
         isRenderSessionReady = true
         
+        val pending = _pendingBasemapRequest.value
+        if (pending != null) {
+            val sourceId = _requestedSourceId.value
+            if (sourceId != null) {
+                issueAttempt(sourceId, basemapProvider.getDefinition(sourceId)?.role ?: BasemapRole.PRIMARY, pending.reason)
+            }
+            _pendingBasemapRequest.value = null
+            return
+        }
+        
         val status = _basemapStatus.value
         when (status) {
             BasemapLoadStatus.IDLE -> {
@@ -1301,14 +1317,14 @@ class MapViewModel @Inject constructor(
             if (inFlight) {
                 _currentAttempt.value?.let { attempt ->
                     if (attempt.renderSessionId == sessionId) {
-                        handleBasemapLoadTerminated(BasemapTerminalReason.DISPOSED, attempt)
+                        terminalAttempts.putIfAbsent(attempt.toKey(), BasemapTerminalReason.DISPOSED)
                     }
                 }
             }
             
             // Clean up snapshots and epochs owned by this session
-            cameraSnapshots.keys.filter { it.renderSessionId == sessionId }.forEach { cameraSnapshots.remove(it) }
-            repairEpochs.keys.filter { it.renderSessionId == sessionId }.forEach { repairEpochs.remove(it) }
+            cameraSnapshots.keys.filter { it.renderSessionId == sessionId }.toList().forEach { cameraSnapshots.remove(it) }
+            repairEpochs.keys.filter { it.renderSessionId == sessionId }.toList().forEach { repairEpochs.remove(it) }
             
             isRenderSessionReady = false
             _renderSessionId.value = null
@@ -1382,7 +1398,16 @@ class MapViewModel @Inject constructor(
                 startPrimaryLoad(id)
             }
         } else {
-            // Deferral logic: Update status and requested source so next onMapReady issues an attempt for the NEW requested source.
+            // Phase 2.2h5R6: Deferral logic reset and semantic recording
+            _pendingBasemapRequest.value = PendingBasemapRequest(id, BasemapLoadAttemptReason.INITIAL)
+            _basemapGeneration.value++
+            _fallbackAttempted.value = false
+            
+            terminalAttempts.clear()
+            repairEpochs.clear()
+            cameraSnapshots.clear()
+            _acceptedStyleEvent.value = null
+            
             val primary = basemapProvider.getPrimaryBasemaps().find { it.preferredId == id }
             if (primary != null) {
                 _requestedSourceId.value = primary.sourceId

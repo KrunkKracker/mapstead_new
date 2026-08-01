@@ -8,12 +8,12 @@ Mapstead uses a three-tier testing strategy. Routine development prioritizes Tie
 ### 1. JVM Unit Tests (Robolectric & Coroutines)
 - **Scope**: ViewModel logic, Repository transactions, Cycle detection, Report/Handoff assembly, navigation mapping, and **Operational Record Policies**.
 - **Execution**: `./gradlew testDebugUnitTest`
-- **Result**: 591 PASSED (Phase 2.2h5R3)
+- **Result**: 609 PASSED (Phase 2.2h5R6)
 
 ### 2. Static Analysis
 - **Scope**: Linting for code quality and schema consistency.
 - **Execution**: `./gradlew lintDebug`
-- **Result**: PASSED (Phase 2.2h5R3)
+- **Result**: PASSED (Phase 2.2h5R6)
 
 ### 3. Instrumented UI Tests (Targeted Connected)
 - **Scope**: Cross-component interactions, database migrations, and **"Add Something" workflow**.
@@ -33,6 +33,7 @@ Mapstead uses a three-tier testing strategy. Routine development prioritizes Tie
 - [ ] **Rotation during Primary Load**: Start Switch -> Rotate -> Confirm requested primary load continues/rebinds correctly.
 - [ ] **Rotation during Backup Load**: Forced timeout -> Backup starts -> Rotate -> Confirm requested backup load continues.
 - [ ] **Rotation after terminal failure**: Rotate while FAILED -> Confirm it remains FAILED and does not auto-retry.
+- [ ] **Deferred Reset**: Request backup (A) -> Timeout -> request primary (B) while no session -> Confirm (B) primary is attempted in new session.
 
 ### Resilient Fallback and Repair
 - [ ] **Simulated Failure**: Use invalid API key -> Confirm primary fail -> Confirm automatic switch to OFM.

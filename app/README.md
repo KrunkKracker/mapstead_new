@@ -26,7 +26,7 @@ We are currently in **Stage 3: Map Presentation and Guided Mapping**.
 - **BasemapProvider**: resolution logic for production and fallback map styles.
 
 ## QA Workflow
-1. `./gradlew testDebugUnitTest` - Run all 351+ JVM tests.
+1. `./gradlew testDebugUnitTest` - Run all 617+ JVM tests.
 2. `./gradlew assembleDebugAndroidTest` - Verify instrumented test compilation (54+ tests).
 3. `./gradlew lintDebug` - Check for code quality issues.
 4. Manual verification on device/emulator for MapLibre rendering and workflow animations.

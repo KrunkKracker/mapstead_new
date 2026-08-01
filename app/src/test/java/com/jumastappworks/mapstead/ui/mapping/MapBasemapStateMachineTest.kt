@@ -557,4 +557,40 @@ class MapBasemapStateMachineTest {
         assertEquals(BasemapLoadStatus.LOADING_PRIMARY, viewModel.uiState.value.basemapStatus)
         job.cancel()
     }
+
+    @Test
+    fun `Deferred request resets fallback policy`() = runTest(testDispatcher) {
+        val job = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
+        val sessionA = UUID.randomUUID()
+        viewModel.onMapReady(sessionA)
+        advanceUntilIdle()
+        
+        // 1. Fail primary and backup for STREETS
+        viewModel.handleBasemapLoadTerminated(BasemapTerminalReason.TIMEOUT, viewModel.uiState.value.currentAttempt!!)
+        advanceUntilIdle()
+        viewModel.handleBasemapLoadTerminated(BasemapTerminalReason.TIMEOUT, viewModel.uiState.value.currentAttempt!!)
+        advanceUntilIdle()
+        
+        assertEquals(BasemapLoadStatus.FAILED, viewModel.uiState.value.basemapStatus)
+        
+        // 2. Dispose session A
+        viewModel.onRenderSessionDisposed(sessionA)
+        advanceUntilIdle()
+        
+        // 3. Request TOPO (deferred)
+        viewModel.requestBasemap(BasemapId.TOPO)
+        advanceUntilIdle()
+        
+        // 4. Register session B
+        val sessionB = UUID.randomUUID()
+        viewModel.onMapReady(sessionB)
+        advanceUntilIdle()
+        
+        // 5. Verify it attempts PRIMARY TOPO (not skipping to backup or failing)
+        val attempt = viewModel.uiState.value.currentAttempt!!
+        assertEquals(BasemapSourceId.MAPTILER_TOPO, attempt.sourceId)
+        assertEquals(BasemapRole.PRIMARY, attempt.role)
+        assertEquals(BasemapLoadStatus.LOADING_PRIMARY, viewModel.uiState.value.basemapStatus)
+        job.cancel()
+    }
 }

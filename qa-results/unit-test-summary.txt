@@ -1,8 +1,8 @@
 JVM Unit Test Summary
-Phase: 2.2h5R5 (Recreation Lifecycle and Version Closure)
+Phase: 2.2h5R6 (Recreation Lifecycle, Secondary Disposal Truth, and Evidence Closure)
 Result: SUCCESS
-Total: 614
-Passed: 614
+Total: 609
+Passed: 609
 Failed: 0
 Skipped: 0
 Date: 2026-08-01
@@ -11,8 +11,8 @@ App Version: 0.02 (2)
 Verified key basemap scenarios:
 - Authoritative state preservation during main MapView disposal.
 - RECREATION attempt issuance upon MapView restore.
-- Explicit secondary controller disposal and stale callback blocking.
+- Explicit secondary controller disposal and terminal reason preservation.
 - Session-keyed UI state isolation in ResilientBasemapLoader.
+- Typed deferred request recording and playback in MapViewModel.
+- Fallback policy reset upon new semantic map requests.
 - Maintenance of version 0.02 build integrity across all manifests.
-- Multi-field identity validation (R4 hardening) preserved.
-- Camera interaction isolation (R4 policy) preserved.

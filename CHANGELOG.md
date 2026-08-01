@@ -3,6 +3,13 @@
 ## [0.02] - Unreleased
 
 ### Added
+- **Beginner-First UX Redesign Phase 2.2h5R6 — Recreation Lifecycle, Secondary Disposal Truth, and Evidence Closure**:
+    - **Typed Deferred Requests**: Implemented `PendingBasemapRequest` in `MapViewModel` to preserve semantic intent across render session gaps, ensuring the correct style loads immediately on `onMapReady`.
+    - **Resilient Fallback Reset**: Deferred requests now reset the fallback policy, ensuring a previous backup failure does not block the next explicit selection's backup eligibility.
+    - **Secondary Disposal Truth**: Refactored `SecondaryBasemapController.dispose()` to correctly record `DISPOSED` terminal reasons while preserving earlier `TIMEOUT` or `FAILURE` outcomes.
+    - **Recreation Lifecycle Hardening**: Formalized the sequence in `onMapReady` to process pending requests first, followed by standard recreation logic for established sessions.
+    - **Evidence Closure**: Synchronized all project documentation and QA results for the v0.02 Phase 2.2h5R6 milestone.
+
 - **Beginner-First UX Redesign Phase 2.2h5R5 — Recreation Lifecycle, Secondary Disposal, Evidence, and Version Closure**:
     - **Recreation State Preservation**: Hardened `MapViewModel` to preserve authoritative status and source truth during MapView disposal/recreation, eliminating "IDLE" resets during rotation.
     - **Explicit Secondary Disposal**: Implemented a formal `dispose()` lifecycle in `SecondaryBasemapController` to permanently close old sessions and block stale repair triggers.
