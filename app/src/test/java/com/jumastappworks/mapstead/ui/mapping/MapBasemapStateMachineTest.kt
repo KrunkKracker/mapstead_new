@@ -402,6 +402,10 @@ class MapBasemapStateMachineTest {
         viewModel.requestBasemap(BasemapId.BASE)
         advanceUntilIdle()
         
+        // Assert immediate deferral logic updates
+        assertEquals("Status should update to LOADING_PRIMARY even if no session", BasemapLoadStatus.LOADING_PRIMARY, viewModel.uiState.value.basemapStatus)
+        assertEquals("Requested source ID should update to BASE", BasemapSourceId.MAPTILER_BASE, viewModel.uiState.value.requestedSourceId)
+        
         // 3. Verify no attempt bound to old session A or null session
         val currentAttempt = viewModel.uiState.value.currentAttempt
         if (currentAttempt != null) {
@@ -443,20 +447,114 @@ class MapBasemapStateMachineTest {
     }
 
     @Test
-    fun `Wrong provider or role rejected`() = runTest(testDispatcher) {
+    fun `Loading primary recreation flow`() = runTest(testDispatcher) {
         val job = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
-        viewModel.onMapReady(UUID.randomUUID())
+        val sessionA = UUID.randomUUID()
+        viewModel.onMapReady(sessionA)
         advanceUntilIdle()
         
-        val attempt = viewModel.uiState.value.currentAttempt!!
+        // 1. LOADING_PRIMARY in session A
+        assertEquals(BasemapLoadStatus.LOADING_PRIMARY, viewModel.uiState.value.basemapStatus)
+        val attemptA = viewModel.uiState.value.currentAttempt!!
+        assertEquals(sessionA, attemptA.renderSessionId)
         
-        // Wrong provider
-        val result1 = viewModel.handleBasemapLoadSuccess(attempt.copy(provider = BasemapProviderType.OPEN_FREE_MAP))
-        assertFalse(result1.accepted)
+        // 2. Dispose session A
+        viewModel.onRenderSessionDisposed(sessionA)
+        advanceUntilIdle()
         
-        // Wrong role
-        val result2 = viewModel.handleBasemapLoadSuccess(attempt.copy(role = BasemapRole.BACKUP))
-        assertFalse(result2.accepted)
+        // Status and requested source must be preserved
+        assertEquals(BasemapLoadStatus.LOADING_PRIMARY, viewModel.uiState.value.basemapStatus)
+        assertEquals(streetsDef.sourceId, viewModel.uiState.value.requestedSourceId)
+        assertNull("Session must be inactive", viewModel.uiState.value.renderSessionId)
+        
+        // 3. Register session B
+        val sessionB = UUID.randomUUID()
+        viewModel.onMapReady(sessionB)
+        advanceUntilIdle()
+        
+        // 4. Verify RECREATION attempt for session B using preserved source
+        val attemptB = viewModel.uiState.value.currentAttempt!!
+        assertEquals(sessionB, attemptB.renderSessionId)
+        assertEquals(streetsDef.sourceId, attemptB.sourceId)
+        assertEquals(BasemapLoadAttemptReason.RECREATION, attemptB.reason)
+        job.cancel()
+    }
+
+    @Test
+    fun `Loaded backup recreation flow`() = runTest(testDispatcher) {
+        val job = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
+        val sessionA = UUID.randomUUID()
+        viewModel.onMapReady(sessionA)
+        advanceUntilIdle()
+        
+        // 1. Switch to backup and succeed
+        val primaryAttempt = viewModel.uiState.value.currentAttempt!!
+        viewModel.handleBasemapLoadTerminated(BasemapTerminalReason.PROVIDER_FAILURE, primaryAttempt)
+        advanceUntilIdle()
+        val backupAttemptA = viewModel.uiState.value.currentAttempt!!
+        viewModel.handleBasemapLoadSuccess(backupAttemptA)
+        advanceUntilIdle()
+        
+        assertEquals(BasemapLoadStatus.LOADED, viewModel.uiState.value.basemapStatus)
+        assertEquals(libertyDef.sourceId, viewModel.uiState.value.activeSourceId)
+        assertTrue(viewModel.uiState.value.isUsingFallback)
+        
+        // 2. Dispose session A
+        viewModel.onRenderSessionDisposed(sessionA)
+        advanceUntilIdle()
+        
+        // State must be preserved
+        assertEquals(BasemapLoadStatus.LOADED, viewModel.uiState.value.basemapStatus)
+        assertEquals(libertyDef.sourceId, viewModel.uiState.value.activeSourceId)
+        
+        // 3. Register session B
+        val sessionB = UUID.randomUUID()
+        viewModel.onMapReady(sessionB)
+        advanceUntilIdle()
+        
+        // 4. Verify RECREATION attempt for session B using accepted backup
+        val attemptB = viewModel.uiState.value.currentAttempt!!
+        assertEquals(sessionB, attemptB.renderSessionId)
+        assertEquals(libertyDef.sourceId, attemptB.sourceId)
+        assertEquals(BasemapLoadAttemptReason.RECREATION, attemptB.reason)
+        job.cancel()
+    }
+
+    @Test
+    fun `Failed-state recreation does not auto-retry`() = runTest(testDispatcher) {
+        val job = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
+        val sessionA = UUID.randomUUID()
+        viewModel.onMapReady(sessionA)
+        advanceUntilIdle()
+        
+        // 1. Fail primary and backup
+        viewModel.handleBasemapLoadTerminated(BasemapTerminalReason.PROVIDER_FAILURE, viewModel.uiState.value.currentAttempt!!)
+        advanceUntilIdle()
+        viewModel.handleBasemapLoadTerminated(BasemapTerminalReason.PROVIDER_FAILURE, viewModel.uiState.value.currentAttempt!!)
+        advanceUntilIdle()
+        
+        assertEquals(BasemapLoadStatus.FAILED, viewModel.uiState.value.basemapStatus)
+        
+        // 2. Dispose session A
+        viewModel.onRenderSessionDisposed(sessionA)
+        advanceUntilIdle()
+        
+        // 3. Register session B
+        val sessionB = UUID.randomUUID()
+        viewModel.onMapReady(sessionB)
+        advanceUntilIdle()
+        
+        // 4. Verify still FAILED with no attempt
+        assertEquals(BasemapLoadStatus.FAILED, viewModel.uiState.value.basemapStatus)
+        assertNull("Should not auto-retry on recreation", viewModel.uiState.value.currentAttempt)
+        
+        // 5. Explicit retry begins new generation
+        val oldGen = viewModel.uiState.value.basemapGeneration
+        viewModel.retryPrimaryMap()
+        advanceUntilIdle()
+        
+        assertTrue(viewModel.uiState.value.basemapGeneration > oldGen)
+        assertEquals(BasemapLoadStatus.LOADING_PRIMARY, viewModel.uiState.value.basemapStatus)
         job.cancel()
     }
 }

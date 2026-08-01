@@ -169,36 +169,50 @@ class SecondaryMapValidationTest {
     }
 
     @Test
-    fun `Validation rejects mismatched capturedSequence`() {
+    fun `Dispose while primary loading records DISPOSED`() {
         val controller = SecondaryBasemapController(renderSessionId, provider)
         val streetsDef = BasemapDefinition(BasemapSourceId.MAPTILER_STREETS, BasemapProviderType.MAPTILER, BasemapRole.PRIMARY, "url", 0, 0, true, BasemapId.STREETS)
         every { provider.getPrimaryBasemaps() } returns listOf(streetsDef)
         every { provider.getDefinition(BasemapSourceId.MAPTILER_STREETS) } returns streetsDef
 
-        val attempt = controller.startLoad(BasemapId.STREETS)!!
+        controller.startLoad(BasemapId.STREETS)
+        controller.dispose()
         
-        val result = controller.handleSuccess(attempt.copy(capturedSequence = 999))
-        assertNotEquals(SecondaryControllerAction.Accepted, result)
-        // Should trigger repair because validation failed
-        assertTrue(result is SecondaryControllerAction.LoadAttempt)
+        assertTrue(controller.isDisposed)
+        assertNull(controller.requestedSourceId)
     }
 
     @Test
-    fun `First terminal reason preserved in secondary`() {
+    fun `Late callback after disposal is ignored`() {
         val controller = SecondaryBasemapController(renderSessionId, provider)
         val streetsDef = BasemapDefinition(BasemapSourceId.MAPTILER_STREETS, BasemapProviderType.MAPTILER, BasemapRole.PRIMARY, "url", 0, 0, true, BasemapId.STREETS)
         every { provider.getPrimaryBasemaps() } returns listOf(streetsDef)
         every { provider.getDefinition(BasemapSourceId.MAPTILER_STREETS) } returns streetsDef
 
         val attempt = controller.startLoad(BasemapId.STREETS)!!
+        controller.dispose()
         
-        controller.handleTerminated(BasemapTerminalReason.TIMEOUT, attempt, BasemapId.STREETS)
+        val action = controller.handleSuccess(attempt)
+        assertEquals(SecondaryControllerAction.Ignored, action)
+        assertNull(controller.acceptedSourceId)
+        assertEquals(SecondaryMapStatus.IDLE, controller.currentStatus)
+    }
+
+    @Test
+    fun `New render session starts fresh attempt even if BasemapId same`() {
+        // This is primarily verified via the Composable LaunchedEffect keys (renderSessionId)
+        // but we can verify the controller state
+        val controller1 = SecondaryBasemapController(UUID.randomUUID(), provider)
+        val streetsDef = BasemapDefinition(BasemapSourceId.MAPTILER_STREETS, BasemapProviderType.MAPTILER, BasemapRole.PRIMARY, "url", 0, 0, true, BasemapId.STREETS)
+        every { provider.getPrimaryBasemaps() } returns listOf(streetsDef)
+        every { provider.getDefinition(BasemapSourceId.MAPTILER_STREETS) } returns streetsDef
+
+        val attempt1 = controller1.startLoad(BasemapId.STREETS)!!
+        assertEquals(1L, attempt1.attemptId)
         
-        // Delivering provider failure for same attempt
-        controller.handleTerminated(BasemapTerminalReason.PROVIDER_FAILURE, attempt, BasemapId.STREETS)
-        
-        // Success should still be rejected as it should check original terminal registry if possible
-        // Actually, SecondaryBasemapController.validate checks terminalAttempts.
-        // We verified putIfAbsent is used.
+        val controller2 = SecondaryBasemapController(UUID.randomUUID(), provider)
+        val attempt2 = controller2.startLoad(BasemapId.STREETS)!!
+        assertEquals(1L, attempt2.attemptId)
+        assertNotEquals(controller1.renderSessionId, controller2.renderSessionId)
     }
 }

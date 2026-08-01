@@ -7,7 +7,7 @@ class BackupCompatibilityTest {
 
     @Test
     fun `production compatibility policy accepts development build manifests`() {
-        val currentAppVersion = "0.01"
+        val currentAppVersion = "0.02"
         val devManifest = BackupManifest(
             formatVersion = 1,
             backupId = "test-id",
@@ -45,7 +45,7 @@ class BackupCompatibilityTest {
     @Test
     fun `unsupported format version is rejected`() {
         val manifest = mockManifest().copy(formatVersion = 99)
-        val result = BackupCompatibilityPolicy.evaluate(manifest, "0.01")
+        val result = BackupCompatibilityPolicy.evaluate(manifest, "0.02")
         assertTrue(result is BackupCompatibilityResult.Incompatible)
         assertEquals(IncompatibilityReason.UNSUPPORTED_FORMAT_VERSION, (result as BackupCompatibilityResult.Incompatible).reason)
     }
@@ -53,14 +53,14 @@ class BackupCompatibilityTest {
     @Test
     fun `blank app version name is rejected`() {
         val manifest = mockManifest().copy(appVersionName = "")
-        val result = BackupCompatibilityPolicy.evaluate(manifest, "0.01")
+        val result = BackupCompatibilityPolicy.evaluate(manifest, "0.02")
         assertTrue(result is BackupCompatibilityResult.Incompatible)
     }
 
     @Test
     fun `future schema version is rejected`() {
         val manifest = mockManifest().copy(databaseSchemaVersion = 99)
-        val result = BackupCompatibilityPolicy.evaluate(manifest, "0.01")
+        val result = BackupCompatibilityPolicy.evaluate(manifest, "0.02")
         assertTrue(result is BackupCompatibilityResult.Incompatible)
         assertEquals(IncompatibilityReason.UNSUPPORTED_SCHEMA_VERSION, (result as BackupCompatibilityResult.Incompatible).reason)
     }
@@ -69,8 +69,8 @@ class BackupCompatibilityTest {
         formatVersion = 1,
         backupId = "id",
         createdAt = "2026-07-27T10:00:00Z",
-        appVersionName = "0.01",
-        appVersionCode = 1,
+        appVersionName = "0.02",
+        appVersionCode = 2,
         databaseSchemaVersion = 1,
         deviceManufacturer = "M",
         deviceModel = "M",

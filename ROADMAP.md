@@ -2,7 +2,7 @@
 
 **JuMaSt Appworks LLC**
 
-## Phase 1 — Property Mapping Foundation (v0.01)
+## Phase 1 — Property Mapping Foundation (v0.02)
 - [x] Room Schema with UUID and Audit fields.
 - [x] Navigation 3 state-driven architecture with Adaptive support.
 - [x] Local property profile management.
@@ -50,6 +50,9 @@
 ### Stage 4 — Guidance, Help, and Final Beginner Review
 Purpose: Provide in-context assistance and finalize the onboarding experience.
 
+**ACTIVE PHASE**:
+- **Phase 2.2h5R5 — Recreation Lifecycle and Version Closure**: Finalizing main recreation state, secondary disposal, and evidence closure. (IN PROGRESS)
+
 **COMPLETED WORK**:
 - Secondary Repair and Session Retirement: Verified full state transitions for secondary repairs, proper render-session retirement, and deferred map requests.
 - Loader Atomicity and Repair Epoch: Verified atomic outcomes, precise repair epochs, and session-scoped camera isolation.
@@ -65,7 +68,7 @@ Purpose: Provide in-context assistance and finalize the onboarding experience.
 - Photos: Creation photo lifecycle, wiring, and restoration.
 - Location: GPS permission recovery and request-state independence.
 
-**ACTIVE PHASE**:
+**UPCOMING PHASE**:
 - **Phase 3A — Unified Item Details**: Implementing a singular, high-integrity detail surface for all mapped infrastructure items. (NOT STARTED)
 
 ---

@@ -69,7 +69,7 @@ class BackupArchiveValidatorTest {
         assertTrue(result.exceptionOrNull()?.message?.contains("Checksum mismatch") == true)
     }
 
-    private fun mockManifest(appVersion: String = "0.01", appCode: Int = 1, schema: Int = 2) = BackupManifest(
+    private fun mockManifest(appVersion: String = "0.02", appCode: Int = 2, schema: Int = 2) = BackupManifest(
         formatVersion = 1,
         backupId = UUID.randomUUID().toString(),
         createdAt = "2026-07-27T10:00:00Z",

@@ -1,8 +1,15 @@
 # Changelog
 
-## [0.01] - Unreleased
+## [0.02] - Unreleased
 
 ### Added
+- **Beginner-First UX Redesign Phase 2.2h5R5 — Recreation Lifecycle, Secondary Disposal, Evidence, and Version Closure**:
+    - **Recreation State Preservation**: Hardened `MapViewModel` to preserve authoritative status and source truth during MapView disposal/recreation, eliminating "IDLE" resets during rotation.
+    - **Explicit Secondary Disposal**: Implemented a formal `dispose()` lifecycle in `SecondaryBasemapController` to permanently close old sessions and block stale repair triggers.
+    - **Session-Keyed UI Bridge**: Updated `ResilientBasemapLoader` to isolate attempts by render session, preventing cross-talk between old callbacks and new native maps.
+    - **Restricted Secondary Repair**: Formalized repair eligibility rules to ensure only live sessions with Authoritative identity can trigger bounded style reassertions.
+    - **Version Consolidation**: Bumped project to v0.02 and consolidated all Phase 2 documentation and QA evidence.
+
 - **Beginner-First UX Redesign Phase 2.2h5R4 — Secondary Repair Transition, Render-Session Retirement, Validation, and Evidence Closure**:
     - **Secondary Repair Transition**: Implemented full state transitions (loading status, requested source) for repairs on secondary surfaces.
     - **Render-Session Retirement**: Main map render sessions are now properly retired on disposal, marking in-flight attempts as DISPOSED.

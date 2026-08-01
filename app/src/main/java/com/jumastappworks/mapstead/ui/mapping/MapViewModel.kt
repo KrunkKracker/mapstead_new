@@ -1313,9 +1313,6 @@ class MapViewModel @Inject constructor(
             isRenderSessionReady = false
             _renderSessionId.value = null
             _currentAttempt.value = null
-            _requestedSourceId.value = null
-            _basemapStatus.value = BasemapLoadStatus.IDLE
-            _basemapErrorRes.value = null
         }
     }
 
@@ -1384,6 +1381,17 @@ class MapViewModel @Inject constructor(
             if (id != previous || _basemapStatus.value == BasemapLoadStatus.IDLE || _basemapStatus.value == BasemapLoadStatus.FAILED) {
                 startPrimaryLoad(id)
             }
+        } else {
+            // Deferral logic: Update status and requested source so next onMapReady issues an attempt for the NEW requested source.
+            val primary = basemapProvider.getPrimaryBasemaps().find { it.preferredId == id }
+            if (primary != null) {
+                _requestedSourceId.value = primary.sourceId
+                _basemapStatus.value = BasemapLoadStatus.LOADING_PRIMARY
+            } else {
+                _requestedSourceId.value = basemapProvider.resolveDefaultBackup(id)
+                _basemapStatus.value = BasemapLoadStatus.LOADING_BACKUP
+            }
+            _basemapErrorRes.value = null
         }
         
         viewModelScope.launch { 

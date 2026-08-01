@@ -26,6 +26,8 @@ class SecondaryBasemapController(
         private set
     var currentStatus by mutableStateOf(SecondaryMapStatus.IDLE)
         private set
+    var isDisposed by mutableStateOf(false)
+        private set
     
     private var currentAttempt: BasemapLoadAttempt? = null
     private var attemptCounter by mutableLongStateOf(0L)
@@ -36,6 +38,7 @@ class SecondaryBasemapController(
     private val repairEpochs = mutableMapOf<SecondaryRepairEpochKey, BasemapRepairEpochState>()
 
     fun startLoad(preferredBasemapId: BasemapId): BasemapLoadAttempt? {
+        if (isDisposed) return null
         semanticGeneration++
         fallbackAttempted = false
         terminalAttempts.clear()
@@ -60,9 +63,11 @@ class SecondaryBasemapController(
     }
 
     fun handleSuccess(attempt: BasemapLoadAttempt): SecondaryControllerAction {
+        if (isDisposed) return SecondaryControllerAction.Ignored
+        
         val validation = validate(attempt)
         if (validation != SecondaryValidationResult.ACCEPTED) {
-            return triggerRepair(attempt)
+            return triggerRepairDecision(attempt, validation)
         }
         
         acceptedSourceId = attempt.sourceId
@@ -79,6 +84,9 @@ class SecondaryBasemapController(
     }
 
     fun handleTerminated(reason: BasemapTerminalReason, attempt: BasemapLoadAttempt, preferredBasemapId: BasemapId): SecondaryControllerAction {
+        if (isDisposed) return SecondaryControllerAction.Ignored
+        
+        // Validation must be checked BEFORE marking the attempt as terminal to avoid self-rejection
         val validation = validate(attempt)
         
         val key = attempt.toKey()
@@ -119,8 +127,55 @@ class SecondaryBasemapController(
     }
 
     fun handleStaleStyleApplied(attempt: BasemapLoadAttempt): SecondaryControllerAction {
-        if (attempt.renderSessionId != renderSessionId) return SecondaryControllerAction.Ignored
+        if (isDisposed || attempt.renderSessionId != renderSessionId) return SecondaryControllerAction.Ignored
         return triggerRepair(attempt)
+    }
+
+    fun dispose() {
+        if (isDisposed) return
+        isDisposed = true
+        
+        // Mark current in-flight attempt as DISPOSED
+        val current = currentAttempt
+        if (current != null) {
+            val key = current.toKey()
+            if (!terminalAttempts.containsKey(key)) {
+                terminalAttempts[key] = BasemapTerminalReason.DISPOSED
+            }
+        }
+        
+        currentAttempt = null
+        requestedSourceId = null
+        currentStatus = SecondaryMapStatus.IDLE
+        repairEpochs.clear()
+    }
+
+    private fun triggerRepairDecision(attempt: BasemapLoadAttempt, validation: SecondaryValidationResult): SecondaryControllerAction {
+        // Only trigger repair for current live session failures that may have affected native state
+        val eligible = when (validation) {
+            SecondaryValidationResult.ACCEPTED -> false // Should not happen
+            SecondaryValidationResult.STALE_SESSION -> false
+            SecondaryValidationResult.GENERATION_MISMATCH -> false
+            SecondaryValidationResult.TERMINAL_ATTEMPT -> {
+                // If it succeeded but we previously marked it as terminal (e.g. TIMEOUT),
+                // we should repair to ensure the current authoritative style is actually applied
+                // and wasn't overwritten by the late successful application of the terminal style.
+                attempt.renderSessionId == renderSessionId && attempt.semanticGeneration == semanticGeneration
+            }
+            SecondaryValidationResult.ID_MISMATCH -> {
+                // Same session but old attempt ID. Authority might be different now.
+                attempt.renderSessionId == renderSessionId && attempt.semanticGeneration == semanticGeneration
+            }
+            SecondaryValidationResult.SOURCE_MISMATCH,
+            SecondaryValidationResult.STATUS_MISMATCH,
+            SecondaryValidationResult.DEFINITION_MISMATCH,
+            SecondaryValidationResult.PROVIDER_MISMATCH,
+            SecondaryValidationResult.ROLE_MISMATCH -> {
+                attempt.renderSessionId == renderSessionId && attempt.semanticGeneration == semanticGeneration
+            }
+        }
+        
+        return if (eligible) triggerRepair(attempt) else SecondaryControllerAction.Ignored
     }
 
     private fun triggerRepair(attempt: BasemapLoadAttempt): SecondaryControllerAction {
@@ -213,34 +268,40 @@ fun ResilientBasemapLoader(
     val renderSessionId = remember(mapView) { UUID.randomUUID() }
     val controller = remember(renderSessionId) { SecondaryBasemapController(renderSessionId, basemapProvider) }
     
-    var activeAttempt by remember { mutableStateOf<BasemapLoadAttempt?>(null) }
+    var activeAttempt by remember(renderSessionId) { mutableStateOf<BasemapLoadAttempt?>(null) }
 
     val loader = remember(renderSessionId) {
         BasemapStyleLoader(
             basemapProvider = basemapProvider,
             scope = scope,
             onStyleLoaded = { _, attempt ->
-                val action = controller.handleSuccess(attempt)
-                if (action is SecondaryControllerAction.LoadAttempt) {
-                    activeAttempt = action.attempt
+                if (!controller.isDisposed) {
+                    val action = controller.handleSuccess(attempt)
+                    if (action is SecondaryControllerAction.LoadAttempt) {
+                        activeAttempt = action.attempt
+                    }
                 }
             },
             onStyleTerminated = { reason, attempt ->
-                val action = controller.handleTerminated(reason, attempt, preferredBasemapId)
-                if (action is SecondaryControllerAction.LoadAttempt) {
-                    activeAttempt = action.attempt
+                if (!controller.isDisposed) {
+                    val action = controller.handleTerminated(reason, attempt, preferredBasemapId)
+                    if (action is SecondaryControllerAction.LoadAttempt) {
+                        activeAttempt = action.attempt
+                    }
                 }
             },
             onStaleStyleApplied = { attempt ->
-                val action = controller.handleStaleStyleApplied(attempt)
-                if (action is SecondaryControllerAction.LoadAttempt) {
-                    activeAttempt = action.attempt
+                if (!controller.isDisposed) {
+                    val action = controller.handleStaleStyleApplied(attempt)
+                    if (action is SecondaryControllerAction.LoadAttempt) {
+                        activeAttempt = action.attempt
+                    }
                 }
             }
         )
     }
 
-    LaunchedEffect(preferredBasemapId, retryNonce) {
+    LaunchedEffect(renderSessionId, preferredBasemapId, retryNonce) {
         activeAttempt = controller.startLoad(preferredBasemapId)
     }
 
@@ -256,6 +317,7 @@ fun ResilientBasemapLoader(
 
     DisposableEffect(renderSessionId) {
         onDispose {
+            controller.dispose()
             loader.dispose(mapView)
         }
     }
