@@ -1176,7 +1176,7 @@ class MapViewModel @Inject constructor(
             return BasemapLoadSuccessResult(false, attempt.sourceId, rejectionReason = BasemapLoadRejectionReason.TERMINAL_ATTEMPT)
         }
 
-        // Phase 2.2h5R3: Full identity check
+        // Phase 2.2h5R4: Full identity check and requested source invariant
         val current = _currentAttempt.value
         if (current == null ||
             attempt.attemptId != current.attemptId ||
@@ -1191,10 +1191,14 @@ class MapViewModel @Inject constructor(
             val reason = when {
                 attempt.renderSessionId != _renderSessionId.value -> BasemapLoadRejectionReason.STALE_SESSION
                 attempt.semanticGeneration != _basemapGeneration.value -> BasemapLoadRejectionReason.GENERATION_MISMATCH
-                attempt.sourceId != _requestedSourceId.value -> BasemapLoadRejectionReason.SOURCE_MISMATCH
+                attempt.sourceId != _requestedSourceId.value -> BasemapLoadRejectionReason.REQUESTED_SOURCE_MISMATCH
                 else -> BasemapLoadRejectionReason.ID_MISMATCH
             }
             return BasemapLoadSuccessResult(false, attempt.sourceId, rejectionReason = reason)
+        }
+
+        if (attempt.sourceId != _requestedSourceId.value) {
+             return BasemapLoadSuccessResult(false, attempt.sourceId, rejectionReason = BasemapLoadRejectionReason.REQUESTED_SOURCE_MISMATCH)
         }
 
         if (_basemapStatus.value != expectedStatus) {
@@ -1291,11 +1295,27 @@ class MapViewModel @Inject constructor(
 
     fun onRenderSessionDisposed(sessionId: UUID) {
         if (_renderSessionId.value == sessionId) {
-            _currentAttempt.value?.let { attempt ->
-                handleBasemapLoadTerminated(BasemapTerminalReason.DISPOSED, attempt)
+            val status = _basemapStatus.value
+            val inFlight = status == BasemapLoadStatus.LOADING_PRIMARY || status == BasemapLoadStatus.LOADING_BACKUP
+            
+            if (inFlight) {
+                _currentAttempt.value?.let { attempt ->
+                    if (attempt.renderSessionId == sessionId) {
+                        handleBasemapLoadTerminated(BasemapTerminalReason.DISPOSED, attempt)
+                    }
+                }
             }
-            // Clean up snapshots owned by this session
+            
+            // Clean up snapshots and epochs owned by this session
             cameraSnapshots.keys.filter { it.renderSessionId == sessionId }.forEach { cameraSnapshots.remove(it) }
+            repairEpochs.keys.filter { it.renderSessionId == sessionId }.forEach { repairEpochs.remove(it) }
+            
+            isRenderSessionReady = false
+            _renderSessionId.value = null
+            _currentAttempt.value = null
+            _requestedSourceId.value = null
+            _basemapStatus.value = BasemapLoadStatus.IDLE
+            _basemapErrorRes.value = null
         }
     }
 
@@ -1337,7 +1357,7 @@ class MapViewModel @Inject constructor(
     }
 
     fun handleStaleStyleApplied(attempt: BasemapLoadAttempt) {
-        if (attempt.renderSessionId != _renderSessionId.value) return
+        if (!isRenderSessionReady || _renderSessionId.value != attempt.renderSessionId) return
         
         val authoritativeSource = _requestedSourceId.value ?: _activeSourceId.value ?: return
         

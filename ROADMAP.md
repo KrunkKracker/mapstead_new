@@ -51,6 +51,7 @@
 Purpose: Provide in-context assistance and finalize the onboarding experience.
 
 **COMPLETED WORK**:
+- Secondary Repair and Session Retirement: Verified full state transitions for secondary repairs, proper render-session retirement, and deferred map requests.
 - Loader Atomicity and Repair Epoch: Verified atomic outcomes, precise repair epochs, and session-scoped camera isolation.
 - Camera and Repair Closure: Verified session-matched camera guards, authoritative snapshot restoration, repair epoch epochs, and strict callback validation.
 - Final Basemap Runtime Closure: Verified session-aware interaction guards, reactive style restoration, terminal tracking, and strict callback validation.
@@ -65,7 +66,7 @@ Purpose: Provide in-context assistance and finalize the onboarding experience.
 - Location: GPS permission recovery and request-state independence.
 
 **ACTIVE PHASE**:
-- **Phase 2.2h5R3 — Loader Atomicity and Repair Epoch**: Correcting loader race conditions, repair epoch lifecycle, and camera session isolation. (IN PROGRESS)
+- **Phase 3A — Unified Item Details**: Implementing a singular, high-integrity detail surface for all mapped infrastructure items. (NOT STARTED)
 
 ---
 

@@ -115,4 +115,16 @@ class ProgrammaticCameraController {
             currentSession = null
         }
     }
+
+    /**
+     * Returns true if the idle result should trigger interaction and persistence logic.
+     */
+    fun shouldPersistCamera(result: ProgrammaticIdleResult): Boolean {
+        return when (result) {
+            ProgrammaticIdleResult.NO_PENDING_SESSION -> true
+            ProgrammaticIdleResult.MATCHED_CURRENT_SESSION -> false
+            ProgrammaticIdleResult.CAMERA_DOES_NOT_MATCH -> false
+            ProgrammaticIdleResult.WRONG_RENDER_SESSION -> false
+        }
+    }
 }

@@ -361,6 +361,88 @@ class MapBasemapStateMachineTest {
     }
 
     @Test
+    fun `Requested source mismatch rejected`() = runTest(testDispatcher) {
+        val job = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
+        val session = UUID.randomUUID()
+        viewModel.onMapReady(session)
+        advanceUntilIdle()
+        
+        viewModel.requestBasemap(BasemapId.BASE)
+        advanceUntilIdle()
+        val state = viewModel.uiState.value
+        val attempt = state.currentAttempt!!
+        
+        // Simulate requestedSourceId being changed externally or by race
+        // Use exactly the current identity except for sourceId and provider/role matching it
+        val mismatchedAttempt = attempt.copy(
+            sourceId = BasemapSourceId.MAPTILER_STREETS,
+            provider = streetsDef.provider,
+            role = streetsDef.role
+        )
+        
+        val result = viewModel.handleBasemapLoadSuccess(mismatchedAttempt)
+        assertFalse("Should reject due to source mismatch", result.accepted)
+        assertEquals(BasemapLoadRejectionReason.REQUESTED_SOURCE_MISMATCH, result.rejectionReason)
+        job.cancel()
+    }
+
+    @Test
+    fun `Request deferred when no render session active`() = runTest(testDispatcher) {
+        val job = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
+        val sessionA = UUID.randomUUID()
+        viewModel.onMapReady(sessionA)
+        advanceUntilIdle()
+        
+        // 1. Dispose session A
+        viewModel.onRenderSessionDisposed(sessionA)
+        advanceUntilIdle()
+        assertNull("Session ID should be null", viewModel.uiState.value.renderSessionId)
+        
+        // 2. Request map change while no session
+        viewModel.requestBasemap(BasemapId.BASE)
+        advanceUntilIdle()
+        
+        // 3. Verify no attempt bound to old session A or null session
+        val currentAttempt = viewModel.uiState.value.currentAttempt
+        if (currentAttempt != null) {
+            assertNotEquals("Should not bind to disposed session", sessionA, currentAttempt.renderSessionId)
+        }
+        
+        // 4. Start new session B
+        val sessionB = UUID.randomUUID()
+        viewModel.onMapReady(sessionB)
+        advanceUntilIdle()
+        
+        // 5. Verify load occurs for BASE using session B
+        val finalAttempt = viewModel.uiState.value.currentAttempt
+        assertNotNull(finalAttempt)
+        assertEquals(sessionB, finalAttempt!!.renderSessionId)
+        assertEquals(BasemapSourceId.MAPTILER_BASE, finalAttempt.sourceId)
+        job.cancel()
+    }
+
+    @Test
+    fun `Late repair attempt from disposed session blocked`() = runTest(testDispatcher) {
+        val job = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
+        val sessionA = UUID.randomUUID()
+        viewModel.onMapReady(sessionA)
+        advanceUntilIdle()
+        
+        val attemptA = viewModel.uiState.value.currentAttempt!!
+        
+        // Dispose session A
+        viewModel.onRenderSessionDisposed(sessionA)
+        advanceUntilIdle()
+        
+        // Deliver stale callback from A
+        viewModel.handleStaleStyleApplied(attemptA)
+        advanceUntilIdle()
+        
+        assertNull("No repair should be issued for disposed session", viewModel.uiState.value.currentAttempt)
+        job.cancel()
+    }
+
+    @Test
     fun `Wrong provider or role rejected`() = runTest(testDispatcher) {
         val job = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
         viewModel.onMapReady(UUID.randomUUID())

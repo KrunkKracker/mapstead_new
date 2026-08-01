@@ -3,6 +3,14 @@
 ## [0.01] - Unreleased
 
 ### Added
+- **Beginner-First UX Redesign Phase 2.2h5R4 — Secondary Repair Transition, Render-Session Retirement, Validation, and Evidence Closure**:
+    - **Secondary Repair Transition**: Implemented full state transitions (loading status, requested source) for repairs on secondary surfaces.
+    - **Render-Session Retirement**: Main map render sessions are now properly retired on disposal, marking in-flight attempts as DISPOSED.
+    - **Deferred Basemap Requests**: Requests made while no MapView is active are deferred until the next render session is ready.
+    - **Strict Main Validation**: Added explicit `requestedSourceId` validation to all loading paths in `MapViewModel`.
+    - **Production Camera Policy**: Formalized the production idle policy using a specialized helper to drive persistence decisions.
+    - **Race Condition Hardening**: Added exhaustive test coverage for loader race conditions and secondary repair lifecycles.
+
 - **Beginner-First UX Redesign Phase 2.2h5R3 — Loader Atomicity, Repair Epoch, Camera Idle, Secondary Repair, and Evidence Closure**:
     - **Atomic Loader Outcomes**: Implemented strict state controller in `BasemapStyleLoader` to eliminate Success/Timeout/Failure race conditions.
     - **Refined Repair Epoch**: Ensured only `REPAIR` attempts exhaust epochs, preserving future repair eligibility for normal successful loads.

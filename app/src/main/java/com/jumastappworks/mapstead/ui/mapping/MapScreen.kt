@@ -342,15 +342,9 @@ fun MapScreen(
                     renderSessionId = renderSessionId
                 )
                 
-                when (result) {
-                    ProgrammaticIdleResult.MATCHED_CURRENT_SESSION -> { /* Suppressed */ }
-                    ProgrammaticIdleResult.CAMERA_DOES_NOT_MATCH -> { /* Stale programmatic move, suppress */ }
-                    ProgrammaticIdleResult.WRONG_RENDER_SESSION -> { /* Should not happen with isolation, suppress */ }
-                    ProgrammaticIdleResult.NO_PENDING_SESSION -> {
-                        // Genuine customer movement
-                        viewModel.onCameraInteraction()
-                        viewModel.onCameraMoved(target.latitude, target.longitude, pos.zoom, pos.bearing)
-                    }
+                if (viewModel.programmaticCameraController.shouldPersistCamera(result)) {
+                    viewModel.onCameraInteraction()
+                    viewModel.onCameraMoved(target.latitude, target.longitude, pos.zoom, pos.bearing)
                 }
             }
         }
