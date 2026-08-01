@@ -16,6 +16,31 @@ enum class SecondaryMapStatus { IDLE, LOADING_PRIMARY, LOADING_BACKUP, LOADED_PR
 
 enum class BasemapLoadAttemptReason { INITIAL, BACKUP, RECREATION, REPAIR, RETRY }
 
+enum class BasemapTerminalReason { TIMEOUT, PROVIDER_FAILURE, SUPERSEDED, DISPOSED }
+
+enum class BasemapLoadRejectionReason {
+    STALE_SESSION,
+    TERMINAL_ATTEMPT,
+    PROVIDER_MISMATCH,
+    ROLE_MISMATCH,
+    STATUS_MISMATCH,
+    GENERATION_MISMATCH,
+    ID_MISMATCH,
+    SOURCE_MISMATCH
+}
+
+data class BasemapAttemptKey(
+    val semanticGeneration: Long,
+    val attemptId: Long,
+    val renderSessionId: UUID,
+    val sourceId: BasemapSourceId
+)
+
+data class TerminalBasemapAttempt(
+    val key: BasemapAttemptKey,
+    val reason: BasemapTerminalReason
+)
+
 data class BasemapLoadAttempt(
     val semanticGeneration: Long,
     val attemptId: Long,
@@ -23,14 +48,29 @@ data class BasemapLoadAttempt(
     val sourceId: BasemapSourceId,
     val provider: BasemapProviderType,
     val role: BasemapRole,
-    val reason: BasemapLoadAttemptReason
+    val reason: BasemapLoadAttemptReason,
+    val capturedSequence: Long
+)
+
+data class AcceptedBasemapStyleEvent(
+    val eventId: Long,
+    val attempt: BasemapLoadAttempt
+)
+
+data class BasemapRepairKey(
+    val renderSessionId: UUID,
+    val semanticGeneration: Long,
+    val staleAttemptId: Long,
+    val staleSourceId: BasemapSourceId,
+    val authoritativeSourceId: BasemapSourceId
 )
 
 data class BasemapLoadSuccessResult(
     val accepted: Boolean, 
     val sourceId: BasemapSourceId?,
     val provider: BasemapProviderType? = null,
-    val role: BasemapRole? = null
+    val role: BasemapRole? = null,
+    val rejectionReason: BasemapLoadRejectionReason? = null
 )
 
 enum class MapEditingMode { Select, AddPoint, AddLine, EditLine, AddPolygon, EditPolygon }
@@ -221,6 +261,7 @@ data class MapUiState(
     
     // Interaction state
     val cameraInteractionSequence: Long = 0L,
+    val acceptedStyleEvent: AcceptedBasemapStyleEvent? = null,
 
     val polygonDraft: PolygonDraftState? = null,
     val liveAreaMeters: Double = 0.0,

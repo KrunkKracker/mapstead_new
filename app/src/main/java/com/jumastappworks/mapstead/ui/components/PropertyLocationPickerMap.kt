@@ -41,6 +41,7 @@ fun PropertyLocationPickerMap(
     var mapViewInstance by remember { mutableStateOf<org.maplibre.android.maps.MapView?>(null) }
     var activeSourceId by remember { mutableStateOf<BasemapSourceId?>(null) }
     var currentStatus by remember { mutableStateOf(SecondaryMapStatus.IDLE) }
+    var retryNonce by remember { mutableIntStateOf(0) }
 
     Box(modifier = modifier) {
         LifecycleManagedMapView(
@@ -74,6 +75,7 @@ fun PropertyLocationPickerMap(
                 map = mapLibreMap,
                 basemapProvider = basemapProvider,
                 preferredBasemapId = basemapProvider.getDefaultBasemapId(),
+                retryNonce = retryNonce,
                 onStatusChanged = { status, sid -> 
                     currentStatus = status
                     activeSourceId = sid
@@ -97,12 +99,19 @@ fun PropertyLocationPickerMap(
                     .clip(RoundedCornerShape(8.dp)),
                 color = MaterialTheme.colorScheme.errorContainer
             ) {
-                Text(
-                    stringResource(R.string.failed_to_load_basemap),
-                    modifier = Modifier.padding(12.dp),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onErrorContainer
-                )
+                Column(modifier = Modifier.padding(12.dp)) {
+                    Text(
+                        stringResource(R.string.failed_to_load_basemap),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onErrorContainer
+                    )
+                    TextButton(
+                        onClick = { retryNonce++ },
+                        modifier = Modifier.align(Alignment.End)
+                    ) {
+                        Text(stringResource(R.string.retry))
+                    }
+                }
             }
         } else if (currentStatus == SecondaryMapStatus.LOADING_BACKUP || currentStatus == SecondaryMapStatus.LOADED_BACKUP) {
             Surface(
@@ -112,12 +121,19 @@ fun PropertyLocationPickerMap(
                     .clip(RoundedCornerShape(8.dp)),
                 color = MaterialTheme.colorScheme.secondaryContainer
             ) {
-                Text(
-                    stringResource(if (currentStatus == SecondaryMapStatus.LOADING_BACKUP) R.string.basemap_fallback_active else R.string.basemap_fallback_active),
-                    modifier = Modifier.padding(8.dp),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer
-                )
+                Row(modifier = Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        stringResource(R.string.basemap_fallback_active),
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                    if (currentStatus == SecondaryMapStatus.LOADED_BACKUP) {
+                        TextButton(onClick = { retryNonce++ }) {
+                            Text(stringResource(R.string.retry_primary_map), style = MaterialTheme.typography.labelSmall)
+                        }
+                    }
+                }
             }
         }
 

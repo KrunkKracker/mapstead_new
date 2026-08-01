@@ -3,6 +3,16 @@
 ## [0.01] - Unreleased
 
 ### Added
+- **Beginner-First UX Redesign Phase 2.2h5R1 — Final Basemap Runtime and QA Closure**:
+    - **Session-Aware Interaction Guard**: Implemented a stable "latest-session-wins" `ProgrammaticCameraController` that correctly cancels suppression on customer gestures and matches idle events to specific movements.
+    - **Reactive Style Restoration**: Replaced non-reactive state-flow waits with a typed `AcceptedBasemapStyleEvent` mechanism, ensuring camera restoration runs exactly once and only when identity truth is preserved.
+    - **Hardened Terminal Closure**: Implemented a separate terminal-attempt registry to permanently close timed-out or failed attempts, preventing late native successes from reviving failed states.
+    - **Authoritative Main-Map Validation**: Enforced multi-field verification (generation, ID, session, source, provider, role, status) for all MapLibre callbacks.
+    - **Main Style Repair**: Trigger exactly one bounded authoritative-source repair when a stale native style application is detected on the active render session.
+    - **Resilient Secondary Repair**: Refactored the shared secondary loader to assign distinct IDs for primary and backup attempts and perform replacement loads for stale styles.
+    - **Picker & Preview Reliability**: Preserved coordinates and camera target during fallbacks in the Property Picker and ensured non-spinning terminal failure states for the Preview Map.
+    - **Attribution & Logo Preservation**: Verified bundled MapTiler SVG and refined attribution links with localized accessible semantics and accurate logo-visibility logic.
+
 - **Beginner-First UX Redesign Phase 2.2h5R — Basemap Runtime Closure and Acceptance Evidence**:
     - **Readiness Architecture**: Enforced explicit wait for both initial UserPreferences emission and a real MapView render session before issuing the first concrete load attempt.
     - **Status-Specific Recreation**: Refactored `onMapReady` to handle MapView recreation based on exact BasemapLoadStatus, ensuring requested sources survive rotation.

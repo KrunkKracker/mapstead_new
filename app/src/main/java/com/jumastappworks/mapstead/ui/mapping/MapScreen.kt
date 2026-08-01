@@ -209,10 +209,9 @@ fun MapScreen(
         BasemapStyleLoader(
             basemapProvider = basemapProvider,
             scope = mainScope,
-            onStyleLoaded = { style, attempt ->
+            onStyleLoaded = { _, attempt ->
                 val result = viewModel.handleBasemapLoadSuccess(attempt.sourceId, attempt)
                 if (!result.accepted && attempt.renderSessionId == renderSessionId) {
-                    // Notify ViewModel of stale style application for repair
                     viewModel.handleStaleStyleApplied(attempt)
                 }
             },
@@ -228,36 +227,39 @@ fun MapScreen(
     }
 
     LaunchedEffect(mapLibreMap, renderSessionId) {
-        val map = mapLibreMap ?: return@LaunchedEffect
-        viewModel.onMapReady(renderSessionId)
+        if (mapLibreMap != null) {
+            viewModel.onMapReady(renderSessionId)
+        }
     }
 
     LaunchedEffect(state.currentAttempt, mapLibreMap) {
         val map = mapLibreMap ?: return@LaunchedEffect
         val attempt = state.currentAttempt ?: return@LaunchedEffect
-        
         if (attempt.renderSessionId != renderSessionId) return@LaunchedEffect
 
-        val capturedCamera = map.cameraPosition
-        val capturedSequence = state.cameraInteractionSequence
-        
         basemapLoader.loadStyle(
             mapView = mapView,
             map = map,
             attempt = attempt
         )
+    }
+
+    var lastRestoredEventId by remember { mutableLongStateOf(0L) }
+    LaunchedEffect(state.acceptedStyleEvent, mapLibreMap) {
+        val map = mapLibreMap ?: return@LaunchedEffect
+        val event = state.acceptedStyleEvent ?: return@LaunchedEffect
+        if (event.eventId <= lastRestoredEventId) return@LaunchedEffect
+        lastRestoredEventId = event.eventId
+
+        if (event.attempt.renderSessionId != renderSessionId) return@LaunchedEffect
         
-        // Wait for attempt to finish and then apply camera restoration if accepted
-        snapshotFlow { state.basemapStatus }.filter { it == BasemapLoadStatus.LOADED }.first()
-        
-        // Strict ID check: was this exact attempt accepted?
-        if (state.activeSourceId == attempt.sourceId && state.basemapStatus == BasemapLoadStatus.LOADED) {
-            // Only restore if user hasn't moved the camera during load
-            if (currentState.cameraInteractionSequence == capturedSequence) {
-                val token = viewModel.programmaticCameraController.issueToken()
-                map.moveCamera(CameraUpdateFactory.newCameraPosition(capturedCamera))
-                // Note: consume(token) happens in the idle listener
-            }
+        // Final identity validation
+        if (state.activeSourceId != event.attempt.sourceId) return@LaunchedEffect
+
+        // Restore camera if user hasn't moved it since attempt began
+        if (state.cameraInteractionSequence == event.attempt.capturedSequence) {
+            viewModel.programmaticCameraController.beginProgrammaticMove()
+            map.moveCamera(CameraUpdateFactory.newCameraPosition(map.cameraPosition))
         }
     }
 
@@ -290,6 +292,32 @@ fun MapScreen(
             if (!verifyMapsteadOverlays(style)) {
                 viewModel.setMapRecoveryActive(true)
             }
+        }
+    }
+
+    DisposableEffect(mapLibreMap) {
+        val map = mapLibreMap ?: return@DisposableEffect onDispose {}
+        
+        val moveStartedListener = MapLibreMap.OnCameraMoveStartedListener { reason ->
+            viewModel.programmaticCameraController.onCameraMoveStarted(reason)
+        }
+        map.addOnCameraMoveStartedListener(moveStartedListener)
+
+        val idleListener = MapLibreMap.OnCameraIdleListener {
+            val pos = map.cameraPosition
+            pos.target?.let { target ->
+                if (!viewModel.programmaticCameraController.consumeProgrammaticIdle()) {
+                    viewModel.onCameraInteraction()
+                    viewModel.onCameraMoved(target.latitude, target.longitude, pos.zoom, pos.bearing)
+                }
+            }
+        }
+        map.addOnCameraIdleListener(idleListener)
+
+        onDispose {
+            map.removeOnCameraMoveStartedListener(moveStartedListener)
+            map.removeOnCameraIdleListener(idleListener)
+            viewModel.programmaticCameraController.clearForMapDisposal()
         }
     }
 
@@ -328,7 +356,7 @@ fun MapScreen(
                         .zoom(focus.zoom.toDouble())
                         .bearing(CameraValidation.normalizeBearing(focus.bearing))
                         .build()
-                    viewModel.programmaticCameraController.issueToken()
+                    viewModel.programmaticCameraController.beginProgrammaticMove()
                     if (initialCameraApplied) {
                         map.animateCamera(CameraUpdateFactory.newCameraPosition(pos))
                     } else {
@@ -341,7 +369,7 @@ fun MapScreen(
                         .include(LatLng(focus.sw.second, focus.sw.first))
                         .include(LatLng(focus.ne.second, focus.ne.first))
                         .build()
-                    viewModel.programmaticCameraController.issueToken()
+                    viewModel.programmaticCameraController.beginProgrammaticMove()
                     if (initialCameraApplied) {
                         map.animateCamera(CameraUpdateFactory.newLatLngBounds(bounds, focus.padding))
                     } else {
@@ -371,7 +399,7 @@ fun MapScreen(
                 .zoom(17.0)
                 .bearing(0.0)
                 .build()
-            viewModel.programmaticCameraController.issueToken()
+            viewModel.programmaticCameraController.beginProgrammaticMove()
             map.animateCamera(CameraUpdateFactory.newCameraPosition(pos)) 
         }
     }
@@ -648,23 +676,8 @@ fun MapScreen(
             mapView.apply { 
                 getMapAsync { map -> 
                     mapLibreMap = map
-                    map.uiSettings.isAttributionEnabled = false // We use our own overlay
+                    map.uiSettings.isAttributionEnabled = false
                     map.uiSettings.isLogoEnabled = false 
-                    
-                    map.addOnCameraIdleListener {
-                        val pos = map.cameraPosition
-                        pos.target?.let { target ->
-                            // The programmatic controller handles token consumption
-                            // If we don't have a token, it's a user interaction
-                            if (!viewModel.programmaticCameraController.isActive()) {
-                                viewModel.onCameraInteraction()
-                                onCameraMovedCallback(target.latitude, target.longitude, pos.zoom, pos.bearing)
-                            } else {
-                                // Clear any active tokens since we reached idle
-                                viewModel.programmaticCameraController.clear()
-                            }
-                        }
-                    }
                 } 
             } 
         },

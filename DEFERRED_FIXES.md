@@ -8,9 +8,9 @@
 
 **Status**: Resolved. The `AddPropertyViewModel.uiState` aggregation has been refactored to use typed batch combinations, removing all positional casting.
 
-## Basemap Runtime Race Conditions and Identity Truth (RESOLVED 2026-07-31)
+## Basemap Runtime Closure and Interaction Guard (RESOLVED 2026-07-31)
 
-**Status**: Resolved. Implemented readiness architecture (waiting for render session), strict multi-field attempt validation, and terminal tracking. Replaced Boolean camera guards with a stable token-based controller.
+**Status**: Resolved. Implemented session-aware programmatic camera controller, reactive style restoration (AcceptedBasemapStyleEvent), terminal attempt closure, and strict main/secondary map validation.
 
 ## Official MapTiler Logo Attribution (RESOLVED 2026-07-31)
 

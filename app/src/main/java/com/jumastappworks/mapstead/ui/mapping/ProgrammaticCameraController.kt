@@ -1,55 +1,79 @@
 package com.jumastappworks.mapstead.ui.mapping
 
 import java.util.UUID
-import java.util.concurrent.ConcurrentHashMap
 
 /**
- * Manages token-based suppression of camera interaction events.
- * This ensures that programmatic camera movements (e.g. style restoration, initial focus)
+ * Unique identifier for a programmatic camera movement session.
+ */
+data class ProgrammaticCameraSession(
+    val sessionId: UUID,
+    val generation: Long
+)
+
+/**
+ * Manages session-based suppression of camera interaction events.
+ * Implements a "latest-session-wins" policy to ensure that programmatic movements
  * do not falsely trigger user-interaction or persistence logic.
- * 
- * Safely supports overlapping programmatic moves using unique tokens.
  */
 class ProgrammaticCameraController {
-    private val activeTokens = ConcurrentHashMap.newKeySet<UUID>()
+    private var currentSession: ProgrammaticCameraSession? = null
+    private var generation: Long = 0
 
     /**
-     * Issues a new unique suppression token.
+     * Begins a new programmatic movement session, superseding any existing one.
      */
-    fun issueToken(): UUID {
-        val token = UUID.randomUUID()
-        activeTokens.add(token)
-        return token
+    fun beginProgrammaticMove(): ProgrammaticCameraSession {
+        generation++
+        val session = ProgrammaticCameraSession(UUID.randomUUID(), generation)
+        currentSession = session
+        return session
     }
 
     /**
-     * Consumes a matching suppression token.
-     * Returns true if the token was active and has been consumed.
+     * Called when a camera move starts. If it was a customer gesture,
+     * any active programmatic suppression is cancelled.
+     * 
+     * @param reason The move reason code from MapLibre.
      */
-    fun consume(token: UUID?): Boolean {
-        if (token == null) return false
-        return activeTokens.remove(token)
+    fun onCameraMoveStarted(reason: Int) {
+        // MapLibre move reasons: 
+        // 1: REASON_API_ANIMATION
+        // 2: REASON_DEVELOPER_ANIMATION
+        // 3: REASON_GESTURE
+        if (reason == 3) { // REASON_GESTURE
+            cancelForCustomerGesture()
+        }
     }
 
     /**
-     * Checks if any programmatic movement is currently active.
+     * Consumes the current programmatic suppression state.
+     * Returns true if a session was active and has been cleared.
+     */
+    fun consumeProgrammaticIdle(): Boolean {
+        val active = currentSession != null
+        currentSession = null
+        return active
+    }
+
+    /**
+     * Explicitly cancels programmatic suppression due to user interaction.
+     */
+    fun cancelForCustomerGesture() {
+        currentSession = null
+    }
+
+    /**
+     * Checks if a programmatic movement session is currently active.
      */
     fun isActive(): Boolean {
-        return activeTokens.isNotEmpty()
+        return currentSession != null
     }
 
     /**
-     * Checks if the supplied token is currently active.
+     * Clears all session state upon MapView disposal.
      */
-    fun isTokenActive(token: UUID?): Boolean {
-        return token != null && activeTokens.contains(token)
-    }
-
-    /**
-     * Clears all active suppression tokens.
-     * Use with caution to avoid race conditions.
-     */
-    fun clear() {
-        activeTokens.clear()
+    fun clearForMapDisposal() {
+        currentSession = null
+        generation = 0
     }
 }

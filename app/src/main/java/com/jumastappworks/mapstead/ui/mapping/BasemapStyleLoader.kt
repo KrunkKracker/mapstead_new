@@ -9,7 +9,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * Shared component for resilient basemap loading.
- * Ensures exactly one terminal callback per attempt.
+ * Ensures exactly one terminal loader-callback per attempt.
  */
 class BasemapStyleLoader(
     private val basemapProvider: BasemapProvider,
@@ -20,22 +20,30 @@ class BasemapStyleLoader(
 ) {
     private var lastFailureListener: MapView.OnDidFailLoadingMapListener? = null
     private var timeoutJob: Job? = null
-    private var currentAttemptId: Long? = null
+    private var activeAttemptId: Long? = null
 
+    /**
+     * Loads a basemap style with a timeout.
+     * 
+     * @param mapView The native MapView for listener attachment.
+     * @param map The MapLibreMap instance.
+     * @param attempt The authoritative attempt identity.
+     * @param timeoutMs Maximum time to wait before reporting failure.
+     */
     fun loadStyle(
         mapView: MapView,
         map: MapLibreMap,
         attempt: BasemapLoadAttempt,
         timeoutMs: Long = 15000L
     ) {
-        // 1. Supersede previous attempt
+        // 1. Supersede any previous in-flight loader activity
         cleanup(mapView)
-        currentAttemptId = attempt.attemptId
-        val isTerminal = AtomicBoolean(false)
+        activeAttemptId = attempt.attemptId
+        val isLoaderTerminal = AtomicBoolean(false)
 
         // 2. Create attempt-scoped failure listener
         val failureListener = MapView.OnDidFailLoadingMapListener { error ->
-            if (currentAttemptId == attempt.attemptId && isTerminal.compareAndSet(false, true)) {
+            if (activeAttemptId == attempt.attemptId && isLoaderTerminal.compareAndSet(false, true)) {
                 cleanup(mapView)
                 onStyleFailed(error ?: "Unknown MapLibre error", attempt)
             }
@@ -43,28 +51,28 @@ class BasemapStyleLoader(
         lastFailureListener = failureListener
         mapView.addOnDidFailLoadingMapListener(failureListener)
 
-        // 3. Setup timeout
+        // 3. Setup loader-level timeout
         timeoutJob = scope.launch {
             delay(timeoutMs)
-            if (currentAttemptId == attempt.attemptId && isTerminal.compareAndSet(false, true)) {
+            if (activeAttemptId == attempt.attemptId && isLoaderTerminal.compareAndSet(false, true)) {
                 cleanup(mapView)
                 onStyleFailed("Style load timeout", attempt)
             }
         }
 
-        // 4. Resolve URL
+        // 4. Resolve authoritative URL
         val url = basemapProvider.buildStyleUrl(attempt.sourceId)
 
-        // 5. Request style
+        // 5. Request native style application
         map.setStyle(url) { style ->
-            if (currentAttemptId == attempt.attemptId && isTerminal.compareAndSet(false, true)) {
+            // Check if this specific call still "owns" the loader state
+            if (activeAttemptId == attempt.attemptId && isLoaderTerminal.compareAndSet(false, true)) {
                 cleanup(mapView)
                 onStyleLoaded(style, attempt)
             } else {
-                // Stale completion - potentially reassert if this MapView is still active
-                if (currentAttemptId != null) {
-                    onStaleStyleApplied(attempt)
-                }
+                // Stale native completion (either superseded or already timed out/failed)
+                // Report so the ViewModel can decide on repair if it affected the active MapView
+                onStaleStyleApplied(attempt)
             }
         }
     }
@@ -76,8 +84,11 @@ class BasemapStyleLoader(
         timeoutJob = null
     }
 
+    /**
+     * Disposes the loader, cancelling any active jobs and listeners.
+     */
     fun dispose(mapView: MapView) {
         cleanup(mapView)
-        currentAttemptId = null
+        activeAttemptId = null
     }
 }

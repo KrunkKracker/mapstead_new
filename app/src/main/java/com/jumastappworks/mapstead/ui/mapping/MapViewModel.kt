@@ -71,7 +71,8 @@ private data class BasemapStatusBatch(
     val isUsingFallback: Boolean,
     val retryPrimaryAvailable: Boolean,
     val showBackupChooser: Boolean,
-    val cameraInteractionSequence: Long
+    val cameraInteractionSequence: Long,
+    val acceptedStyleEvent: AcceptedBasemapStyleEvent?
 )
 
 private data class LocationStatusBatch(
@@ -325,10 +326,15 @@ class MapViewModel @Inject constructor(
     private val _fallbackAttempted = MutableStateFlow(false)
     private val _showBackupChooser = MutableStateFlow(false)
     private val _retryPrimaryAvailable = MutableStateFlow(false)
+    private val _acceptedStyleEvent = MutableStateFlow<AcceptedBasemapStyleEvent?>(null)
     
     // Interaction state
     private val _cameraInteractionSequence = MutableStateFlow(0L)
     private var nextAttemptId = 1L
+    private var nextEventId = 1L
+    
+    private val terminalAttempts = mutableMapOf<BasemapAttemptKey, BasemapTerminalReason>()
+    private val repairKeys = mutableSetOf<BasemapRepairKey>()
     
     private val _currentPhoneLocation = MutableStateFlow<LocationResult.Success?>(null)
     private val _isLocatingPhone = MutableStateFlow(false)
@@ -421,7 +427,6 @@ class MapViewModel @Inject constructor(
     private var isPreferencesReady = false
     private var repairAttemptedInGeneration = -1L
 
-    private val terminalAttempts = mutableSetOf<Long>()
     private val saveGate = Mutex()
 
     init {
@@ -538,8 +543,9 @@ class MapViewModel @Inject constructor(
         },
         combine(_isUsingFallback, _retryPrimaryAvailable, _showBackupChooser, _cameraInteractionSequence) { f, r, c, cis ->
             Quad(f, r, c, cis)
-        }
-    ) { p1, p2, p3 ->
+        },
+        _acceptedStyleEvent
+    ) { p1, p2, p3, ase ->
         BasemapStatusBatch(
             preferredBasemapId = p1.a,
             requestedSourceId = p1.b,
@@ -552,7 +558,8 @@ class MapViewModel @Inject constructor(
             isUsingFallback = p3.a,
             retryPrimaryAvailable = p3.b,
             showBackupChooser = p3.c,
-            cameraInteractionSequence = p3.d
+            cameraInteractionSequence = p3.d,
+            acceptedStyleEvent = ase
         )
     }
 
@@ -723,8 +730,10 @@ class MapViewModel @Inject constructor(
             retryPrimaryAvailable = bm.retryPrimaryAvailable,
             showBackupChooser = bm.showBackupChooser,
             cameraInteractionSequence = bm.cameraInteractionSequence,
+            acceptedStyleEvent = bm.acceptedStyleEvent,
             
-            polygonDraft = eg.polygonDraft, liveAreaMeters = eg.polygonDraft?.vertices?.let { GeometryUtils.calculateSphericalArea(it) } ?: 0.0, livePerimeterMeters = eg.polygonDraft?.vertices?.let { GeometryUtils.calculatePolygonPerimeter(it) } ?: 0.0, polygonValidationRes = polygonValidationMsg, canFinishPolygon = (eg.polygonDraft?.vertices?.size ?: 0) >= 3 && eg.polygonDraft?.validation is PolygonValidationResult.Valid, featureEditorTarget = es.target, featureEditorFeature = es.feature, pointMoveState = ee.pointMoveState, lineEditState = ee.lineEditState, polygonEditState = ee.polygonEditState, isLineEditDirty = ee.isLineEditDirty, showDiscardEditDialog = eu.showDiscardDialog, discardAction = eu.discardAction, canSaveLineEdit = ee.lineEditState?.let { it.workingVertices != it.originalVertices && GeometryUtils.validateLineGeometry(it.workingVertices) } ?: false, canSavePolygonEdit = ee.polygonEditState?.let { it.workingVertices != it.originalVertices && it.validation is PolygonValidationResult.Valid } ?: false, canSavePointMove = hasProposedMove,
+            polygonDraft = eg.polygonDraft,
+ liveAreaMeters = eg.polygonDraft?.vertices?.let { GeometryUtils.calculateSphericalArea(it) } ?: 0.0, livePerimeterMeters = eg.polygonDraft?.vertices?.let { GeometryUtils.calculatePolygonPerimeter(it) } ?: 0.0, polygonValidationRes = polygonValidationMsg, canFinishPolygon = (eg.polygonDraft?.vertices?.size ?: 0) >= 3 && eg.polygonDraft?.validation is PolygonValidationResult.Valid, featureEditorTarget = es.target, featureEditorFeature = es.feature, pointMoveState = ee.pointMoveState, lineEditState = ee.lineEditState, polygonEditState = ee.polygonEditState, isLineEditDirty = ee.isLineEditDirty, showDiscardEditDialog = eu.showDiscardDialog, discardAction = eu.discardAction, canSaveLineEdit = ee.lineEditState?.let { it.workingVertices != it.originalVertices && GeometryUtils.validateLineGeometry(it.workingVertices) } ?: false, canSavePolygonEdit = ee.polygonEditState?.let { it.workingVertices != it.originalVertices && it.validation is PolygonValidationResult.Valid } ?: false, canSavePointMove = hasProposedMove,
             canEditShape = es.feature?.let { f -> 
                 val layer = lrs.layers.find { it.id == f.layerId }
                 if (layer?.isLocked == true) return@let false
@@ -1015,7 +1024,8 @@ class MapViewModel @Inject constructor(
             sourceId = sourceId,
             provider = def.provider,
             role = role,
-            reason = reason
+            reason = reason,
+            capturedSequence = _cameraInteractionSequence.value
         )
         
         _currentAttempt.value = attempt
@@ -1696,53 +1706,84 @@ class MapViewModel @Inject constructor(
         else { selectFeatureById(result.featureId) }
     }
 
-    // Basemap State Machine Methods
-    private fun validateAttempt(attempt: BasemapLoadAttempt, expectedSourceId: BasemapSourceId?, expectedRole: BasemapRole? = null): Boolean {
-        if (attempt.renderSessionId != _renderSessionId.value) return false
-        if (attempt.semanticGeneration != _basemapGeneration.value) return false
-        if (attempt.attemptId != _currentAttempt.value?.attemptId) return false
-        if (attempt.sourceId != expectedSourceId) return false
-        if (expectedRole != null && attempt.role != expectedRole) return false
-        if (terminalAttempts.contains(attempt.attemptId)) return false
-        return true
+    private fun BasemapLoadAttempt.toKey(): BasemapAttemptKey {
+        return BasemapAttemptKey(
+            semanticGeneration = this.semanticGeneration,
+            attemptId = this.attemptId,
+            renderSessionId = this.renderSessionId ?: UUID(0L, 0L),
+            sourceId = this.sourceId
+        )
+    }
+
+    private fun validateAttempt(attempt: BasemapLoadAttempt, expectedStatus: BasemapLoadStatus): BasemapLoadSuccessResult {
+        if (attempt.renderSessionId != _renderSessionId.value) {
+            println("TestDebug: Session mismatch. Attempt: ${attempt.renderSessionId}, Current: ${_renderSessionId.value}")
+            return BasemapLoadSuccessResult(false, attempt.sourceId, rejectionReason = BasemapLoadRejectionReason.STALE_SESSION)
+        }
+        if (attempt.semanticGeneration != _basemapGeneration.value) {
+            println("TestDebug: Generation mismatch. Attempt: ${attempt.semanticGeneration}, Current: ${_basemapGeneration.value}")
+            return BasemapLoadSuccessResult(false, attempt.sourceId, rejectionReason = BasemapLoadRejectionReason.GENERATION_MISMATCH)
+        }
+        if (attempt.attemptId != _currentAttempt.value?.attemptId) {
+            println("TestDebug: ID mismatch. Attempt: ${attempt.attemptId}, Current: ${_currentAttempt.value?.attemptId}")
+            return BasemapLoadSuccessResult(false, attempt.sourceId, rejectionReason = BasemapLoadRejectionReason.ID_MISMATCH)
+        }
+        if (attempt.sourceId != _requestedSourceId.value) {
+             println("TestDebug: Source mismatch. Attempt: ${attempt.sourceId}, Requested: ${_requestedSourceId.value}")
+             return BasemapLoadSuccessResult(false, attempt.sourceId, rejectionReason = BasemapLoadRejectionReason.SOURCE_MISMATCH)
+        }
+        if (_basemapStatus.value != expectedStatus) {
+            println("TestDebug: Status mismatch. Current: ${_basemapStatus.value}, Expected: $expectedStatus")
+            return BasemapLoadSuccessResult(false, attempt.sourceId, rejectionReason = BasemapLoadRejectionReason.STATUS_MISMATCH)
+        }
+        
+        val def = basemapProvider.getDefinition(attempt.sourceId)
+        if (def == null) return BasemapLoadSuccessResult(false, attempt.sourceId, rejectionReason = BasemapLoadRejectionReason.SOURCE_MISMATCH)
+        if (def.provider != attempt.provider) return BasemapLoadSuccessResult(false, attempt.sourceId, rejectionReason = BasemapLoadRejectionReason.PROVIDER_MISMATCH)
+        if (def.role != attempt.role) return BasemapLoadSuccessResult(false, attempt.sourceId, rejectionReason = BasemapLoadRejectionReason.ROLE_MISMATCH)
+        
+        if (terminalAttempts.containsKey(attempt.toKey())) {
+            return BasemapLoadSuccessResult(false, attempt.sourceId, rejectionReason = BasemapLoadRejectionReason.TERMINAL_ATTEMPT)
+        }
+        
+        return BasemapLoadSuccessResult(true, attempt.sourceId, def.provider, def.role)
     }
 
     fun handleBasemapLoadSuccess(sourceId: BasemapSourceId, attempt: BasemapLoadAttempt): BasemapLoadSuccessResult {
-        val currentRequested = _requestedSourceId.value
-        val currentStatus = _basemapStatus.value
-        
-        if (!validateAttempt(attempt, sourceId)) return BasemapLoadSuccessResult(false, null)
-        if (sourceId != currentRequested) return BasemapLoadSuccessResult(false, null)
-        
         val expectedStatus = if (attempt.role == BasemapRole.PRIMARY) BasemapLoadStatus.LOADING_PRIMARY else BasemapLoadStatus.LOADING_BACKUP
-        if (currentStatus != expectedStatus) return BasemapLoadSuccessResult(false, null)
+        val result = validateAttempt(attempt, expectedStatus)
+        
+        if (!result.accepted) return result
         
         _activeSourceId.value = sourceId
         _requestedSourceId.value = null
         _basemapStatus.value = BasemapLoadStatus.LOADED
         _basemapErrorRes.value = null
         
-        val def = basemapProvider.getDefinition(sourceId)
-        if (def?.role == BasemapRole.PRIMARY) {
+        if (attempt.role == BasemapRole.PRIMARY) {
             _isUsingFallback.value = false
             _showBackupChooser.value = false
             _retryPrimaryAvailable.value = false
-        } else if (def?.role == BasemapRole.BACKUP) {
+        } else {
             _isUsingFallback.value = true
             _showBackupChooser.value = true
             _retryPrimaryAvailable.value = true
         }
         
-        return BasemapLoadSuccessResult(true, sourceId, def?.provider, def?.role)
+        _acceptedStyleEvent.value = AcceptedBasemapStyleEvent(nextEventId++, attempt)
+        
+        return result
     }
 
     fun handleBasemapLoadFailure(error: String, attempt: BasemapLoadAttempt) {
-        if (!validateAttempt(attempt, _requestedSourceId.value)) return
+        val expectedStatus = if (attempt.role == BasemapRole.PRIMARY) BasemapLoadStatus.LOADING_PRIMARY else BasemapLoadStatus.LOADING_BACKUP
+        val result = validateAttempt(attempt, expectedStatus)
+        if (!result.accepted) return
         
-        terminalAttempts.add(attempt.attemptId)
+        terminalAttempts[attempt.toKey()] = if (error.contains("timeout", ignoreCase = true)) BasemapTerminalReason.TIMEOUT else BasemapTerminalReason.PROVIDER_FAILURE
+        if (terminalAttempts.size > 50) terminalAttempts.remove(terminalAttempts.keys.first())
         
-        val currentStatus = _basemapStatus.value
-        if (currentStatus == BasemapLoadStatus.LOADING_PRIMARY) {
+        if (attempt.role == BasemapRole.PRIMARY) {
             if (!_fallbackAttempted.value) {
                 _fallbackAttempted.value = true
                 val backupSourceId = basemapProvider.resolveDefaultBackup(_preferredBasemapId.value)
@@ -1752,7 +1793,7 @@ class MapViewModel @Inject constructor(
                 _basemapErrorRes.value = R.string.failed_to_load_basemap
                 _retryPrimaryAvailable.value = true
             }
-        } else if (currentStatus == BasemapLoadStatus.LOADING_BACKUP) {
+        } else {
             _basemapStatus.value = BasemapLoadStatus.FAILED
             _basemapErrorRes.value = R.string.failed_to_load_basemap
             _retryPrimaryAvailable.value = true
@@ -1783,6 +1824,7 @@ class MapViewModel @Inject constructor(
         _basemapGeneration.value = newGen
         _fallbackAttempted.value = false
         terminalAttempts.clear()
+        repairKeys.clear()
         
         val primarySource = basemapProvider.getPrimaryBasemaps().find { it.preferredId == id }
         if (primarySource != null) {
@@ -1806,13 +1848,22 @@ class MapViewModel @Inject constructor(
     fun handleStaleStyleApplied(attempt: BasemapLoadAttempt) {
         if (attempt.renderSessionId != _renderSessionId.value) return
         
-        val current = _currentAttempt.value ?: return
-        if (attempt.attemptId == current.attemptId) return // Not stale
+        val authoritativeSource = _requestedSourceId.value ?: _activeSourceId.value ?: return
         
-        if (repairAttemptedInGeneration == current.semanticGeneration) return // Bounded
+        val repairKey = BasemapRepairKey(
+            renderSessionId = attempt.renderSessionId!!,
+            semanticGeneration = _basemapGeneration.value,
+            staleAttemptId = attempt.attemptId,
+            staleSourceId = attempt.sourceId,
+            authoritativeSourceId = authoritativeSource
+        )
         
-        repairAttemptedInGeneration = current.semanticGeneration
-        issueAttempt(current.sourceId, current.role, BasemapLoadAttemptReason.REPAIR)
+        if (repairKeys.contains(repairKey)) return
+        
+        repairKeys.add(repairKey)
+        if (repairKeys.size > 50) repairKeys.remove(repairKeys.iterator().next())
+        
+        issueAttempt(authoritativeSource, basemapProvider.getDefinition(authoritativeSource)?.role ?: BasemapRole.PRIMARY, BasemapLoadAttemptReason.REPAIR)
     }
 
     fun clearBasemapError() { _basemapErrorRes.value = null }

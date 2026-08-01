@@ -6,6 +6,11 @@ import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.MapView
 import java.util.UUID
 
+private data class SecondaryRepairKey(
+    val staleAttemptId: Long,
+    val authoritativeSourceId: BasemapSourceId
+)
+
 /**
  * A Composable that manages resilient basemap loading for any MapView.
  * This is used for secondary maps (Picker, Preview).
@@ -16,6 +21,7 @@ fun ResilientBasemapLoader(
     map: MapLibreMap?,
     basemapProvider: BasemapProvider,
     preferredBasemapId: BasemapId,
+    retryNonce: Int = 0,
     onStatusChanged: (SecondaryMapStatus, BasemapSourceId?) -> Unit = { _, _ -> }
 ) {
     val scope = rememberCoroutineScope()
@@ -25,20 +31,24 @@ fun ResilientBasemapLoader(
     var attemptCounter by remember { mutableLongStateOf(0L) }
     var semanticGeneration by remember { mutableLongStateOf(0L) }
     var fallbackAttempted by remember { mutableStateOf(false) }
-    var repairNonce by remember { mutableLongStateOf(0L) }
     var currentStatus by remember { mutableStateOf(SecondaryMapStatus.IDLE) }
     
-    // Terminal state tracking per attempt ID
     val terminalAttempts = remember { mutableSetOf<Long>() }
+    val repairKeys = remember { mutableSetOf<SecondaryRepairKey>() }
 
     val loader = remember(renderSessionId) {
         BasemapStyleLoader(
             basemapProvider = basemapProvider,
             scope = scope,
             onStyleLoaded = { _, attempt ->
+                val def = basemapProvider.getDefinition(attempt.sourceId)
                 if (attempt.renderSessionId == renderSessionId && 
+                    attempt.semanticGeneration == semanticGeneration &&
                     attempt.attemptId == attemptCounter && 
-                    !terminalAttempts.contains(attempt.attemptId)) {
+                    attempt.sourceId == currentSourceId &&
+                    !terminalAttempts.contains(attempt.attemptId) &&
+                    def?.provider == attempt.provider &&
+                    def?.role == attempt.role) {
                     
                     currentStatus = if (attempt.role == BasemapRole.PRIMARY) 
                         SecondaryMapStatus.LOADED_PRIMARY else SecondaryMapStatus.LOADED_BACKUP
@@ -46,9 +56,12 @@ fun ResilientBasemapLoader(
                 }
             },
             onStyleFailed = { _, attempt ->
+                val def = basemapProvider.getDefinition(attempt.sourceId)
                 if (attempt.renderSessionId == renderSessionId && 
+                    attempt.semanticGeneration == semanticGeneration &&
                     attempt.attemptId == attemptCounter && 
-                    !terminalAttempts.contains(attempt.attemptId)) {
+                    !terminalAttempts.contains(attempt.attemptId) &&
+                    def?.role == attempt.role) {
                     
                     terminalAttempts.add(attempt.attemptId)
                     
@@ -56,7 +69,7 @@ fun ResilientBasemapLoader(
                         fallbackAttempted = true
                         val backupId = basemapProvider.resolveDefaultBackup(preferredBasemapId)
                         currentSourceId = backupId
-                        attemptCounter++ // Unique ID for backup
+                        attemptCounter++
                         currentStatus = SecondaryMapStatus.LOADING_BACKUP
                         onStatusChanged(currentStatus, currentSourceId)
                     } else {
@@ -66,23 +79,27 @@ fun ResilientBasemapLoader(
                 }
             },
             onStaleStyleApplied = { attempt ->
-                if (attempt.renderSessionId == renderSessionId && 
-                    attempt.attemptId != attemptCounter &&
-                    repairNonce == 0L) { // Bounded repair
-                    
-                    repairNonce++
-                    attemptCounter++
+                if (attempt.renderSessionId == renderSessionId) {
+                    val authSource = currentSourceId
+                    if (authSource != null) {
+                        val key = SecondaryRepairKey(attempt.attemptId, authSource)
+                        if (!repairKeys.contains(key)) {
+                            repairKeys.add(key)
+                            if (repairKeys.size > 20) repairKeys.remove(repairKeys.iterator().next())
+                            attemptCounter++
+                        }
+                    }
                 }
             }
         )
     }
 
-    LaunchedEffect(preferredBasemapId) {
+    LaunchedEffect(preferredBasemapId, retryNonce) {
         val primary = basemapProvider.getPrimaryBasemaps().find { it.preferredId == preferredBasemapId }
         fallbackAttempted = false
         semanticGeneration++
-        repairNonce = 0L
         terminalAttempts.clear()
+        repairKeys.clear()
         
         if (primary != null) {
             currentSourceId = primary.sourceId
@@ -96,7 +113,7 @@ fun ResilientBasemapLoader(
         onStatusChanged(currentStatus, currentSourceId)
     }
 
-    LaunchedEffect(currentSourceId, map, renderSessionId, attemptCounter, repairNonce) {
+    LaunchedEffect(currentSourceId, map, renderSessionId, attemptCounter) {
         val m = map ?: return@LaunchedEffect
         val sid = currentSourceId ?: return@LaunchedEffect
         val def = basemapProvider.getDefinition(sid) ?: return@LaunchedEffect
@@ -108,9 +125,10 @@ fun ResilientBasemapLoader(
             sourceId = sid,
             provider = def.provider,
             role = def.role,
-            reason = if (repairNonce > 0L && attemptCounter > 1L) 
+            reason = if (repairKeys.any { it.authoritativeSourceId == sid }) 
                 BasemapLoadAttemptReason.REPAIR else if (fallbackAttempted && def.role == BasemapRole.BACKUP) 
-                BasemapLoadAttemptReason.BACKUP else BasemapLoadAttemptReason.INITIAL
+                BasemapLoadAttemptReason.BACKUP else BasemapLoadAttemptReason.INITIAL,
+            capturedSequence = 0L
         )
         
         loader.loadStyle(mapView, m, attempt)

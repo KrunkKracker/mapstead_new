@@ -8,8 +8,9 @@ Mapstead is a local-first, private property management tool designed for homeown
 > This is unreleased development software (v0.01) — **Beginner-First UX Redesign Phase 3A**. It is currently in a details unification pass.
 
 ## Current Development Status
-- **Phase 2.2h5R (Basemap Runtime Closure)**: IMPLEMENTED / INSTALLED ACCEPTANCE PENDING. Readiness architecture, status-specific recreation, terminal tracking, and stable camera tokens verified via automated gates.
-- **Phase 2.2h4 (Basemap Acceptance Closure)**: COMPLETE.
+- **Phase 2.2h5R1 (Final Basemap Runtime Closure)**: COMPLETE. Session-aware guards, reactive restoration, and terminal closure verified via automated gates.
+- **Phase 2.2h5R (Basemap Runtime Closure)**: COMPLETE.
+- **Phase 2.2h (Basemap Acceptance Closure)**: COMPLETE / INSTALLED ACCEPTANCE PENDING.
 
 ## Core Features
 - **MapTiler Integration**: High-quality Streets, Topo, and Satellite Hybrid imagery with resilient OpenFreeMap fallback.

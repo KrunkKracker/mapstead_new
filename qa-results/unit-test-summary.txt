@@ -1,17 +1,18 @@
 JVM Unit Test Summary
-Phase: 2.2h4 (Repository Build Closure)
+Phase: 2.2h5R1 (Final Basemap Runtime Closure)
 Result: SUCCESS
-Total: 567
-Passed: 567
+Total: 573
+Passed: 573
 Failed: 0
 Skipped: 0
 Date: 2026-07-31
 
 Verified key basemap scenarios:
-- Render session registration (onMapReady)
-- All recreation states (IDLE to FAILED)
-- Attempt validation strictness
-- Programmatic camera suppression
-- Stale style reconciliation (Main & Secondary)
-- Unconfigured provider safety
+- Session-aware camera interaction guard (latest-session-wins)
+- Reactive style restoration (AcceptedBasemapStyleEvent)
+- Terminal attempt closure (TIMEOUT/FAILURE tracking)
+- Strict multi-field main map validation
+- Stale style repair key (loop prevention)
+- Resilient secondary loader ID separation and repair
+- Unconfigured provider safety (no-key verification)
 - Redaction robustness

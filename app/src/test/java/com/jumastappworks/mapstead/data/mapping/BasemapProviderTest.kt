@@ -70,6 +70,10 @@ class BasemapProviderTest {
         
         // 2. Default backup mapping should still work
         assertEquals(BasemapSourceId.OPEN_FREE_MAP_LIBERTY, provider.resolveDefaultBackup(BasemapId.STREETS))
+
+        // 3. Style URLs should not contain keys if unconfigured
+        val url = provider.buildStyleUrl(BasemapSourceId.MAPTILER_STREETS)
+        assertTrue("URL should have empty key if unconfigured", url.endsWith("key="))
     }
 
     @Test

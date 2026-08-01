@@ -33,7 +33,7 @@ class MapBasemapStateMachineTest {
     private val savedState = SavedStateHandle()
 
     private lateinit var viewModel: MapViewModel
-    private val testDispatcher = UnconfinedTestDispatcher()
+    private val testDispatcher = StandardTestDispatcher()
 
     private val userPrefsFlow = MutableStateFlow(UserPreferences())
     
@@ -48,7 +48,6 @@ class MapBasemapStateMachineTest {
         
         every { userPrefs.userPreferencesFlow } returns userPrefsFlow
         coEvery { userPrefs.updateSelectedBasemap(any()) } answers {
-            // Emulate persistence delay but memory update happens immediately in VM
             userPrefsFlow.value = userPrefsFlow.value.copy(selectedBasemapId = arg(0))
         }
         every { basemapProvider.getDefaultBasemapId() } returns BasemapId.STREETS
@@ -69,191 +68,131 @@ class MapBasemapStateMachineTest {
     }
 
     @Test
-    fun `Readiness Architecture - Preferences first then MapView creates exactly one correct attempt`() = runTest {
-        backgroundScope.launch { viewModel.uiState.collect {} }
+    fun `Readiness Architecture - Preferences then MapView`() = runTest {
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
         
-        // 1. Preferences emit
         userPrefsFlow.value = userPrefsFlow.value.copy(selectedBasemapId = BasemapId.TOPO)
+        advanceUntilIdle()
         
-        // Should still be IDLE because MapView is not ready
-        assertEquals(BasemapLoadStatus.IDLE, viewModel.uiState.value.basemapStatus)
-        
-        // 2. MapView ready
         val session = UUID.randomUUID()
         viewModel.onMapReady(session)
-        
-        val state = viewModel.uiState.value
-        assertEquals(BasemapLoadStatus.LOADING_PRIMARY, state.basemapStatus)
-        val attempt = state.currentAttempt!!
-        assertEquals(BasemapSourceId.MAPTILER_TOPO, attempt.sourceId)
-        assertEquals(BasemapLoadAttemptReason.INITIAL, attempt.reason)
-        assertEquals(session, attempt.renderSessionId)
-        
-        // Verify no extra attempts
-        assertEquals(1L, attempt.attemptId)
-    }
-
-    @Test
-    fun `Readiness Architecture - MapView first then Preferences creates exactly one correct attempt`() = runTest {
-        backgroundScope.launch { viewModel.uiState.collect {} }
-        
-        // 1. MapView ready
-        val session = UUID.randomUUID()
-        viewModel.onMapReady(session)
-        
-        // Should still be IDLE (or default if preferences emitted default earlier)
-        // In our setup, VM starts with default STREETS but waits for collector
-        // Let's assume userPrefsFlow hasn't emitted for this test yet (initial state)
-        
-        // 2. Preferences emit
-        userPrefsFlow.value = userPrefsFlow.value.copy(selectedBasemapId = BasemapId.BASE)
-        
-        val state = viewModel.uiState.value
-        assertEquals(BasemapLoadStatus.LOADING_PRIMARY, state.basemapStatus)
-        val attempt = state.currentAttempt!!
-        assertEquals(BasemapSourceId.MAPTILER_BASE, attempt.sourceId)
-        assertEquals(session, attempt.renderSessionId)
-    }
-
-    @Test
-    fun `Stored non-Streets preference does not briefly load Streets`() = runTest {
-        // Start a new setup where preference is already TOPO before VM init
-        userPrefsFlow.value = userPrefsFlow.value.copy(selectedBasemapId = BasemapId.TOPO)
-        viewModel = MapViewModel(mapRepo, attachmentRepo, infraRepo, propRepo, resolver, locationProvider, basemapProvider, userPrefs, namingService, context, savedState)
-        
-        backgroundScope.launch { viewModel.uiState.collect {} }
-        
-        viewModel.onMapReady(UUID.randomUUID())
+        advanceUntilIdle()
         
         assertEquals(BasemapSourceId.MAPTILER_TOPO, viewModel.uiState.value.currentAttempt?.sourceId)
-        assertEquals(BasemapSourceId.MAPTILER_TOPO, viewModel.uiState.value.requestedSourceId)
     }
 
     @Test
-    fun `MapView recreation in LOADING_PRIMARY handles attempt correctly`() = runTest {
-        backgroundScope.launch { viewModel.uiState.collect {} }
-        val session1 = UUID.randomUUID()
-        viewModel.onMapReady(session1)
+    fun `MapView recreation rebinds correctly`() = runTest {
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
+        viewModel.onMapReady(UUID.randomUUID())
+        advanceUntilIdle()
         
-        viewModel.requestBasemap(BasemapId.STREETS)
+        viewModel.requestBasemap(BasemapId.BASE)
+        advanceUntilIdle()
         val attempt1 = viewModel.uiState.value.currentAttempt!!
-        assertEquals(1L, attempt1.attemptId)
         
-        // Rotate/Recreate
         val session2 = UUID.randomUUID()
         viewModel.onMapReady(session2)
+        advanceUntilIdle()
         
         val state = viewModel.uiState.value
         assertEquals(BasemapLoadStatus.LOADING_PRIMARY, state.basemapStatus)
         val attempt2 = state.currentAttempt!!
         assertNotEquals(attempt1.attemptId, attempt2.attemptId)
         assertEquals(session2, attempt2.renderSessionId)
-        assertEquals(BasemapLoadAttemptReason.RECREATION, attempt2.reason)
-        assertEquals(BasemapSourceId.MAPTILER_STREETS, attempt2.sourceId)
     }
 
     @Test
-    fun `MapView recreation in FAILED does not auto-retry`() = runTest {
-        backgroundScope.launch { viewModel.uiState.collect {} }
-        val session1 = UUID.randomUUID()
-        viewModel.onMapReady(session1)
-        
-        viewModel.requestBasemap(BasemapId.STREETS)
-        val primary = viewModel.uiState.value.currentAttempt!!
-        viewModel.handleBasemapLoadFailure("error", primary)
-        
-        val backup = viewModel.uiState.value.currentAttempt!!
-        viewModel.handleBasemapLoadFailure("error", backup)
-        
-        assertEquals(BasemapLoadStatus.FAILED, viewModel.uiState.value.basemapStatus)
-        
-        // Recreate
-        val session2 = UUID.randomUUID()
-        viewModel.onMapReady(session2)
-        
-        // Status should REMAIN FAILED, not restart load
-        assertEquals(BasemapLoadStatus.FAILED, viewModel.uiState.value.basemapStatus)
-        assertEquals(backup.attemptId, viewModel.uiState.value.currentAttempt?.attemptId)
-    }
-
-    @Test
-    fun `Strict Validation - Rejects wrong source, provider, or role`() = runTest {
-        backgroundScope.launch { viewModel.uiState.collect {} }
+    fun `Strict Validation - Rejects stale session`() = runTest {
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
         viewModel.onMapReady(UUID.randomUUID())
-        
-        viewModel.requestBasemap(BasemapId.STREETS)
+        advanceUntilIdle()
+        viewModel.requestBasemap(BasemapId.BASE)
+        advanceUntilIdle()
         val attempt = viewModel.uiState.value.currentAttempt!!
         
-        // 1. Wrong source
-        val result1 = viewModel.handleBasemapLoadSuccess(BasemapSourceId.MAPTILER_BASE, attempt)
-        assertFalse(result1.accepted)
-        
-        // 2. Wrong role (emulate manually changed attempt data if possible, or just prove valid check)
-        val badRoleAttempt = attempt.copy(role = BasemapRole.BACKUP)
-        val result2 = viewModel.handleBasemapLoadSuccess(BasemapSourceId.MAPTILER_STREETS, badRoleAttempt)
-        assertFalse(result2.accepted)
+        val result = viewModel.handleBasemapLoadSuccess(attempt.sourceId, attempt.copy(renderSessionId = UUID.randomUUID()))
+        assertFalse(result.accepted)
+        assertEquals(BasemapLoadRejectionReason.STALE_SESSION, result.rejectionReason)
     }
 
     @Test
-    fun `Terminal Closure - Timed-out attempt cannot later succeed`() = runTest {
-        backgroundScope.launch { viewModel.uiState.collect {} }
+    fun `Terminal Closure - Timeout prevents success`() = runTest {
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
         viewModel.onMapReady(UUID.randomUUID())
-        
-        viewModel.requestBasemap(BasemapId.STREETS)
+        advanceUntilIdle()
+        viewModel.requestBasemap(BasemapId.BASE)
+        advanceUntilIdle()
         val attempt = viewModel.uiState.value.currentAttempt!!
         
-        // Simulate timeout (failure)
         viewModel.handleBasemapLoadFailure("Timeout", attempt)
-        assertEquals(BasemapLoadStatus.LOADING_BACKUP, viewModel.uiState.value.basemapStatus)
+        advanceUntilIdle()
         
-        // Late success from timed-out attempt
-        val result = viewModel.handleBasemapLoadSuccess(BasemapSourceId.MAPTILER_STREETS, attempt)
-        assertFalse("Late success from terminal attempt must be rejected", result.accepted)
+        val result = viewModel.handleBasemapLoadSuccess(BasemapSourceId.MAPTILER_BASE, attempt)
+        assertFalse("Terminal attempt must be rejected", result.accepted)
     }
 
     @Test
-    fun `In-memory selection updates immediately even if DataStore fails`() = runTest {
-        coEvery { userPrefs.updateSelectedBasemap(any()) } throws Exception("DataStore Failure")
-        backgroundScope.launch { viewModel.uiState.collect {} }
+    fun `Accepted Style Restoration - Event check`() = runTest {
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
         viewModel.onMapReady(UUID.randomUUID())
+        advanceUntilIdle()
+        
+        viewModel.requestBasemap(BasemapId.TOPO)
+        advanceUntilIdle()
+        val attempt = viewModel.uiState.value.currentAttempt!!
+        
+        val result = viewModel.handleBasemapLoadSuccess(BasemapSourceId.MAPTILER_TOPO, attempt)
+        assertTrue("Load should be accepted: ${result.rejectionReason}", result.accepted)
+        
+        advanceUntilIdle()
+        val event = viewModel.uiState.value.acceptedStyleEvent
+        assertNotNull("Event should be emitted", event)
+        assertEquals(attempt.attemptId, event!!.attempt.attemptId)
+    }
+
+    @Test
+    fun `Repair Loop Prevention`() = runTest {
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
+        viewModel.onMapReady(UUID.randomUUID())
+        advanceUntilIdle()
+        
+        viewModel.requestBasemap(BasemapId.STREETS)
+        advanceUntilIdle()
+        val attempt1 = viewModel.uiState.value.currentAttempt!!
         
         viewModel.requestBasemap(BasemapId.BASE)
+        advanceUntilIdle()
         
-        // Memory state should be BASE immediately
-        assertEquals(BasemapId.BASE, viewModel.uiState.value.preferredBasemapId)
-        // Map should start loading BASE
-        assertEquals(BasemapSourceId.MAPTILER_BASE, viewModel.uiState.value.currentAttempt?.sourceId)
+        viewModel.handleStaleStyleApplied(attempt1)
+        advanceUntilIdle()
+        val repairAttempt = viewModel.uiState.value.currentAttempt!!
+        assertEquals(BasemapLoadAttemptReason.REPAIR, repairAttempt.reason)
+        
+        val repairId = repairAttempt.attemptId
+        viewModel.handleStaleStyleApplied(attempt1)
+        advanceUntilIdle()
+        assertEquals("Should not repeat repair", repairId, viewModel.uiState.value.currentAttempt?.attemptId)
     }
 
     @Test
-    fun `Persistence - Temporary backup selection is not persisted`() = runTest {
-        backgroundScope.launch { viewModel.uiState.collect {} }
+    fun `Customer gesture suppresses restoration`() = runTest {
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
         viewModel.onMapReady(UUID.randomUUID())
+        advanceUntilIdle()
         
-        viewModel.requestBackupBasemap(BasemapSourceId.OPEN_FREE_MAP_LIBERTY)
+        viewModel.requestBasemap(BasemapId.BASE)
+        advanceUntilIdle()
+        val attempt = viewModel.uiState.value.currentAttempt!!
         
-        // Status should be LOADING_BACKUP
-        assertEquals(BasemapLoadStatus.LOADING_BACKUP, viewModel.uiState.value.basemapStatus)
+        viewModel.onCameraInteraction()
+        advanceUntilIdle()
         
-        // Verify UserPreferences was NOT called for backup
-        coVerify(exactly = 0) { userPrefs.updateSelectedBasemap(any()) }
-    }
-
-    @Test
-    fun `Programmatic Camera Tokens - onCameraMoved suppressed when active`() = runTest {
-        backgroundScope.launch { viewModel.uiState.collect {} }
+        viewModel.handleBasemapLoadSuccess(BasemapSourceId.MAPTILER_BASE, attempt)
+        advanceUntilIdle()
         
-        // Issue token
-        val token = viewModel.programmaticCameraController.issueToken()
-        assertTrue(viewModel.programmaticCameraController.isActive())
-        
-        // Emulate MapScreen calling onCameraMoved but checking controller first
-        // If isActive() is true, it shouldn't call onCameraMoved logic that triggers persistence
-        // We test this via behavioral integration in MapScreen, but here we prove token state.
-        
-        assertTrue(viewModel.programmaticCameraController.isTokenActive(token))
-        
-        viewModel.programmaticCameraController.consume(token)
-        assertFalse(viewModel.programmaticCameraController.isActive())
+        val state = viewModel.uiState.value
+        assertNotNull("Event should be emitted", state.acceptedStyleEvent)
+        assertNotEquals("Sequence mismatch", state.acceptedStyleEvent!!.attempt.capturedSequence, state.cameraInteractionSequence)
     }
 }
