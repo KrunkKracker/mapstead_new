@@ -9,7 +9,7 @@ import java.util.concurrent.atomic.AtomicReference
 
 /**
  * Shared component for resilient basemap loading.
- * Ensures exactly one terminal loader-callback per attempt.
+ * Ensures exactly one authoritative callback (success or terminal) per attempt.
  */
 class BasemapStyleLoader(
     private val basemapProvider: BasemapProvider,
@@ -18,17 +18,20 @@ class BasemapStyleLoader(
     private val onStyleTerminated: (BasemapTerminalReason, BasemapLoadAttempt) -> Unit,
     private val onStaleStyleApplied: (BasemapLoadAttempt) -> Unit = {}
 ) {
+    private enum class OutcomeState { ACTIVE, SUCCEEDED, TERMINATED }
+
+    private data class AttemptGate(
+        val attempt: BasemapLoadAttempt,
+        val state: OutcomeState = OutcomeState.ACTIVE,
+        val terminalReason: BasemapTerminalReason? = null
+    )
+
+    private val gate = AtomicReference<AttemptGate?>(null)
     private var lastFailureListener: MapView.OnDidFailLoadingMapListener? = null
     private var timeoutJob: Job? = null
-    private var activeAttempt: BasemapLoadAttempt? = null
 
     /**
      * Loads a basemap style with a timeout.
-     * 
-     * @param mapView The native MapView for listener attachment.
-     * @param map The MapLibreMap instance.
-     * @param attempt The authoritative attempt identity.
-     * @param timeoutMs Maximum time to wait before reporting failure.
      */
     fun loadStyle(
         mapView: MapView,
@@ -36,19 +39,18 @@ class BasemapStyleLoader(
         attempt: BasemapLoadAttempt,
         timeoutMs: Long = 15000L
     ) {
-        // 1. Terminate previous in-flight loader activity as SUPERSEDED
-        activeAttempt?.let { prev ->
-            onStyleTerminated(BasemapTerminalReason.SUPERSEDED, prev)
+        // 1. Atomically supersede any previous active attempt
+        val prevGate = gate.getAndSet(AttemptGate(attempt))
+        if (prevGate != null && prevGate.state == OutcomeState.ACTIVE) {
+            onStyleTerminated(BasemapTerminalReason.SUPERSEDED, prevGate.attempt)
         }
-        cleanup(mapView)
         
-        activeAttempt = attempt
-        val outcome = AtomicReference<BasemapTerminalReason?>(null)
+        cleanupListeners(mapView)
 
         // 2. Create attempt-scoped failure listener
         val failureListener = MapView.OnDidFailLoadingMapListener { _ ->
-            if (activeAttempt?.attemptId == attempt.attemptId && outcome.compareAndSet(null, BasemapTerminalReason.PROVIDER_FAILURE)) {
-                cleanup(mapView)
+            if (tryTerminate(attempt, BasemapTerminalReason.PROVIDER_FAILURE)) {
+                cleanupListeners(mapView)
                 onStyleTerminated(BasemapTerminalReason.PROVIDER_FAILURE, attempt)
             }
         }
@@ -58,8 +60,8 @@ class BasemapStyleLoader(
         // 3. Setup loader-level timeout
         timeoutJob = scope.launch {
             delay(timeoutMs)
-            if (activeAttempt?.attemptId == attempt.attemptId && outcome.compareAndSet(null, BasemapTerminalReason.TIMEOUT)) {
-                cleanup(mapView)
+            if (tryTerminate(attempt, BasemapTerminalReason.TIMEOUT)) {
+                cleanupListeners(mapView)
                 onStyleTerminated(BasemapTerminalReason.TIMEOUT, attempt)
             }
         }
@@ -69,9 +71,8 @@ class BasemapStyleLoader(
 
         // 5. Request native style application
         map.setStyle(url) { style ->
-            if (activeAttempt?.attemptId == attempt.attemptId && outcome.get() == null) {
-                // Success: this call still owns the loader state and is not terminal
-                cleanup(mapView)
+            if (trySucceed(attempt)) {
+                cleanupListeners(mapView)
                 onStyleLoaded(style, attempt)
             } else {
                 // Stale completion (superseded, timed out, or failed)
@@ -80,7 +81,25 @@ class BasemapStyleLoader(
         }
     }
 
-    private fun cleanup(mapView: MapView) {
+    private fun tryTerminate(attempt: BasemapLoadAttempt, reason: BasemapTerminalReason): Boolean {
+        while (true) {
+            val current = gate.get() ?: return false
+            if (current.attempt != attempt || current.state != OutcomeState.ACTIVE) return false
+            val next = current.copy(state = OutcomeState.TERMINATED, terminalReason = reason)
+            if (gate.compareAndSet(current, next)) return true
+        }
+    }
+
+    private fun trySucceed(attempt: BasemapLoadAttempt): Boolean {
+        while (true) {
+            val current = gate.get() ?: return false
+            if (current.attempt != attempt || current.state != OutcomeState.ACTIVE) return false
+            val next = current.copy(state = OutcomeState.SUCCEEDED)
+            if (gate.compareAndSet(current, next)) return true
+        }
+    }
+
+    private fun cleanupListeners(mapView: MapView) {
         lastFailureListener?.let { mapView.removeOnDidFailLoadingMapListener(it) }
         lastFailureListener = null
         timeoutJob?.cancel()
@@ -91,10 +110,13 @@ class BasemapStyleLoader(
      * Disposes the loader, marking any active attempt as DISPOSED.
      */
     fun dispose(mapView: MapView) {
-        activeAttempt?.let { attempt ->
-            onStyleTerminated(BasemapTerminalReason.DISPOSED, attempt)
+        val current = gate.get()
+        if (current != null && current.state == OutcomeState.ACTIVE) {
+            if (tryTerminate(current.attempt, BasemapTerminalReason.DISPOSED)) {
+                onStyleTerminated(BasemapTerminalReason.DISPOSED, current.attempt)
+            }
         }
-        cleanup(mapView)
-        activeAttempt = null
+        cleanupListeners(mapView)
+        gate.set(null)
     }
 }

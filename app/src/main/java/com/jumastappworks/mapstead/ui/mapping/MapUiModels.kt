@@ -48,7 +48,7 @@ data class TerminalBasemapAttempt(
 data class BasemapLoadAttempt(
     val semanticGeneration: Long,
     val attemptId: Long,
-    val renderSessionId: UUID?,
+    val renderSessionId: UUID,
     val sourceId: BasemapSourceId,
     val provider: BasemapProviderType,
     val role: BasemapRole,
@@ -135,6 +135,13 @@ enum class SecondaryValidationResult {
     GENERATION_MISMATCH,
     ID_MISMATCH,
     DEFINITION_MISMATCH
+}
+
+sealed interface SecondaryControllerAction {
+    data object Accepted : SecondaryControllerAction
+    data class LoadAttempt(val attempt: BasemapLoadAttempt) : SecondaryControllerAction
+    data object Failed : SecondaryControllerAction
+    data object Ignored : SecondaryControllerAction
 }
 
 enum class MapEditingMode { Select, AddPoint, AddLine, EditLine, AddPolygon, EditPolygon }

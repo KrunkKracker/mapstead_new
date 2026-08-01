@@ -304,11 +304,6 @@ fun MapScreen(
         }
         val style = map.style ?: return@LaunchedEffect
         
-        // Final sanity check: Does the native map URL match what we expect?
-        // Note: MapLibre doesn't easily expose the current style URL in a reliable way without parsing,
-        // but we can trust that if we reached LOADED for the current attempt, we're mostly safe.
-        // If we wanted to be 100% sure, we could compare attribution or layers.
-        
         reinstallMapsteadOverlays(style, currentState)
         isMapReady = true
     }
@@ -331,7 +326,7 @@ fun MapScreen(
         val map = mapLibreMap ?: return@DisposableEffect onDispose {}
         
         val moveStartedListener = MapLibreMap.OnCameraMoveStartedListener { reason ->
-            viewModel.programmaticCameraController.onCameraMoveStarted(reason)
+            viewModel.programmaticCameraController.onCameraMoveStarted(reason, renderSessionId)
         }
         map.addOnCameraMoveStartedListener(moveStartedListener)
 
@@ -346,9 +341,16 @@ fun MapScreen(
                     observedTilt = pos.tilt,
                     renderSessionId = renderSessionId
                 )
-                if (result != ProgrammaticIdleResult.MATCHED_CURRENT_SESSION) {
-                    viewModel.onCameraInteraction()
-                    viewModel.onCameraMoved(target.latitude, target.longitude, pos.zoom, pos.bearing)
+                
+                when (result) {
+                    ProgrammaticIdleResult.MATCHED_CURRENT_SESSION -> { /* Suppressed */ }
+                    ProgrammaticIdleResult.CAMERA_DOES_NOT_MATCH -> { /* Stale programmatic move, suppress */ }
+                    ProgrammaticIdleResult.WRONG_RENDER_SESSION -> { /* Should not happen with isolation, suppress */ }
+                    ProgrammaticIdleResult.NO_PENDING_SESSION -> {
+                        // Genuine customer movement
+                        viewModel.onCameraInteraction()
+                        viewModel.onCameraMoved(target.latitude, target.longitude, pos.zoom, pos.bearing)
+                    }
                 }
             }
         }
@@ -357,7 +359,8 @@ fun MapScreen(
         onDispose {
             map.removeOnCameraMoveStartedListener(moveStartedListener)
             map.removeOnCameraIdleListener(idleListener)
-            viewModel.programmaticCameraController.clearForMapDisposal()
+            viewModel.programmaticCameraController.clearForMapDisposal(renderSessionId)
+            viewModel.onRenderSessionDisposed(renderSessionId)
         }
     }
 
@@ -419,14 +422,6 @@ fun MapScreen(
                         .include(LatLng(focus.ne.second, focus.ne.first))
                         .build()
                     
-                    // Fingerprinting bounds is harder without knowing the resulting camera position.
-                    // We'll mark it as a generic session that wins by generation for now,
-                    // or MapLibre might provide a better way to fingerprint the resulting target.
-                    // For now, we'll use a broad tolerance if needed or just skip fingerprinting for bounds
-                    // and rely on generation.
-                    // But our Controller requires fingerprint.
-                    
-                    // Actually, MapLibre's getCameraForLatLngBounds can give us the target.
                     val targetPos = map.getCameraForLatLngBounds(bounds, intArrayOf(focus.padding, focus.padding, focus.padding, focus.padding))
                     targetPos?.target?.let { target ->
                         viewModel.programmaticCameraController.beginProgrammaticMove(

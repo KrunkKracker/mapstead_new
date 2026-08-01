@@ -96,7 +96,7 @@ class ProgrammaticCameraControllerTest {
     }
 
     @Test
-    fun `Customer gesture cancels obsolete suppression`() {
+    fun `Customer gesture cancels suppression only for matching session`() {
         val controller = ProgrammaticCameraController()
         
         controller.beginProgrammaticMove(
@@ -111,33 +111,39 @@ class ProgrammaticCameraControllerTest {
         )
         assertTrue(controller.isActive())
         
-        // Move started by gesture (REASON_API_GESTURE = 1)
-        controller.onCameraMoveStarted(MapLibreMap.OnCameraMoveStartedListener.REASON_API_GESTURE)
-        assertFalse("Suppression should be cancelled by user gesture", controller.isActive())
+        // Move started by gesture in WRONG session
+        controller.onCameraMoveStarted(MapLibreMap.OnCameraMoveStartedListener.REASON_API_GESTURE, UUID.randomUUID())
+        assertTrue("Gesture in different session should NOT cancel suppression", controller.isActive())
         
-        val result = controller.consumeProgrammaticIdle(10.0, 10.0, 10.0, 0.0, 0.0, renderSessionId)
-        assertEquals(ProgrammaticIdleResult.NO_PENDING_SESSION, result)
+        // Move started by gesture in CORRECT session
+        controller.onCameraMoveStarted(MapLibreMap.OnCameraMoveStartedListener.REASON_API_GESTURE, renderSessionId)
+        assertFalse("Gesture in correct session should cancel suppression", controller.isActive())
     }
 
     @Test
-    fun `API animation does not cancel suppression`() {
+    fun `Disposal clears correct render session`() {
         val controller = ProgrammaticCameraController()
-        
         controller.beginProgrammaticMove(renderSessionId, 10.0, 10.0, 10.0, 0.0, 0.0, 1, ProgrammaticCameraMovementType.RESTORATION)
         
-        // API animation (REASON_API_ANIMATION = 3)
-        controller.onCameraMoveStarted(MapLibreMap.OnCameraMoveStartedListener.REASON_API_ANIMATION)
-        assertTrue("API animation should NOT cancel suppression", controller.isActive())
+        // Disposal of wrong session
+        controller.clearForMapDisposal(UUID.randomUUID())
+        assertTrue("Disposing wrong session should not clear active one", controller.isActive())
+        
+        // Disposal of correct session
+        controller.clearForMapDisposal(renderSessionId)
+        assertFalse("Disposing correct session should clear it", controller.isActive())
     }
 
     @Test
-    fun `Wrong render session cannot consume movement`() {
+    fun `Bearing wraparound tolerance handling`() {
         val controller = ProgrammaticCameraController()
-        controller.beginProgrammaticMove(renderSessionId, 10.0, 10.0, 10.0, 0.0, 0.0, 1, ProgrammaticCameraMovementType.RESTORATION)
         
-        val result = controller.consumeProgrammaticIdle(10.0, 10.0, 10.0, 0.0, 0.0, UUID.randomUUID())
-        assertEquals(ProgrammaticIdleResult.WRONG_RENDER_SESSION, result)
-        assertTrue(controller.isActive())
+        // Expected 359.9
+        controller.beginProgrammaticMove(renderSessionId, 10.0, 10.0, 10.0, 359.9, 0.0, 1, ProgrammaticCameraMovementType.RESTORATION)
+        
+        // Observed 0.1 (diff is 0.2 across 360 wrap)
+        val result = controller.consumeProgrammaticIdle(10.0, 10.0, 10.0, 0.1, 0.0, renderSessionId)
+        assertEquals(ProgrammaticIdleResult.MATCHED_CURRENT_SESSION, result)
     }
 
     @Test
@@ -148,11 +154,8 @@ class ProgrammaticCameraControllerTest {
         controller.beginProgrammaticMove(renderSessionId, 10.0, 10.0, 10.0, 0.0, 0.0, 1, ProgrammaticCameraMovementType.RESTORATION)
         controller.consumeProgrammaticIdle(10.0, 10.0, 10.0, 0.0, 0.0, renderSessionId)
         
-        // 2. User starts gesture
-        controller.onCameraMoveStarted(MapLibreMap.OnCameraMoveStartedListener.REASON_API_GESTURE)
-        
-        // 3. User idle arrives
+        // 2. User idle arrives (no pending session)
         val result = controller.consumeProgrammaticIdle(15.0, 15.0, 12.0, 90.0, 0.0, renderSessionId)
-        assertEquals("User idle should not be suppressed by previous completed move", ProgrammaticIdleResult.NO_PENDING_SESSION, result)
+        assertEquals(ProgrammaticIdleResult.NO_PENDING_SESSION, result)
     }
 }

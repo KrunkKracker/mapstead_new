@@ -45,9 +45,13 @@ class ProgrammaticCameraController {
      * Called when a camera move starts. If it was a customer gesture,
      * any active programmatic suppression is cancelled.
      */
-    fun onCameraMoveStarted(reason: Int) {
+    fun onCameraMoveStarted(reason: Int, renderSessionId: UUID) {
         if (reason == MapLibreMap.OnCameraMoveStartedListener.REASON_API_GESTURE) {
-            cancelForCustomerGesture()
+            currentSession?.let { session ->
+                if (session.renderSessionId == renderSessionId) {
+                    currentSession = null
+                }
+            }
         }
     }
 
@@ -69,17 +73,17 @@ class ProgrammaticCameraController {
             return ProgrammaticIdleResult.WRONG_RENDER_SESSION
         }
 
-        val latMatch = abs(session.expectedLatitude - observedLatitude) < 1e-6
-        val lngMatch = abs(session.expectedLongitude - observedLongitude) < 1e-6
-        val zoomMatch = abs(session.expectedZoom - observedZoom) < 0.05
+        val latMatch = abs(session.expectedLatitude - observedLatitude) < session.latTolerance
+        val lngMatch = abs(session.expectedLongitude - observedLongitude) < session.lngTolerance
+        val zoomMatch = abs(session.expectedZoom - observedZoom) < session.zoomTolerance
         
         // Normalize bearings for comparison
         val b1 = (session.expectedBearing % 360 + 360) % 360
         val b2 = (observedBearing % 360 + 360) % 360
         val diff = abs(b1 - b2)
-        val bearingMatch = diff < 0.5 || diff > 359.5
+        val bearingMatch = diff < session.bearingTolerance || diff > (360.0 - session.bearingTolerance)
         
-        val tiltMatch = abs(session.expectedTilt - observedTilt) < 0.1
+        val tiltMatch = abs(session.expectedTilt - observedTilt) < session.tiltTolerance
 
         return if (latMatch && lngMatch && zoomMatch && bearingMatch && tiltMatch) {
             currentSession = null
@@ -104,9 +108,11 @@ class ProgrammaticCameraController {
     }
 
     /**
-     * Clears all session state upon MapView disposal.
+     * Clears session state for a specific render session upon MapView disposal.
      */
-    fun clearForMapDisposal() {
-        currentSession = null
+    fun clearForMapDisposal(renderSessionId: UUID) {
+        if (currentSession?.renderSessionId == renderSessionId) {
+            currentSession = null
+        }
     }
 }

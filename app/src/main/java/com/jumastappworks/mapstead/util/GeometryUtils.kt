@@ -67,10 +67,20 @@ object GeometryUtils {
         if (vertices.size < 2) return false
         if (vertices.any { !validateCoordinate(it.first, it.second) }) return false
         for (i in 0 until vertices.size - 1) {
-            if (vertices[i] == vertices[i + 1]) return false
+            if (areCoordinatesEqual(vertices[i], vertices[i + 1])) return false
         }
-        if (vertices.distinct().size < 2) return false
-        return true
+        
+        var hasDistinct = false
+        for (i in 0 until vertices.size) {
+            for (j in i + 1 until vertices.size) {
+                if (!areCoordinatesEqual(vertices[i], vertices[j])) {
+                    hasDistinct = true
+                    break
+                }
+            }
+            if (hasDistinct) break
+        }
+        return hasDistinct
     }
 
     fun calculateSphericalArea(vertices: List<Pair<Double, Double>>): Double {
@@ -156,7 +166,7 @@ object GeometryUtils {
         return false
     }
 
-    fun areCoordinatesEqual(p1: Pair<Double, Double>, p2: Pair<Double, Double>, epsilon: Double = 1e-10): Boolean {
+    fun areCoordinatesEqual(p1: Pair<Double, Double>, p2: Pair<Double, Double>, epsilon: Double = 1e-9): Boolean {
         return abs(p1.first - p2.first) < epsilon && abs(p1.second - p2.second) < epsilon
     }
 

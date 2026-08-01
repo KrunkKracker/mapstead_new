@@ -8,9 +8,10 @@ Mapstead is a local-first, private property management tool designed for homeown
 > This is unreleased development software (v0.01). It is currently in a basemap runtime hardening pass.
 
 ## Current Development Status
-- **Phase 2.2h5R2 (Camera and Repair Closure)**: COMPLETE. Session matching, snapshot restoration, and repair epochs verified via automated gates.
-- **Phase 2.2h5R1 (Basemap Runtime Closure)**: COMPLETE.
-- **Phase 2.2h (Basemap Implementation)**: COMPLETE / INSTALLED ACCEPTANCE PENDING.
+- **Phase 2.2h5R3 (Loader Atomicity and Repair Epoch)**: COMPLETE.
+- **Phase 2.2h5R2 (Camera and Repair Closure)**: INCOMPLETE / CORRECTIVE WORK ACTIVE.
+- **Phase 2.2h5R1 (Basemap Runtime Closure)**: INCOMPLETE / CORRECTIVE WORK ACTIVE.
+- **Phase 2.2h (Basemap Implementation)**: IMPLEMENTED / INSTALLED ACCEPTANCE PENDING.
 - **Phase 3A (Unified Item Details)**: NOT STARTED.
 
 ## Core Features

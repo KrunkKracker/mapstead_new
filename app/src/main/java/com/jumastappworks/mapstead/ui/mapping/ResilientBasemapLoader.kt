@@ -6,8 +6,9 @@ import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.MapView
 import java.util.UUID
 
-private data class SecondaryRepairKey(
-    val staleAttemptId: Long,
+private data class SecondaryRepairEpochKey(
+    val renderSessionId: UUID,
+    val semanticGeneration: Long,
     val authoritativeSourceId: BasemapSourceId
 )
 
@@ -26,18 +27,19 @@ class SecondaryBasemapController(
     var currentStatus by mutableStateOf(SecondaryMapStatus.IDLE)
         private set
     
+    private var currentAttempt: BasemapLoadAttempt? = null
     private var attemptCounter by mutableLongStateOf(0L)
     private var semanticGeneration by mutableLongStateOf(0L)
     private var fallbackAttempted by mutableStateOf(false)
     
-    private val terminalAttempts = mutableMapOf<Long, BasemapTerminalReason>()
-    private val repairKeys = mutableSetOf<SecondaryRepairKey>()
+    private val terminalAttempts = mutableMapOf<BasemapAttemptKey, BasemapTerminalReason>()
+    private val repairEpochs = mutableMapOf<SecondaryRepairEpochKey, BasemapRepairEpochState>()
 
     fun startLoad(preferredBasemapId: BasemapId): BasemapLoadAttempt? {
         semanticGeneration++
         fallbackAttempted = false
         terminalAttempts.clear()
-        repairKeys.clear()
+        repairEpochs.clear()
 
         val primary = basemapProvider.getPrimaryBasemaps().find { it.preferredId == preferredBasemapId }
         val sourceId: BasemapSourceId
@@ -52,61 +54,87 @@ class SecondaryBasemapController(
         
         attemptCounter++
         requestedSourceId = sourceId
-        return createAttempt(sourceId, BasemapLoadAttemptReason.INITIAL)
+        return createAttempt(sourceId, BasemapLoadAttemptReason.INITIAL).also { currentAttempt = it }
     }
 
-    fun handleSuccess(attempt: BasemapLoadAttempt): SecondaryValidationResult {
-        val result = validate(attempt)
-        if (result != SecondaryValidationResult.ACCEPTED) {
-            triggerRepair(attempt)
-            return result
+    fun handleSuccess(attempt: BasemapLoadAttempt): SecondaryControllerAction {
+        val validation = validate(attempt)
+        if (validation != SecondaryValidationResult.ACCEPTED) {
+            return triggerRepair(attempt)
         }
         
         acceptedSourceId = attempt.sourceId
         requestedSourceId = null
         currentStatus = if (attempt.role == BasemapRole.PRIMARY) 
             SecondaryMapStatus.LOADED_PRIMARY else SecondaryMapStatus.LOADED_BACKUP
-        return result
+        
+        if (attempt.reason == BasemapLoadAttemptReason.REPAIR) {
+            val repairKey = SecondaryRepairEpochKey(renderSessionId, attempt.semanticGeneration, attempt.sourceId)
+            repairEpochs[repairKey] = BasemapRepairEpochState.EXHAUSTED
+        }
+
+        return SecondaryControllerAction.Accepted
     }
 
-    fun handleFailure(reason: BasemapTerminalReason, attempt: BasemapLoadAttempt, preferredBasemapId: BasemapId): BasemapLoadAttempt? {
+    fun handleTerminated(reason: BasemapTerminalReason, attempt: BasemapLoadAttempt, preferredBasemapId: BasemapId): SecondaryControllerAction {
         val validation = validate(attempt)
-        if (validation != SecondaryValidationResult.ACCEPTED) return null
+        terminalAttempts[attempt.toKey()] = reason
         
-        terminalAttempts[attempt.attemptId] = reason
+        val isRepair = attempt.reason == BasemapLoadAttemptReason.REPAIR
+        val repairKey = if (isRepair) SecondaryRepairEpochKey(renderSessionId, attempt.semanticGeneration, attempt.sourceId) else null
+
+        if (validation != SecondaryValidationResult.ACCEPTED) {
+            if (repairKey != null) repairEpochs[repairKey] = BasemapRepairEpochState.EXHAUSTED
+            return SecondaryControllerAction.Ignored
+        }
         
-        return if (attempt.role == BasemapRole.PRIMARY && !fallbackAttempted) {
-            fallbackAttempted = true
-            val backupId = basemapProvider.resolveDefaultBackup(preferredBasemapId)
-            requestedSourceId = backupId
-            attemptCounter++
-            currentStatus = SecondaryMapStatus.LOADING_BACKUP
-            createAttempt(backupId, BasemapLoadAttemptReason.BACKUP)
-        } else {
-            currentStatus = SecondaryMapStatus.FAILED
-            null
+        try {
+            if (reason == BasemapTerminalReason.TIMEOUT || reason == BasemapTerminalReason.PROVIDER_FAILURE) {
+                if (attempt.role == BasemapRole.PRIMARY && !fallbackAttempted && attempt.reason != BasemapLoadAttemptReason.REPAIR) {
+                    fallbackAttempted = true
+                    val backupId = basemapProvider.resolveDefaultBackup(preferredBasemapId)
+                    requestedSourceId = backupId
+                    attemptCounter++
+                    currentStatus = SecondaryMapStatus.LOADING_BACKUP
+                    return createAttempt(backupId, BasemapLoadAttemptReason.BACKUP).let { 
+                        currentAttempt = it
+                        if (it != null) SecondaryControllerAction.LoadAttempt(it) else SecondaryControllerAction.Failed
+                    }
+                } else {
+                    currentStatus = SecondaryMapStatus.FAILED
+                    return SecondaryControllerAction.Failed
+                }
+            }
+            return SecondaryControllerAction.Ignored
+        } finally {
+            if (repairKey != null) {
+                repairEpochs[repairKey] = BasemapRepairEpochState.EXHAUSTED
+            }
         }
     }
 
-    fun handleStaleStyleApplied(attempt: BasemapLoadAttempt): BasemapLoadAttempt? {
-        if (attempt.renderSessionId != renderSessionId) return null
+    fun handleStaleStyleApplied(attempt: BasemapLoadAttempt): SecondaryControllerAction {
+        if (attempt.renderSessionId != renderSessionId) return SecondaryControllerAction.Ignored
         return triggerRepair(attempt)
     }
 
-    private fun triggerRepair(attempt: BasemapLoadAttempt): BasemapLoadAttempt? {
-        val authSource = requestedSourceId ?: acceptedSourceId ?: return null
-        val key = SecondaryRepairKey(attempt.attemptId, authSource)
+    private fun triggerRepair(attempt: BasemapLoadAttempt): SecondaryControllerAction {
+        val authSource = requestedSourceId ?: acceptedSourceId ?: return SecondaryControllerAction.Ignored
+        val repairKey = SecondaryRepairEpochKey(renderSessionId, semanticGeneration, authSource)
         
-        if (!repairKeys.contains(key)) {
-            repairKeys.add(key)
-            if (repairKeys.size > 20) repairKeys.remove(repairKeys.iterator().next())
-            attemptCounter++
-            return createAttempt(authSource, BasemapLoadAttemptReason.REPAIR)
-        }
-        return null
+        if (repairEpochs[repairKey] != null) return SecondaryControllerAction.Ignored
+        
+        repairEpochs[repairKey] = BasemapRepairEpochState.IN_FLIGHT
+        if (repairEpochs.size > 20) repairEpochs.remove(repairEpochs.keys.first())
+        
+        attemptCounter++
+        val repairAttempt = createAttempt(authSource, BasemapLoadAttemptReason.REPAIR)
+        currentAttempt = repairAttempt
+        return if (repairAttempt != null) SecondaryControllerAction.LoadAttempt(repairAttempt) else SecondaryControllerAction.Ignored
     }
 
     private fun validate(attempt: BasemapLoadAttempt): SecondaryValidationResult {
+        if (terminalAttempts.containsKey(attempt.toKey())) return SecondaryValidationResult.TERMINAL_ATTEMPT
         if (attempt.renderSessionId != renderSessionId) return SecondaryValidationResult.STALE_SESSION
         if (attempt.semanticGeneration != semanticGeneration) return SecondaryValidationResult.GENERATION_MISMATCH
         if (attempt.attemptId != attemptCounter) return SecondaryValidationResult.ID_MISMATCH
@@ -115,8 +143,6 @@ class SecondaryBasemapController(
         val expectedStatus = if (attempt.role == BasemapRole.PRIMARY) SecondaryMapStatus.LOADING_PRIMARY else SecondaryMapStatus.LOADING_BACKUP
         if (currentStatus != expectedStatus) return SecondaryValidationResult.STATUS_MISMATCH
 
-        if (terminalAttempts.containsKey(attempt.attemptId)) return SecondaryValidationResult.TERMINAL_ATTEMPT
-        
         val def = basemapProvider.getDefinition(attempt.sourceId)
         if (def == null) return SecondaryValidationResult.DEFINITION_MISMATCH
         if (def.provider != attempt.provider) return SecondaryValidationResult.PROVIDER_MISMATCH
@@ -137,6 +163,10 @@ class SecondaryBasemapController(
             reason = reason,
             capturedSequence = 0L
         )
+    }
+
+    private fun BasemapLoadAttempt.toKey(): BasemapAttemptKey {
+        return BasemapAttemptKey(semanticGeneration, attemptId, renderSessionId, sourceId)
     }
 }
 
@@ -164,13 +194,22 @@ fun ResilientBasemapLoader(
             basemapProvider = basemapProvider,
             scope = scope,
             onStyleLoaded = { _, attempt ->
-                controller.handleSuccess(attempt)
+                val action = controller.handleSuccess(attempt)
+                if (action is SecondaryControllerAction.LoadAttempt) {
+                    activeAttempt = action.attempt
+                }
             },
             onStyleTerminated = { reason, attempt ->
-                activeAttempt = controller.handleFailure(reason, attempt, preferredBasemapId)
+                val action = controller.handleTerminated(reason, attempt, preferredBasemapId)
+                if (action is SecondaryControllerAction.LoadAttempt) {
+                    activeAttempt = action.attempt
+                }
             },
             onStaleStyleApplied = { attempt ->
-                controller.handleStaleStyleApplied(attempt)?.let { activeAttempt = it }
+                val action = controller.handleStaleStyleApplied(attempt)
+                if (action is SecondaryControllerAction.LoadAttempt) {
+                    activeAttempt = action.attempt
+                }
             }
         )
     }

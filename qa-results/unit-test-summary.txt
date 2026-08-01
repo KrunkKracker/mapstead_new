@@ -1,18 +1,17 @@
 JVM Unit Test Summary
-Phase: 2.2h5R2 (Camera Identity and Repair Closure)
+Phase: 2.2h5R3 (Loader Atomicity and Repair Epoch)
 Result: SUCCESS
-Total: 580
-Passed: 580
+Total: 591
+Passed: 591
 Failed: 0
 Skipped: 0
 Date: 2026-08-01
 
 Verified key basemap scenarios:
-- Session-matched camera interaction guard (Fingerprint matching)
-- Authoritative pre-load camera snapshot restoration
-- Repair epoch lifecycle (IN_FLIGHT/EXHAUSTED) loop prevention
-- Strict main map callback validation (Generation/Session/Source/Provider/Role)
-- Typed terminal tracking (TIMEOUT/PROVIDER_FAILURE/SUPERSEDED/DISPOSED)
-- Resilient secondary loader with separate accepted source attribution
+- Atomic loader outcomes (Mutual exclusivity of Success/Timeout)
+- Precise repair epoch lifecycle (Repair reason only exhausts)
+- Comprehensive camera snapshot cleanup on supersession/disposal
+- Session-scoped programmatic camera isolation
+- Secondary attribution truth (requestedSourceId vs acceptedSourceId)
 - Unconfigured provider safety (no-key verification: PASSED)
-- Baseline readiness and recreation state restoration
+- Baseline restoration for Preferences/MapView readiness

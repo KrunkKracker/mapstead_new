@@ -101,7 +101,6 @@ class MapBasemapStateMachineTest {
 
     @Test
     fun `Stored non-Streets preference never briefly requests Streets`() = runTest(testDispatcher) {
-        // Emulate preference already being TOPO upon VM creation
         userPrefsFlow.value = userPrefsFlow.value.copy(selectedBasemapId = BasemapId.TOPO)
         viewModel = MapViewModel(mapRepo, attachmentRepo, infraRepo, propRepo, resolver, locationProvider, basemapProvider, userPrefs, namingService, context, savedState)
         
@@ -226,6 +225,34 @@ class MapBasemapStateMachineTest {
     }
 
     @Test
+    fun `Normal success does not pre-exhaust repair epoch`() = runTest(testDispatcher) {
+        val job = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
+        viewModel.onMapReady(UUID.randomUUID())
+        advanceUntilIdle()
+        
+        viewModel.requestBasemap(BasemapId.STREETS)
+        advanceUntilIdle()
+        val attemptA = viewModel.uiState.value.currentAttempt!!
+        
+        viewModel.requestBasemap(BasemapId.BASE)
+        advanceUntilIdle()
+        val attemptB = viewModel.uiState.value.currentAttempt!!
+        
+        // B succeeds normally (REASON.INITIAL)
+        viewModel.handleBasemapLoadSuccess(attemptB)
+        advanceUntilIdle()
+        
+        // A completes late (STALE). Should trigger repair C because B didn't exhaust the epoch.
+        viewModel.handleStaleStyleApplied(attemptA)
+        advanceUntilIdle()
+        
+        val repairAttempt = viewModel.uiState.value.currentAttempt!!
+        assertEquals(BasemapLoadAttemptReason.REPAIR, repairAttempt.reason)
+        assertEquals(BasemapSourceId.MAPTILER_BASE, repairAttempt.sourceId)
+        job.cancel()
+    }
+
+    @Test
     fun `In-memory selection survives persistence failure`() = runTest(testDispatcher) {
         val job = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
         coEvery { userPrefs.updateSelectedBasemap(any()) } throws RuntimeException("Persistence Error")
@@ -256,7 +283,70 @@ class MapBasemapStateMachineTest {
     }
 
     @Test
-    fun `Wrong callback source is rejected`() = runTest(testDispatcher) {
+    fun `Camera Snapshot restoration equality`() = runTest(testDispatcher) {
+        val job = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
+        val session = UUID.randomUUID()
+        viewModel.onMapReady(session)
+        advanceUntilIdle()
+        
+        viewModel.requestBasemap(BasemapId.STREETS)
+        val attempt = viewModel.uiState.value.currentAttempt!!
+        
+        viewModel.captureCameraSnapshot(10.0, 20.0, 15.0, 45.0, 0.0, attempt)
+        
+        val snapshot = viewModel.getCameraSnapshot(attempt)
+        assertNotNull(snapshot)
+        assertEquals(10.0, snapshot!!.latitude, 1e-9)
+        assertEquals(20.0, snapshot.longitude, 1e-9)
+        assertEquals(15.0, snapshot.zoom, 1e-9)
+        assertEquals(45.0, snapshot.bearing, 1e-9)
+        
+        // Accepted and consumed
+        viewModel.consumeCameraSnapshot(attempt)
+        assertNull(viewModel.getCameraSnapshot(attempt))
+        job.cancel()
+    }
+
+    @Test
+    fun `Superseded attempt removes snapshot`() = runTest(testDispatcher) {
+        val job = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
+        viewModel.onMapReady(UUID.randomUUID())
+        advanceUntilIdle()
+        
+        viewModel.requestBasemap(BasemapId.STREETS)
+        val attempt1 = viewModel.uiState.value.currentAttempt!!
+        viewModel.captureCameraSnapshot(1.0, 1.0, 1.0, 0.0, 0.0, attempt1)
+        
+        viewModel.requestBasemap(BasemapId.BASE)
+        val attempt2 = viewModel.uiState.value.currentAttempt!!
+        
+        assertNull("Snapshot for superseded attempt should be removed", viewModel.getCameraSnapshot(attempt1))
+        job.cancel()
+    }
+
+    @Test
+    fun `Terminal reason preserved putIfAbsent`() = runTest(testDispatcher) {
+        val job = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
+        viewModel.onMapReady(UUID.randomUUID())
+        advanceUntilIdle()
+        
+        val attempt = viewModel.uiState.value.currentAttempt!!
+        viewModel.handleBasemapLoadTerminated(BasemapTerminalReason.TIMEOUT, attempt)
+        advanceUntilIdle()
+        
+        // Delivering another termination reason for same attempt. Should NOT overwrite TIMEOUT.
+        viewModel.handleBasemapLoadTerminated(BasemapTerminalReason.SUPERSEDED, attempt)
+        advanceUntilIdle()
+        
+        val result = viewModel.handleBasemapLoadSuccess(attempt)
+        assertFalse(result.accepted)
+        // Rejection reason should still be TERMINAL_ATTEMPT (validating against TIMEOUT)
+        assertEquals(BasemapLoadRejectionReason.TERMINAL_ATTEMPT, result.rejectionReason)
+        job.cancel()
+    }
+
+    @Test
+    fun `Full attempt identity mismatch rejected`() = runTest(testDispatcher) {
         val job = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
         viewModel.onMapReady(UUID.randomUUID())
         advanceUntilIdle()
@@ -264,9 +354,27 @@ class MapBasemapStateMachineTest {
         viewModel.requestBasemap(BasemapId.BASE)
         val attempt = viewModel.uiState.value.currentAttempt!!
         
-        // Callback with wrong sourceId
-        val result = viewModel.handleBasemapLoadSuccess(attempt.copy(sourceId = BasemapSourceId.MAPTILER_STREETS))
+        // Mismatch captured sequence
+        val result = viewModel.handleBasemapLoadSuccess(attempt.copy(capturedSequence = 999))
         assertFalse(result.accepted)
+        job.cancel()
+    }
+
+    @Test
+    fun `Wrong provider or role rejected`() = runTest(testDispatcher) {
+        val job = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
+        viewModel.onMapReady(UUID.randomUUID())
+        advanceUntilIdle()
+        
+        val attempt = viewModel.uiState.value.currentAttempt!!
+        
+        // Wrong provider
+        val result1 = viewModel.handleBasemapLoadSuccess(attempt.copy(provider = BasemapProviderType.OPEN_FREE_MAP))
+        assertFalse(result1.accepted)
+        
+        // Wrong role
+        val result2 = viewModel.handleBasemapLoadSuccess(attempt.copy(role = BasemapRole.BACKUP))
+        assertFalse(result2.accepted)
         job.cancel()
     }
 }

@@ -8,6 +8,10 @@
 
 **Status**: Resolved. The `AddPropertyViewModel.uiState` aggregation has been refactored to use typed batch combinations, removing all positional casting.
 
+## Loader Atomicity and Repair Epoch (RESOLVED 2026-08-01)
+
+**Status**: Resolved. Implemented atomic loader state machine, refined repair epoch lifecycle, and automated camera snapshot cleanup.
+
 ## Basemap Runtime Closure and Camera Identity (RESOLVED 2026-08-01)
 
 **Status**: Resolved. Implemented session-matched camera controller (fingerprinting), snapshot-based style restoration, repair epoch epochs, and strict callback validation.

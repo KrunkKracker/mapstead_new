@@ -23,8 +23,45 @@ import java.util.UUID
 import javax.inject.Inject
 import androidx.compose.material3.ExperimentalMaterial3Api
 import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlin.math.abs
 import kotlinx.serialization.json.*
+
+private fun LineEditState.pushUndo(): LineEditState {
+    val newStack = undoStack.toMutableList()
+    newStack.add(workingVertices)
+    if (newStack.size > 50) newStack.removeAt(0)
+    return this.copy(undoStack = newStack)
+}
+
+private fun LineEditState.popUndo(): LineEditState {
+    if (undoStack.isEmpty()) return this
+    val newStack = undoStack.toMutableList()
+    val prev = newStack.removeAt(newStack.size - 1)
+    return this.copy(workingVertices = prev, undoStack = newStack, selectedVertexIndex = null)
+}
+
+private fun PolygonEditState.pushUndo(): PolygonEditState {
+    val newStack = undoStack.toMutableList()
+    newStack.add(workingVertices)
+    if (newStack.size > 50) newStack.removeAt(0)
+    return this.copy(undoStack = newStack)
+}
+
+private fun PolygonEditState.popUndo(): PolygonEditState {
+    if (undoStack.isEmpty()) return this
+    val newStack = undoStack.toMutableList()
+    val prev = newStack.removeAt(newStack.size - 1)
+    return this.copy(workingVertices = prev, undoStack = newStack, selectedVertexIndex = null).withValidation()
+}
+
+private fun PolygonEditState.withValidation(): PolygonEditState {
+    return this.copy(
+        validation = GeometryUtils.validatePolygonGeometry(workingVertices),
+        workingAreaMeters = GeometryUtils.calculateSphericalArea(workingVertices),
+        workingPerimeterMeters = GeometryUtils.calculatePolygonPerimeter(workingVertices)
+    )
+}
 
 // Internal batch states for type-safe aggregation
 private data class CoreSelectionBatch(
@@ -717,7 +754,38 @@ class MapViewModel @Inject constructor(
         }
 
         MapUiState(
-            propertyId = c.propertyId, propertyName = c.propertyName, propertyLatitude = c.propertyData?.latitude, propertyLongitude = c.propertyData?.longitude, plan = c.plan, layers = lrs.layers, activeLayerId = lrs.activeLayerId, visibleFeatures = fts.visibleFeatures, hasMappedFeatures = fts.features.isNotEmpty(), selectedFeature = fts.selectedFeature, activeEditFeatureId = ee.pointMoveState?.featureId ?: ee.lineEditState?.featureId ?: ee.polygonEditState?.featureId ?: eg.polygonDraft?.id, cameraFocus = st.cameraFocus, editingMode = st.editingMode, mapLoading = st.mapLoading, mapErrorRes = st.mapErrorRes, layerPanelOpen = st.layerPanelOpen, featureEditorOpen = es.open, canAddPoint = wc.addToMapAvailability.isAvailable, canAddLine = wc.addToMapAvailability.isAvailable, canAddArea = wc.addToMapAvailability.isAvailable, isSavingFeature = es.isSaving, isDeletingFeature = es.isDeleting, featureOperationErrorRes = es.operationErrorRes, currentPhoneLocation = loc.location, currentPhoneLocationQuality = locationQuality, isLocatingPhone = loc.isLocating, locationIssue = loc.issue, pendingLocationPurpose = loc.purpose, showPermissionRationale = loc.rationale, hasRequestedLocationOnce = loc.requestedOnce, draftVertices = eg.draftVertices, canFinishLine = eg.draftVertices.size >= 2, 
+            propertyId = c.propertyId,
+            propertyName = c.propertyName,
+            propertyLatitude = c.propertyData?.latitude,
+            propertyLongitude = c.propertyData?.longitude,
+            plan = c.plan,
+            layers = lrs.layers,
+            activeLayerId = lrs.activeLayerId,
+            visibleFeatures = fts.visibleFeatures,
+            hasMappedFeatures = fts.features.isNotEmpty(),
+            selectedFeature = fts.selectedFeature,
+            activeEditFeatureId = ee.pointMoveState?.featureId ?: ee.lineEditState?.featureId ?: ee.polygonEditState?.featureId ?: eg.polygonDraft?.id ?: ep.newPointDraft?.id ?: (es.target as? FeatureEditorTarget.NewLine)?.draftId ?: (es.target as? FeatureEditorTarget.NewPoint)?.draftId ?: (es.target as? FeatureEditorTarget.NewPolygon)?.draftId ?: (es.target as? FeatureEditorTarget.EditPersistedLine)?.featureId ?: (es.target as? FeatureEditorTarget.EditPersistedPolygon)?.featureId,
+            cameraFocus = st.cameraFocus,
+            editingMode = st.editingMode,
+            mapLoading = st.mapLoading,
+            mapErrorRes = st.mapErrorRes,
+            layerPanelOpen = st.layerPanelOpen,
+            featureEditorOpen = es.open,
+            canAddPoint = wc.addToMapAvailability.isAvailable,
+            canAddLine = wc.addToMapAvailability.isAvailable,
+            canAddArea = wc.addToMapAvailability.isAvailable,
+            isSavingFeature = es.isSaving,
+            isDeletingFeature = es.isDeleting,
+            featureOperationErrorRes = es.operationErrorRes,
+            currentPhoneLocation = loc.location,
+            currentPhoneLocationQuality = locationQuality,
+            isLocatingPhone = loc.isLocating,
+            locationIssue = loc.issue,
+            pendingLocationPurpose = loc.purpose,
+            showPermissionRationale = loc.rationale,
+            hasRequestedLocationOnce = loc.requestedOnce,
+            draftVertices = eg.draftVertices,
+            canFinishLine = eg.draftVertices.size >= 2, 
             
             preferredBasemapId = bm.preferredBasemapId,
             requestedSourceId = bm.requestedSourceId,
@@ -734,7 +802,21 @@ class MapViewModel @Inject constructor(
             acceptedStyleEvent = bm.acceptedStyleEvent,
             
             polygonDraft = eg.polygonDraft,
- liveAreaMeters = eg.polygonDraft?.vertices?.let { GeometryUtils.calculateSphericalArea(it) } ?: 0.0, livePerimeterMeters = eg.polygonDraft?.vertices?.let { GeometryUtils.calculatePolygonPerimeter(it) } ?: 0.0, polygonValidationRes = polygonValidationMsg, canFinishPolygon = (eg.polygonDraft?.vertices?.size ?: 0) >= 3 && eg.polygonDraft?.validation is PolygonValidationResult.Valid, featureEditorTarget = es.target, featureEditorFeature = es.feature, pointMoveState = ee.pointMoveState, lineEditState = ee.lineEditState, polygonEditState = ee.polygonEditState, isLineEditDirty = ee.isLineEditDirty, showDiscardEditDialog = eu.showDiscardDialog, discardAction = eu.discardAction, canSaveLineEdit = ee.lineEditState?.let { it.workingVertices != it.originalVertices && GeometryUtils.validateLineGeometry(it.workingVertices) } ?: false, canSavePolygonEdit = ee.polygonEditState?.let { it.workingVertices != it.originalVertices && it.validation is PolygonValidationResult.Valid } ?: false, canSavePointMove = hasProposedMove,
+            liveAreaMeters = ee.polygonEditState?.workingAreaMeters ?: eg.polygonDraft?.vertices?.let { GeometryUtils.calculateSphericalArea(it) } ?: 0.0,
+            livePerimeterMeters = ee.polygonEditState?.workingPerimeterMeters ?: eg.polygonDraft?.vertices?.let { GeometryUtils.calculatePolygonPerimeter(it) } ?: 0.0,
+            polygonValidationRes = polygonValidationMsg,
+            canFinishPolygon = ((eg.polygonDraft?.vertices?.size ?: 0) >= 3 && eg.polygonDraft?.validation is PolygonValidationResult.Valid),
+            featureEditorTarget = es.target,
+            featureEditorFeature = es.feature,
+            pointMoveState = ee.pointMoveState,
+            lineEditState = ee.lineEditState,
+            polygonEditState = ee.polygonEditState,
+            isLineEditDirty = ee.isLineEditDirty,
+            showDiscardEditDialog = eu.showDiscardDialog,
+            discardAction = eu.discardAction,
+            canSaveLineEdit = ee.lineEditState?.let { it.workingVertices != it.originalVertices && GeometryUtils.validateLineGeometry(it.workingVertices) } ?: false,
+            canSavePolygonEdit = ee.polygonEditState?.let { it.workingVertices != it.originalVertices && it.validation is PolygonValidationResult.Valid } ?: false,
+            canSavePointMove = hasProposedMove,
             canEditShape = es.feature?.let { f -> 
                 val layer = lrs.layers.find { it.id == f.layerId }
                 if (layer?.isLocked == true) return@let false
@@ -747,13 +829,59 @@ class MapViewModel @Inject constructor(
                     else -> false 
                 } 
             } ?: true,
-            isEditorDirty = isActualEditorDirty(), sessionFeatureId = es.feature?.id, mapRecoveryActive = st.mapRecoveryActive, searchQuery = sr.query, searchResults = sr.results, isSearchActive = sr.searchActive, showLocationDetails = loc.showDetails, showStarterLayersDialog = ws.showStarterLayersDialog, showBoundaryAcknowledgment = ws.showBoundaryAcknowledgment, pendingGuidedPreset = ws.pendingGuidedPreset, guidedSession = ws.guidedSession, showGuidedAddMenu = ws.showGuidedAddMenu, guidanceDismissed = wp.guidanceDismissed, starterLayersCreated = wp.starterLayersCreated, starterLayersEligible = wp.starterLayersEligible, starterLayerOperation = wp.starterLayerOperation, starterLayerOperationActive = wp.starterLayerOperation != StarterLayerOperation.Idle, starterLayerErrorRes = wp.starterLayerErrorRes, isSavingBoundaryAcknowledgment = wp.isBoundaryAcknowledgmentSaving, boundaryAcknowledgmentErrorRes = wp.boundaryAcknowledgmentErrorRes, showPlacementMethod = wc.showPlacementMethod, showBasemapChooser = wc.showBasemapChooser, showHelpSheet = wc.showHelpSheet, showSafetyLimitations = wc.showSafetyLimitations, addToMapAvailability = wc.addToMapAvailability, isWorkflowActive = wc.addToMapAvailability.isAvailable == false && wc.addToMapAvailability.reasonRes == R.string.exclusive_workflow_active, measurementSystem = wc.measurementSystem, labelError = eu.labelError, accuracyError = eu.accuracyError, systemItemDraft = ep.systemItemDraft, linkSelection = eu.linkSelection, initialLinkSelection = eu.initialLinkSelection,
-            isNewUnsavedFeature = eg.isNewUnsaved, isPointMoveActive = ee.isPointMoveActive,
+            isEditorDirty = isActualEditorDirty(),
+            sessionFeatureId = es.feature?.id,
+            mapRecoveryActive = st.mapRecoveryActive,
+            searchQuery = sr.query,
+            searchResults = sr.results,
+            isSearchActive = sr.searchActive,
+            showLocationDetails = loc.showDetails,
+            showStarterLayersDialog = ws.showStarterLayersDialog,
+            showBoundaryAcknowledgment = ws.showBoundaryAcknowledgment,
+            pendingGuidedPreset = ws.pendingGuidedPreset,
+            guidedSession = ws.guidedSession,
+            showGuidedAddMenu = ws.showGuidedAddMenu,
+            guidanceDismissed = wp.guidanceDismissed,
+            starterLayersCreated = wp.starterLayersCreated,
+            starterLayersEligible = wp.starterLayersEligible,
+            starterLayerOperation = wp.starterLayerOperation,
+            starterLayerOperationActive = wp.starterLayerOperation != StarterLayerOperation.Idle,
+            starterLayerErrorRes = wp.starterLayerErrorRes,
+            isSavingBoundaryAcknowledgment = wp.isBoundaryAcknowledgmentSaving,
+            boundaryAcknowledgmentErrorRes = wp.boundaryAcknowledgmentErrorRes,
+            showPlacementMethod = wc.showPlacementMethod,
+            showBasemapChooser = wc.showBasemapChooser,
+            showHelpSheet = wc.showHelpSheet,
+            showSafetyLimitations = wc.showSafetyLimitations,
+            addToMapAvailability = wc.addToMapAvailability,
+            isWorkflowActive = wc.addToMapAvailability.isAvailable == false && wc.addToMapAvailability.reasonRes == R.string.exclusive_workflow_active,
+            measurementSystem = wc.measurementSystem,
+            labelError = eu.labelError,
+            accuracyError = eu.accuracyError,
+            systemItemDraft = ep.systemItemDraft,
+            linkSelection = eu.linkSelection,
+            initialLinkSelection = eu.initialLinkSelection,
+            isNewUnsavedFeature = eg.isNewUnsaved,
+            isPointMoveActive = ee.isPointMoveActive,
             stagedPhoto = ep.stagedPhoto,
             newPointDraft = ep.newPointDraft,
             saveOutcome = saveOutcome,
             pendingPhotoPurpose = ep.pendingPhotoPurpose,
-            guidedPrefill = ws.guidedSession?.let { session -> val suggestedLayerId = session.preset.suggestedLayer?.let { type -> userPreferencesRepository.getStarterLayerBinding(session.planId.toString(), type, wc.userPreferences.starterLayerBindings) }; GuidedFeaturePrefill(sessionId = session.sessionId, draftId = session.targetDraftId ?: UUID.randomUUID(), suggestedLabelRes = session.preset.suggestedLabelRes, suggestedLabel = session.suggestedLabel, suggestedCategory = session.preset.defaultCategory, suggestedLayerId = suggestedLayerId, systemItemPolicy = session.preset.systemItemPolicy, presetStyle = session.preset.presetStyle) },
+            guidedPrefill = ws.guidedSession?.let { session ->
+                val suggestedLayerId = session.preset.suggestedLayer?.let { type ->
+                    userPreferencesRepository.getStarterLayerBinding(session.planId.toString(), type, wc.userPreferences.starterLayerBindings)
+                }
+                GuidedFeaturePrefill(
+                    sessionId = session.sessionId,
+                    draftId = session.targetDraftId,
+                    suggestedLabelRes = session.preset.suggestedLabelRes,
+                    suggestedLabel = session.suggestedLabel,
+                    suggestedCategory = session.preset.defaultCategory,
+                    suggestedLayerId = suggestedLayerId,
+                    systemItemPolicy = session.preset.systemItemPolicy,
+                    presetStyle = session.preset.presetStyle
+                )
+            },
             openingToken = c.openingToken,
             polygonEditSaveBlockReasonRes = ee.polygonEditState?.let { if (it.validation !is PolygonValidationResult.Valid) R.string.poly_val_too_few else null },
             lineEditSaveBlockReasonRes = ee.lineEditState?.let { if (it.workingVertices == it.originalVertices) R.string.no_changes_to_save else null },
@@ -820,6 +948,21 @@ class MapViewModel @Inject constructor(
         _lineEditState.value = null; _polygonEditState.value = null; _polygonDraft.value = null; _draftVertices.value = emptyList(); _newPointDraft.value = null; _editingMode.value = MapEditingMode.Select; _featureEditorOpen.value = false; _featureEditorTarget.value = null; _selectedPersistedFeature.value = null; _featureEditorFeature.value = null; _isNewUnsavedFeature.value = false; _isPointMoveActive.value = false; _pointMoveState.value = null; _isLineEditDirty.value = false; _isPolygonEditDirty.value = false; _linkEditorSession.value = null
     }
 
+    private suspend fun finishPersistedGeometryEdit(id: UUID, reopen: Boolean) {
+        _lineEditState.value = null
+        _polygonEditState.value = null
+        _featureEditorTarget.value = null
+        _featureEditorOpen.value = false
+        _featureEditorFeature.value = null
+        _selectedPersistedFeature.value = null
+        _linkEditorSession.value = null
+        _editingMode.value = MapEditingMode.Select
+        if (reopen) {
+            val f = mapRepository.getFeatureById(id)
+            if (f != null) selectPersistedFeature(f, requestCameraFocus = false)
+        }
+    }
+
     private fun initializeSystemItemLinkState(featureId: UUID, policy: SystemItemPolicy, existingItemId: UUID?, isNewFeature: Boolean, suggestedName: String? = null, defaultCategory: String? = null) {
         val initialSelection: SystemItemLinkSelection = if (isNewFeature) { 
             if (policy == SystemItemPolicy.AUTOMATIC) SystemItemLinkSelection.CreateSuggested else SystemItemLinkSelection.None 
@@ -848,7 +991,8 @@ class MapViewModel @Inject constructor(
     private fun isActualEditorDirty(): Boolean {
         val hasGeometry = (_newPointDraft.value != null) || 
                 _draftVertices.value.isNotEmpty() || 
-                (_polygonDraft.value?.vertices?.isNotEmpty() ?: false)
+                (_polygonDraft.value?.vertices?.isNotEmpty() ?: false) ||
+                _isNewUnsavedFeature.value
         
         val linkSession = _linkEditorSession.value
         val linkDirty = linkSession?.let { it.currentSelection != it.initialSelection } ?: false
@@ -1014,709 +1158,11 @@ class MapViewModel @Inject constructor(
         }
     }
 
-    private fun issueAttempt(sourceId: BasemapSourceId, role: BasemapRole, reason: BasemapLoadAttemptReason) {
-        val def = basemapProvider.getDefinition(sourceId) ?: return
-        
-        _currentAttempt.value?.let { prev ->
-             terminalAttempts[prev.toKey()] = BasemapTerminalReason.SUPERSEDED
-        }
-
-        val attemptId = nextAttemptId++
-        
-        val attempt = BasemapLoadAttempt(
-            semanticGeneration = _basemapGeneration.value,
-            attemptId = attemptId,
-            renderSessionId = _renderSessionId.value,
-            sourceId = sourceId,
-            provider = def.provider,
-            role = role,
-            reason = reason,
-            capturedSequence = _cameraInteractionSequence.value
-        )
-        
-        _currentAttempt.value = attempt
-        _requestedSourceId.value = sourceId
-        _basemapStatus.value = if (role == BasemapRole.PRIMARY) BasemapLoadStatus.LOADING_PRIMARY else BasemapLoadStatus.LOADING_BACKUP
-    }
-
-    private fun reapplyActiveSource(sourceId: BasemapSourceId) {
-        issueAttempt(sourceId, basemapProvider.getDefinition(sourceId)?.role ?: BasemapRole.PRIMARY, BasemapLoadAttemptReason.REPAIR)
-    }
-
-    fun addPointAt(lng: Double, lat: Double) {
-        if (_isSavingFeature.value) return
-        val pid = _propertyId.value ?: return; val mid = _planId.value ?: return; val lid = _activeLayerId.value ?: return; val session = _guidedSession.value
-        val useId = session?.targetDraftId ?: UUID.randomUUID()
-        _newPointDraft.value = NewPointDraftState(id = useId, propertyId = pid, planId = mid, layerId = lid, longitude = lng, latitude = lat, accuracyMeters = null)
-        if (session?.expectedGeometry == GuidedMapGeometry.LOCATION) { 
-            savedStateHandle[KEY_GUIDED_PHASE] = GuidedMappingPhase.REVIEWING.name
-            savedStateHandle[KEY_GUIDED_DRAFT_ID] = useId.toString()
-            _guidedSession.value = session.copy(phase = GuidedMappingPhase.REVIEWING, targetDraftId = useId) 
-        }
-        val feature = MapFeatureEntity(id = useId, propertyId = pid, planId = mid, layerId = lid, geometryType = "POINT", geometryJson = GeometryUtils.buildPointGeoJson(lng, lat), coordinateSpace = "GEOGRAPHIC", styleJson = "{}", accuracySource = "Manual", label = session?.suggestedLabel ?: context.getString(R.string.label_default_point))
-        initializeSystemItemLinkState(featureId = useId, policy = session?.preset?.systemItemPolicy ?: SystemItemPolicy.MAP_ONLY, existingItemId = null, isNewFeature = true, suggestedName = session?.suggestedLabel, defaultCategory = session?.preset?.defaultCategory)
-        _featureEditorFeature.value = feature; _featureEditorOpen.value = true; _isNewUnsavedFeature.value = true; _featureEditorTarget.value = FeatureEditorTarget.NewPoint(useId); _selectedPersistedFeature.value = null; _editingMode.value = MapEditingMode.Select
-    }
-
-    fun confirmDiscardEdit() {
-        val action = _discardAction.value; _showDiscardEditDialog.value = false; _discardAction.value = null
-        when (action) {
-            PendingEditDiscardAction.CancelLineEdit -> cancelLineEdit()
-            PendingEditDiscardAction.CancelPolygonEdit -> cancelPolygonEdit()
-            PendingEditDiscardAction.DiscardNewPoint, PendingEditDiscardAction.DiscardNewLine, PendingEditDiscardAction.DiscardNewPolygon, PendingEditDiscardAction.DiscardGuidedCreation -> cancelGuidedCreation()
-            is PendingEditDiscardAction.ChangeProperty -> setProperty(action.propertyId, force = true)
-            is PendingEditDiscardAction.ChangePlan -> { val id = action.planId; if (id != null) selectPlan(id, force = true) }
-            null -> {}
-        }
-    }
-
-    fun tryCancelGuidedCreation() {
-        val session = _guidedSession.value ?: run { cancelGuidedCreation(); return }
-        val hasGeometry = (_newPointDraft.value != null) || 
-                _draftVertices.value.isNotEmpty() || 
-                (_polygonDraft.value?.vertices?.isNotEmpty() ?: false)
-        
-        if (hasGeometry) {
-            _discardAction.value = PendingEditDiscardAction.DiscardGuidedCreation
-            _showDiscardEditDialog.value = true
-        } else {
-            cancelGuidedCreation()
-        }
-    }
-
-    fun dismissDiscardDialog() { _showDiscardEditDialog.value = false; _discardAction.value = null }
-
-    fun cancelGuidedCreation() {
-        val token = savedStateHandle.get<String>(KEY_GUIDED_PHOTO_TOKEN)
-        if (token != null) {
-            attachmentRepository.deleteTempCameraCapture(token)
-        }
-        val inFlightToken = savedStateHandle.get<String>(KEY_IN_FLIGHT_TOKEN)
-        if (inFlightToken != null) {
-            attachmentRepository.deleteTempCameraCapture(inFlightToken)
-        }
-
-        savedStateHandle[KEY_GUIDED_SESSION_ID] = null
-        savedStateHandle[KEY_GUIDED_PRESET_ID] = null
-        savedStateHandle[KEY_GUIDED_DRAFT_ID] = null
-        savedStateHandle[KEY_GUIDED_PHASE] = null
-        savedStateHandle[KEY_GUIDED_NAME] = null
-        savedStateHandle[KEY_GUIDED_ITEM_ID] = null
-        savedStateHandle[KEY_GUIDED_TRACKING] = null
-        savedStateHandle[KEY_GUIDED_PHOTO_URI] = null
-        savedStateHandle[KEY_GUIDED_PHOTO_TOKEN] = null
-        setPendingLocationPurpose(null)
-        clearPendingPhotoPurpose()
-        clearInFlightCapture()
-        
-        _guidedSession.value = null
-        _pendingGuidedPreset.value = null
-        _showPlacementMethod.value = false
-        _showBoundaryAcknowledgment.value = false
-        _featureEditorOpen.value = false
-        _featureEditorTarget.value = null
-        _featureEditorFeature.value = null
-        _newPointDraft.value = null
-        _draftVertices.value = emptyList()
-        _polygonDraft.value = null
-        _selectedPersistedFeature.value = null
-        _featureOperationErrorRes.value = null
-        _isNewUnsavedFeature.value = false
-        _discardAction.value = null
-        _showDiscardEditDialog.value = false
-        _pointMoveState.value = null
-        _isPointMoveActive.value = false
-        _linkEditorSession.value = null
-        _stagedPhoto.value = StagedCreationPhotoState.None
-        _editingMode.value = MapEditingMode.Select
-    }
-
-    fun selectPersistedFeature(f: MapFeatureEntity?, requestCameraFocus: Boolean = true) {
-        if (_isSavingFeature.value || _isDeletingFeature.value) return
-        _selectedPersistedFeature.value = f
-        _featureEditorFeature.value = f
-        _featureEditorOpen.value = (f != null)
-        _featureEditorTarget.value = f?.let { FeatureEditorTarget.Persisted(it.id) }
-        _isNewUnsavedFeature.value = false
-        if (f != null) {
-            initializeSystemItemLinkState(featureId = f.id, policy = SystemItemPolicy.MAP_ONLY, existingItemId = f.infrastructureItemId, isNewFeature = false)
-            if (requestCameraFocus) { 
-                viewModelScope.launch { 
-                    getFeatureCenter(f.geometryJson)?.let { _cameraFocus.value = MapCameraFocus.Point(it.second, it.first, 17f) } 
-                } 
-            }
-        } else {
-            _linkEditorSession.value = null
-        }
-    }
-
-    override fun onCleared() {
-        super.onCleared()
-        // ViewModel destruction cleanup
-        if (_saveOutcome.value == null || _saveOutcome.value is GuidedSaveOutcome.Failure) {
-            clearStagedPhoto()
-        }
-    }
-
-    fun selectFeatureById(id: UUID) { viewModelScope.launch { mapRepository.getFeatureById(id)?.let { selectPersistedFeature(it) } } }
-
-    private fun getFeatureCenter(geometryJson: String): Pair<Double, Double>? {
-        return try {
-            val element = Json.decodeFromString<JsonObject>(geometryJson)
-            val type = element["type"]?.jsonPrimitive?.content
-            val coords = element["coordinates"]?.jsonArray
-            when (type) {
-                "Point" -> Pair(coords!![0].jsonPrimitive.double, coords[1].jsonPrimitive.double)
-                "LineString" -> { val pts = coords!!.map { it.jsonArray }; val mid = pts[pts.size / 2]; Pair(mid[0].jsonPrimitive.double, mid[1].jsonPrimitive.double) }
-                "Polygon" -> { val ring = coords!![0].jsonArray; val pts = ring.map { it.jsonArray }; Pair(pts.map { it[0].jsonPrimitive.double }.average(), pts.map { it[1].jsonPrimitive.double }.average()) }
-                else -> null
-            }
-        } catch (e: Exception) { null }
-    }
-
-    fun setGuidedPreset(p: GuidedMapPreset) {
-        val avail = evaluateAddToMapAvailability(
-            _propertyId.value, _plan.value, _layers.value, _activeLayerId.value,
-            _featureEditorTarget.value, _isSearchActive.value, _guidedSession.value,
-            _editingMode.value, _pointMoveState.value, _isSavingFeature.value, _isDeletingFeature.value,
-            _locationIssue.value, _isLocatingPhone.value, _pendingLocationPurpose.value,
-            _starterLayerOperation.value, _isBoundaryAcknowledgmentSaving.value, _showDiscardEditDialog.value,
-            _showBasemapChooser.value, _showHelpSheet.value, _showSafetyLimitations.value,
-            _showLocationDetails.value, _layerPanelOpen.value
-        )
-        if (!avail.isAvailable) { _mapErrorRes.value = avail.reasonRes; return }
-        
-        _showGuidedAddMenu.value = false
-        _pendingGuidedPreset.value = p; savedStateHandle[KEY_GUIDED_PRESET_ID] = p.id.name
-        if (p.geometry == GuidedMapGeometry.LOCATION) _showPlacementMethod.value = true else startGuidedMapping(p, PlacementMethod.TAP_MAP)
-    }
-
-    fun selectGuidedPresetAndCloseMenu(p: GuidedMapPreset) {
-        setGuidedPreset(p)
-    }
-
-    fun selectGuidedLocationMethod(m: PlacementMethod) {
-        val p = _pendingGuidedPreset.value ?: return; _showPlacementMethod.value = false; _pendingGuidedPreset.value = null; startGuidedMapping(p, m)
-    }
-
-    private fun startGuidedMapping(p: GuidedMapPreset, m: PlacementMethod) {
-        val pid = _propertyId.value ?: return; val mid = _planId.value ?: return; val lid = _activeLayerId.value ?: return; val sessionId = UUID.randomUUID(); val draftId = UUID.randomUUID()
-        val phase = if (m == PlacementMethod.MY_LOCATION) GuidedMappingPhase.SELECTING_PLACEMENT else GuidedMappingPhase.DRAWING
-        
-        _saveOutcome.value = null
-        savedStateHandle[KEY_GUIDED_SESSION_ID] = sessionId.toString()
-        savedStateHandle[KEY_GUIDED_PRESET_ID] = p.id.name
-        savedStateHandle[KEY_GUIDED_DRAFT_ID] = draftId.toString()
-        savedStateHandle[KEY_GUIDED_PHASE] = phase.name
-        
-        val newSession = GuidedMappingSession(sessionId = sessionId, propertyId = pid, planId = mid, preset = p, expectedGeometry = p.geometry, suggestedLabel = context.getString(p.suggestedLabelRes), targetDraftId = draftId, phase = phase)
-        _guidedSession.value = newSession
-        
-        if (m == PlacementMethod.MY_LOCATION) {
-            requestLocation(LocationRequestPurpose.CreatePoint)
-        } else {
-            _editingMode.value = when (p.geometry) { 
-                GuidedMapGeometry.LOCATION -> MapEditingMode.AddPoint
-                GuidedMapGeometry.ROUTE -> MapEditingMode.AddLine
-                GuidedMapGeometry.AREA -> {
-                    _polygonDraft.value = PolygonDraftState(id = draftId, propertyId = pid, planId = mid, layerId = lid)
-                    if (p.id == GuidedMapPresetId.PROPERTY_BOUNDARY && !_boundaryAcknowledged.value) { _showBoundaryAcknowledgment.value = true; MapEditingMode.Select }
-                    else MapEditingMode.AddPolygon
-                }
-            }
-        }
-
-        viewModelScope.launch {
-            val uniqueLabel = featureNamingService.generateUniqueName(pid, context.getString(p.suggestedLabelRes))
-            if (_guidedSession.value?.sessionId == sessionId) {
-                _guidedSession.value = _guidedSession.value?.copy(suggestedLabel = uniqueLabel)
-                savedStateHandle[KEY_GUIDED_NAME] = uniqueLabel
-            }
-        }
-    }
-
-    fun requestLocation(purpose: LocationRequestPurpose) {
-        _pendingLocationPurpose.value = purpose; savedStateHandle[KEY_PENDING_PURPOSE] = purpose; _isLocatingPhone.value = true; _locationIssue.value = null
-        if (purpose == LocationRequestPurpose.CreatePoint) _editingMode.value = MapEditingMode.AddPoint
-        viewModelScope.launch {
-            try {
-                when (val result = locationProvider.getCurrentLocation()) {
-                    is LocationResult.Success -> {
-                        val isOld = (System.currentTimeMillis() - result.timestampMillis) > 300000
-                        val isPoor = result.accuracyMeters > 15f
-                        if (isOld || isPoor) {
-                            val type = if (isOld && isPoor) LocationIssueType.CachedAndPoorAccuracy
-                            else if (isOld) LocationIssueType.CachedLocation
-                            else LocationIssueType.PoorAccuracy
-                            val msg = if (isOld && isPoor) R.string.location_issue_cached_and_poor
-                            else if (isOld) R.string.location_issue_cached
-                            else R.string.location_issue_poor_accuracy
-                            _locationIssue.value = LocationIssue(type, msg, canUseAnyway = true, purpose = purpose, cachedLocation = result)
-                        } else {
-                            _currentPhoneLocation.value = result
-                            if (purpose == LocationRequestPurpose.CreatePoint) handleLocationForCreatePoint(result)
-                            setPendingLocationPurpose(null)
-                        }
-                    }
-                    LocationResult.PermissionDenied -> { _locationIssue.value = LocationIssue(LocationIssueType.PermissionDenied, R.string.location_issue_permission_denied, purpose = purpose) }
-                    LocationResult.PermanentlyDenied -> { _locationIssue.value = LocationIssue(LocationIssueType.PermissionPermanentlyDenied, R.string.location_issue_permission_permanently_denied, canOpenAppSettings = true, purpose = purpose) }
-                    LocationResult.ProviderDisabled -> { _locationIssue.value = LocationIssue(LocationIssueType.ProviderDisabled, R.string.location_issue_provider_disabled, canOpenLocationSettings = true, purpose = purpose) }
-                    LocationResult.Timeout -> { _locationIssue.value = LocationIssue(LocationIssueType.Timeout, R.string.location_issue_timeout, canRetry = true, purpose = purpose) }
-                    LocationResult.LocationUnavailable -> { _locationIssue.value = LocationIssue(LocationIssueType.LocationUnavailable, R.string.location_issue_unavailable, canRetry = true, purpose = purpose) }
-                    is LocationResult.Error -> {
-                        _locationIssue.value = LocationIssue(LocationIssueType.GenericError, R.string.location_issue_generic, purpose = purpose)
-                    }
-                }
-            } catch (e: Exception) {
-                if (e is CancellationException) throw e
-                _locationIssue.value = LocationIssue(LocationIssueType.GenericError, R.string.location_issue_generic, purpose = purpose)
-            } finally {
-                _isLocatingPhone.value = false
-            }
-        }
-    }
-
-    fun handlePermanentDenial(purpose: LocationRequestPurpose) { _locationIssue.value = LocationIssue(LocationIssueType.PermissionPermanentlyDenied, R.string.location_issue_permission_permanently_denied, canOpenAppSettings = true, purpose = purpose) }
-    fun handleTransientDenial(purpose: LocationRequestPurpose) { _locationIssue.value = LocationIssue(LocationIssueType.PermissionDenied, R.string.location_issue_permission_denied, purpose = purpose) }
-    fun setPendingLocationPurpose(p: LocationRequestPurpose?) { 
-        _pendingLocationPurpose.value = p
-        if (p == null) savedStateHandle.remove<LocationRequestPurpose>(KEY_PENDING_PURPOSE)
-        else savedStateHandle[KEY_PENDING_PURPOSE] = p
-    }
-
-    fun saveFeature(f: MapFeatureEntity) {
-        if (!saveGate.tryLock()) return
-        val session = _linkEditorSession.value
-        if (session != null && session.featureId != f.id) {
-            _featureOperationErrorRes.value = R.string.error_occurred
-            saveGate.unlock()
-            return 
-        }
-        
-        _isSavingFeature.value = true
-        _featureOperationErrorRes.value = null
-        _labelError.value = null
-        _accuracyError.value = null
-        _saveOutcome.value = null
-        
-        if (f.label.isNullOrBlank()) {
-            _labelError.value = R.string.error_name_required
-            _isSavingFeature.value = false
-            saveGate.unlock()
-            return
-        }
-        
-        viewModelScope.launch {
-            try {
-                val selection = session?.currentSelection ?: SystemItemLinkSelection.None
-                val manualDraft = session?.pendingDraft
-                
-                if (selection is SystemItemLinkSelection.PendingDraft && (manualDraft == null || manualDraft.id != selection.draftId)) {
-                    _featureOperationErrorRes.value = R.string.error_occurred
-                    return@launch
-                }
-                
-                if (selection == SystemItemLinkSelection.CreateSuggested && manualDraft == null) {
-                    _featureOperationErrorRes.value = R.string.error_save_failed
-                    return@launch
-                }
-
-                val itemToCreate: InfrastructureItemEntity? = when (selection) {
-                    is SystemItemLinkSelection.PendingDraft -> if (manualDraft != null) InfrastructureItemEntity(id = manualDraft.id, propertyId = f.propertyId, name = f.label.trim(), category = manualDraft.category, subtype = manualDraft.subtype, isEmergencyItem = manualDraft.isEmergencyItem, emergencyInstructions = manualDraft.emergencyInstructions, status = "Active", createdAt = java.time.Instant.now(), updatedAt = java.time.Instant.now(), revision = 1L) else null
-                    SystemItemLinkSelection.CreateSuggested -> if (manualDraft != null) InfrastructureItemEntity(id = manualDraft.id, propertyId = f.propertyId, name = f.label.trim(), category = manualDraft.category, subtype = manualDraft.subtype, isEmergencyItem = manualDraft.isEmergencyItem, emergencyInstructions = manualDraft.emergencyInstructions, status = "Active", createdAt = java.time.Instant.now(), updatedAt = java.time.Instant.now(), revision = 1L) else null
-                    else -> null
-                }
-                val finalInfraId = when (selection) { is SystemItemLinkSelection.Existing -> selection.itemId; is SystemItemLinkSelection.PendingDraft -> itemToCreate?.id; SystemItemLinkSelection.CreateSuggested -> itemToCreate?.id; else -> null }
-                mapRepository.saveFeatureWithOptionalItem(f.copy(infrastructureItemId = finalInfraId), itemToCreate)
-
-                var photoSuccess = true
-                try {
-                    val currentPhoto = _stagedPhoto.value
-                    if (currentPhoto is StagedCreationPhotoState.Ready) {
-                        val uri = android.net.Uri.parse(currentPhoto.uri)
-                        val owner = AttachmentOwner.MapFeature(f.propertyId, f.id)
-                        val result = attachmentRepository.importAttachment(
-                            owner = owner,
-                            uri = uri,
-                            type = AttachmentType.Photo,
-                            customDisplayName = "Feature Photo",
-                            caption = null,
-                            cameraCaptureToken = currentPhoto.cameraCaptureToken
-                        )
-                        if (result !is AttachmentWriteResult.Success) {
-                            photoSuccess = false
-                        }
-                    }
-                } catch (e: Exception) {
-                    if (e is CancellationException) throw e
-                    android.util.Log.e("MapViewModel", "Photo import failed", e)
-                    photoSuccess = false
-                }
-
-                if (photoSuccess) {
-                    consumeStagedPhotoState()
-                    _saveOutcome.value = GuidedSaveOutcome.Success(f.id)
-                    cancelGuidedCreation()
-                    val updated = mapRepository.getFeatureById(f.id)
-                    selectPersistedFeature(updated, requestCameraFocus = false)
-                } else {
-                    _saveOutcome.value = GuidedSaveOutcome.FeatureSavedPhotoFailed(f.propertyId, f.id)
-                    _featureOperationErrorRes.value = R.string.feature_saved_with_photo_error
-                    // Keep the editor open to allow retry
-                    val updated = mapRepository.getFeatureById(f.id)
-                    if (updated != null) {
-                        _selectedPersistedFeature.value = updated
-                        _featureEditorFeature.value = updated
-                        _featureEditorTarget.value = FeatureEditorTarget.Persisted(updated.id)
-                        _isNewUnsavedFeature.value = false
-                    }
-                }
-            } catch (c: CancellationException) { throw c } catch (e: Exception) { _featureOperationErrorRes.value = R.string.error_save_failed; _saveOutcome.value = GuidedSaveOutcome.Failure } finally { _isSavingFeature.value = false; saveGate.unlock() }
-        }
-    }
-
-    fun deleteFeature(id: UUID) {
-        if (_isDeletingFeature.value) return
-        val pid = _propertyId.value ?: return; val mid = _planId.value ?: return
-        _isDeletingFeature.value = true; _featureOperationErrorRes.value = null
-        viewModelScope.launch {
-            try {
-                val res = mapRepository.softDeleteFeatureWithAttachments(pid, mid, id)
-                if (res is AttachmentDeleteState.Error) {
-                    _featureOperationErrorRes.value = res.messageRes
-                } else {
-                    cancelGuidedCreation() 
-                    _selectedPersistedFeature.value = null
-                    _featureEditorOpen.value = false
-                    _featureEditorTarget.value = null
-                }
-            } catch (e: Exception) {
-                if (e is CancellationException) throw e
-                _featureOperationErrorRes.value = R.string.error_occurred
-            } finally {
-                _isDeletingFeature.value = false
-            }
-        }
-    }
-
-    fun beginMovePoint(featureId: UUID) {
-        _features.value.find { it.id == featureId }?.let { f ->
-            val layer = _layers.value.find { it.id == f.layerId }
-            if (layer == null || layer.isLocked) {
-                _featureOperationErrorRes.value = R.string.layer_is_locked
-                return
-            }
-            getFeatureCenter(f.geometryJson)?.let { coords ->
-                _pointMoveState.value = PointMoveState(featureId = featureId, originalLongitude = coords.first, originalLatitude = coords.second)
-                _isPointMoveActive.value = true; _editingMode.value = MapEditingMode.Select
-                _featureEditorOpen.value = false; _featureEditorTarget.value = null
-                _selectedPersistedFeature.value = null
-            }
-        }
-    }
-    fun proposePointMove(lng: Double, lat: Double, isDragging: Boolean = false) { _pointMoveState.value = _pointMoveState.value?.copy(proposedLongitude = lng, proposedLatitude = lat, isDragging = isDragging) }
-    fun finishPointMoveDrag() { _pointMoveState.value = _pointMoveState.value?.copy(isDragging = false) }
-    fun cancelPointMove() { _pointMoveState.value = null; _isPointMoveActive.value = false }
-    fun cancelPointMoveDrag() { _pointMoveState.value = _pointMoveState.value?.copy(proposedLongitude = null, proposedLatitude = null, isDragging = false) }
-    fun confirmPointMove() {
-        val s = _pointMoveState.value ?: return
-        viewModelScope.launch {
-            mapRepository.getFeatureById(s.featureId)?.let { f ->
-                val updated = f.copy(geometryJson = GeometryUtils.buildPointGeoJson(s.proposedLongitude ?: s.originalLongitude, s.proposedLatitude ?: s.originalLatitude))
-                mapRepository.updateFeature(updated)
-                _pointMoveState.value = null; _isPointMoveActive.value = false; selectPersistedFeature(updated, requestCameraFocus = false)
-            }
-        }
-    }
-
-    fun beginPersistedShapeEdit(featureId: UUID) {
-        _features.value.find { it.id == featureId }?.let { f ->
-            when (f.geometryType) {
-                "LINESTRING" -> {
-                    val vertices = GeometryUtils.parseLineStringGeometry(f.geometryJson)
-                    _lineEditState.value = LineEditState(featureId = f.id, propertyId = f.propertyId, planId = f.planId, layerId = f.layerId, originalVertices = vertices, workingVertices = vertices, originalLengthMeters = GeometryUtils.calculatePathLength(vertices), workingLengthMeters = GeometryUtils.calculatePathLength(vertices))
-                    _editingMode.value = MapEditingMode.EditLine; _featureEditorOpen.value = false; _featureEditorTarget.value = FeatureEditorTarget.EditPersistedLine(f.id)
-                }
-                "POLYGON" -> {
-                    val pr = GeometryUtils.parsePolygonGeoJson(f.geometryJson)
-                    if (pr is PolygonParseResult.Success) {
-                        val vertices = pr.vertices
-                        _polygonEditState.value = PolygonEditState(featureId = f.id, propertyId = f.propertyId, planId = _planId.value!!, layerId = f.layerId, originalVertices = vertices, workingVertices = vertices, originalAreaMeters = GeometryUtils.calculateSphericalArea(vertices), workingAreaMeters = GeometryUtils.calculateSphericalArea(vertices), originalPerimeterMeters = GeometryUtils.calculatePolygonPerimeter(vertices), workingPerimeterMeters = GeometryUtils.calculatePolygonPerimeter(vertices))
-                        _editingMode.value = MapEditingMode.EditPolygon; _featureEditorOpen.value = false; _featureEditorTarget.value = FeatureEditorTarget.EditPersistedPolygon(f.id)
-                    }
-                }
-            }
-        }
-    }
-
-    fun updateVertexPosition(index: Int, lng: Double, lat: Double) {
-        _lineEditState.value?.let { s -> 
-            val updated = s.workingVertices.toMutableList()
-            if (index in updated.indices) { 
-                updated[index] = Pair(lng, lat)
-                _lineEditState.value = s.copy(workingVertices = updated, workingLengthMeters = GeometryUtils.calculatePathLength(updated)) 
-            } 
-        }
-        _polygonEditState.value?.let { s -> 
-            val updated = s.workingVertices.toMutableList()
-            if (index in updated.indices) { 
-                updated[index] = Pair(lng, lat)
-                val validation = GeometryUtils.validatePolygonGeometry(updated)
-                _polygonEditState.value = s.copy(workingVertices = updated, validation = validation, workingAreaMeters = GeometryUtils.calculateSphericalArea(updated), workingPerimeterMeters = GeometryUtils.calculatePolygonPerimeter(updated)) 
-            } 
-        }
-    }
-
-    fun selectEditVertex(index: Int?) {
-        _lineEditState.value?.let { _lineEditState.value = it.copy(selectedVertexIndex = index) }
-        _polygonEditState.value?.let { _polygonEditState.value = it.copy(selectedVertexIndex = index) }
-    }
-
-    fun beginVertexDrag(index: Int) { _lineEditState.value = _lineEditState.value?.copy(selectedVertexIndex = index, isDraggingVertex = true, dragStartVertices = _lineEditState.value?.workingVertices) }
-    fun updateVertexDrag(lng: Double, lat: Double) { _lineEditState.value?.let { s -> val i = s.selectedVertexIndex ?: return@let; val updated = s.workingVertices.toMutableList(); if (i in updated.indices) { updated[i] = Pair(lng, lat); _lineEditState.value = s.copy(workingVertices = updated, workingLengthMeters = GeometryUtils.calculatePathLength(updated)) } } }
-    fun finishVertexDrag() {
-        _lineEditState.value?.let { s ->
-            if (s.isDraggingVertex && s.dragStartVertices != null && s.dragStartVertices != s.workingVertices) {
-                val newUndo = (s.undoStack + listOf(s.dragStartVertices)).takeLast(50)
-                _lineEditState.value = s.copy(isDraggingVertex = false, dragStartVertices = null, undoStack = newUndo)
-            } else {
-                _lineEditState.value = s.copy(isDraggingVertex = false, dragStartVertices = null)
-            }
-        }
-    }
-    fun cancelVertexDrag() { _lineEditState.value?.let { s -> _lineEditState.value = s.copy(workingVertices = s.dragStartVertices ?: s.originalVertices, isDraggingVertex = false) } }
-    fun insertVertex(index: Int, coords: Pair<Double, Double>) {
-        _lineEditState.value?.let { s -> 
-            val newUndo = (s.undoStack + listOf(s.workingVertices)).takeLast(50)
-            val updated = s.workingVertices.toMutableList(); updated.add(index, coords)
-            _lineEditState.value = s.copy(workingVertices = updated, workingLengthMeters = GeometryUtils.calculatePathLength(updated), undoStack = newUndo, selectedVertexIndex = index) 
-        }
-        _polygonEditState.value?.let { s ->
-            val newUndo = (s.undoStack + listOf(s.workingVertices)).takeLast(50)
-            val updated = s.workingVertices.toMutableList(); updated.add(index, coords)
-            val validation = GeometryUtils.validatePolygonGeometry(updated)
-            _polygonEditState.value = s.copy(workingVertices = updated, validation = validation, workingAreaMeters = GeometryUtils.calculateSphericalArea(updated), workingPerimeterMeters = GeometryUtils.calculatePolygonPerimeter(updated), undoStack = newUndo, selectedVertexIndex = index)
-        }
-    }
-    fun deleteSelectedVertex() {
-        _lineEditState.value?.let { s -> 
-            val i = s.selectedVertexIndex ?: return@let; val updated = s.workingVertices.toMutableList()
-            if (updated.size > 2 && i in updated.indices) { 
-                val newUndo = (s.undoStack + listOf(s.workingVertices)).takeLast(50)
-                updated.removeAt(i)
-                _lineEditState.value = s.copy(workingVertices = updated, selectedVertexIndex = null, workingLengthMeters = GeometryUtils.calculatePathLength(updated), undoStack = newUndo) 
-            } 
-        }
-        _polygonEditState.value?.let { s ->
-            val i = s.selectedVertexIndex ?: return@let; val updated = s.workingVertices.toMutableList()
-            if (updated.size > 3 && i in updated.indices) {
-                val newUndo = (s.undoStack + listOf(s.workingVertices)).takeLast(50)
-                updated.removeAt(i)
-                val validation = GeometryUtils.validatePolygonGeometry(updated)
-                _polygonEditState.value = s.copy(workingVertices = updated, selectedVertexIndex = null, validation = validation, workingAreaMeters = GeometryUtils.calculateSphericalArea(updated), workingPerimeterMeters = GeometryUtils.calculatePolygonPerimeter(updated), undoStack = newUndo)
-            }
-        }
-    }
-    fun undoLineEdit() { _lineEditState.value?.let { s -> if (s.undoStack.isNotEmpty()) { val prev = s.undoStack.last(); _lineEditState.value = s.copy(workingVertices = prev, undoStack = s.undoStack.dropLast(1), workingLengthMeters = GeometryUtils.calculatePathLength(prev)) } } }
-
-    fun beginPolygonVertexDrag(index: Int) { _polygonEditState.value = _polygonEditState.value?.copy(draggingVertexIndex = index, dragStartVertices = _polygonEditState.value?.workingVertices) }
-    fun updatePolygonVertexDrag(lng: Double, lat: Double) { _polygonEditState.value?.let { s -> val i = s.draggingVertexIndex ?: return@let; val updated = s.workingVertices.toMutableList(); if (i in updated.indices) { updated[i] = Pair(lng, lat); _polygonEditState.value = s.copy(workingVertices = updated, validation = GeometryUtils.validatePolygonGeometry(updated), workingAreaMeters = GeometryUtils.calculateSphericalArea(updated), workingPerimeterMeters = GeometryUtils.calculatePolygonPerimeter(updated)) } } }
-    fun finishPolygonVertexDrag() {
-        _polygonEditState.value?.let { s ->
-            if (s.draggingVertexIndex != null && s.dragStartVertices != null && s.dragStartVertices != s.workingVertices) {
-                val newUndo = (s.undoStack + listOf(s.dragStartVertices)).takeLast(50)
-                _polygonEditState.value = s.copy(draggingVertexIndex = null, dragStartVertices = null, undoStack = newUndo)
-            } else {
-                _polygonEditState.value = s.copy(draggingVertexIndex = null, dragStartVertices = null)
-            }
-        }
-    }
-    fun cancelPolygonVertexDrag() { _polygonEditState.value?.let { s -> _polygonEditState.value = s.copy(workingVertices = s.dragStartVertices ?: s.originalVertices, draggingVertexIndex = null) } }
-    fun insertPolygonVertex(index: Int, coords: Pair<Double, Double>) = insertVertex(index, coords)
-    fun deletePolygonVertex(index: Int) {
-        _polygonEditState.value?.let { s -> 
-            val updated = s.workingVertices.toMutableList()
-            if (updated.size > 3 && index in updated.indices) { 
-                val newUndo = (s.undoStack + listOf(s.workingVertices)).takeLast(50)
-                updated.removeAt(index)
-                val validation = GeometryUtils.validatePolygonGeometry(updated)
-                _polygonEditState.value = s.copy(workingVertices = updated, validation = validation, workingAreaMeters = GeometryUtils.calculateSphericalArea(updated), workingPerimeterMeters = GeometryUtils.calculatePolygonPerimeter(updated), undoStack = newUndo)
-            }
-        }
-    }
-    fun undoPolygonEdit() { _polygonEditState.value?.let { s -> if (s.undoStack.isNotEmpty()) { val prev = s.undoStack.last(); _polygonEditState.value = s.copy(workingVertices = prev, undoStack = s.undoStack.dropLast(1), validation = GeometryUtils.validatePolygonGeometry(prev), workingAreaMeters = GeometryUtils.calculateSphericalArea(prev), workingPerimeterMeters = GeometryUtils.calculatePolygonPerimeter(prev)) } } }
-
-    fun addDraftVertex(lng: Double, lat: Double) {
-        val current = _draftVertices.value
-        val newVertex = Pair(lng, lat)
-        if (current.isNotEmpty() && GeometryUtils.areCoordinatesEqual(current.last(), newVertex, 1e-9)) return
-        _draftVertices.value = current + newVertex
-    }
-
-    fun undoDraftVertex() { if (_draftVertices.value.isNotEmpty()) _draftVertices.value = _draftVertices.value.dropLast(1) }
-    fun finishDraftLine(): UUID? { 
-        val pid = _propertyId.value ?: return null; val mid = _planId.value ?: return null; val lid = _activeLayerId.value ?: return null
-        val vertices = _draftVertices.value; if (vertices.size < 2) return null
-        val session = _guidedSession.value
-        val useId = session?.targetDraftId ?: UUID.randomUUID()
-        val feature = MapFeatureEntity(id = useId, propertyId = pid, planId = mid, layerId = lid, geometryType = "LINESTRING", geometryJson = GeometryUtils.buildLineStringGeoJson(vertices), coordinateSpace = "GEOGRAPHIC", styleJson = "{}", accuracySource = "Manual", label = session?.suggestedLabel ?: context.getString(R.string.label_default_point))
-        if (session != null && session.expectedGeometry == GuidedMapGeometry.ROUTE) {
-            savedStateHandle[KEY_GUIDED_PHASE] = GuidedMappingPhase.REVIEWING.name
-            savedStateHandle[KEY_GUIDED_DRAFT_ID] = useId.toString()
-            _guidedSession.value = session.copy(phase = GuidedMappingPhase.REVIEWING, targetDraftId = useId)
-        }
-        _featureEditorFeature.value = feature; _featureEditorOpen.value = true; _isNewUnsavedFeature.value = true; _featureEditorTarget.value = FeatureEditorTarget.NewLine(useId); _editingMode.value = MapEditingMode.Select; return useId 
-    }
-    fun cancelDraftLine() { _draftVertices.value = emptyList(); _editingMode.value = MapEditingMode.Select }
-
-    fun beginAddPoint(): Boolean { if (!uiState.value.addToMapAvailability.isAvailable) return false; _editingMode.value = MapEditingMode.AddPoint; return true }
-    fun beginAddLine(): Boolean { if (!uiState.value.addToMapAvailability.isAvailable) return false; _editingMode.value = MapEditingMode.AddLine; return true }
-    fun beginAddPolygon(): Boolean {
-        if (!uiState.value.addToMapAvailability.isAvailable) return false
-        val pid = _propertyId.value ?: return false
-        val mid = _planId.value ?: return false
-        val lid = _activeLayerId.value ?: return false
-        _polygonDraft.value = PolygonDraftState(propertyId = pid, planId = mid, layerId = lid)
-        _editingMode.value = MapEditingMode.AddPolygon
-        _selectedPersistedFeature.value = null
-        return true
-    }
-
-    fun addPolygonVertex(lng: Double, lat: Double) {
-        val pid = _propertyId.value ?: return; val mid = _planId.value ?: return; val lid = _activeLayerId.value ?: return
-        val current = _polygonDraft.value ?: PolygonDraftState(propertyId = pid, planId = mid, layerId = lid)
-        if (current.vertices.isNotEmpty() && GeometryUtils.areCoordinatesEqual(current.vertices.last(), Pair(lng, lat), 1e-9)) return
-        val updated = current.vertices + Pair(lng, lat)
-        _polygonDraft.value = current.copy(vertices = updated, validation = GeometryUtils.validatePolygonGeometry(updated))
-    }
-    fun undoPolygonVertex() { _polygonDraft.value?.let { s -> if (s.vertices.isNotEmpty()) { val updated = s.vertices.dropLast(1); _polygonDraft.value = s.copy(vertices = updated, validation = GeometryUtils.validatePolygonGeometry(updated)) } } }
-    fun finishAddPolygon(): UUID? { 
-        val s = _polygonDraft.value ?: return null; if (s.validation !is PolygonValidationResult.Valid) return null
-        val session = _guidedSession.value
-        val useId = s.id
-        val feature = MapFeatureEntity(id = useId, propertyId = s.propertyId, planId = s.planId, layerId = s.layerId, geometryType = "POLYGON", geometryJson = GeometryUtils.buildPolygonGeoJson(s.vertices), coordinateSpace = "GEOGRAPHIC", styleJson = "{}", accuracySource = "Manual", label = session?.suggestedLabel ?: context.getString(R.string.label_default_point))
-        if (session != null && session.expectedGeometry == GuidedMapGeometry.AREA) {
-            savedStateHandle[KEY_GUIDED_PHASE] = GuidedMappingPhase.REVIEWING.name
-            savedStateHandle[KEY_GUIDED_DRAFT_ID] = useId.toString()
-            _guidedSession.value = session.copy(phase = GuidedMappingPhase.REVIEWING, targetDraftId = useId)
-        }
-        _featureEditorFeature.value = feature; _featureEditorOpen.value = true; _isNewUnsavedFeature.value = true; _featureEditorTarget.value = FeatureEditorTarget.NewPolygon(useId); _editingMode.value = MapEditingMode.Select; return useId 
-    }
-    fun cancelPolygonDraft() { _polygonDraft.value = null; _editingMode.value = MapEditingMode.Select }
-
-    fun saveLineEdit() {
-        val s = _lineEditState.value ?: return
-        _isSavingFeature.value = true
-        _lineEditState.value = s.copy(isSaving = true)
-        viewModelScope.launch {
-            try {
-                val f = mapRepository.getFeatureById(s.featureId)
-                if (f != null) {
-                    val updated = f.copy(geometryJson = GeometryUtils.buildLineStringGeoJson(s.workingVertices))
-                    mapRepository.updateFeature(updated)
-                    _isSavingFeature.value = false
-                    finishPersistedGeometryEdit(updated.id, reopen = true)
-                } else {
-                    _isSavingFeature.value = false
-                    finishPersistedGeometryEdit(s.featureId, reopen = false)
-                }
-            } catch (e: Exception) {
-                if (e is CancellationException) throw e
-                _isSavingFeature.value = false
-                _lineEditState.value = _lineEditState.value?.copy(isSaving = false)
-                _featureOperationErrorRes.value = R.string.error_save_failed
-            }
-        }
-    }
-
-    private fun cancelLineEdit() {
-        val fid = _lineEditState.value?.featureId
-        if (fid != null) {
-            viewModelScope.launch { finishPersistedGeometryEdit(fid, reopen = true) }
-        } else {
-            _lineEditState.value = null
-            _editingMode.value = MapEditingMode.Select
-        }
-    }
-
-    fun tryCancelLineEdit() {
-        val s = _lineEditState.value ?: return
-        if (s.workingVertices != s.originalVertices) {
-            _discardAction.value = PendingEditDiscardAction.CancelLineEdit
-            _showDiscardEditDialog.value = true
-        } else {
-            cancelLineEdit()
-        }
-    }
-
-    fun savePolygonEdit() {
-        val s = _polygonEditState.value ?: return
-        if (s.validation !is PolygonValidationResult.Valid) return
-        _isSavingFeature.value = true
-        _polygonEditState.value = s.copy(isSaving = true)
-        viewModelScope.launch {
-            try {
-                val f = mapRepository.getFeatureById(s.featureId)
-                if (f != null) {
-                    val updated = f.copy(geometryJson = GeometryUtils.buildPolygonGeoJson(s.workingVertices))
-                    mapRepository.updateFeature(updated)
-                    _isSavingFeature.value = false
-                    finishPersistedGeometryEdit(updated.id, reopen = true)
-                } else {
-                    _isSavingFeature.value = false
-                    finishPersistedGeometryEdit(s.featureId, reopen = false)
-                }
-            } catch (e: Exception) {
-                if (e is CancellationException) throw e
-                _isSavingFeature.value = false
-                _polygonEditState.value = _polygonEditState.value?.copy(isSaving = false)
-                _featureOperationErrorRes.value = R.string.error_save_failed
-            }
-        }
-    }
-
-    private fun cancelPolygonEdit() {
-        val fid = _polygonEditState.value?.featureId
-        if (fid != null) {
-            viewModelScope.launch { finishPersistedGeometryEdit(fid, reopen = true) }
-        } else {
-            _polygonEditState.value = null
-            _editingMode.value = MapEditingMode.Select
-        }
-    }
-
-    fun tryCancelPolygonEdit() {
-        val s = _polygonEditState.value ?: return
-        if (s.workingVertices != s.originalVertices) {
-            _discardAction.value = PendingEditDiscardAction.CancelPolygonEdit
-            _showDiscardEditDialog.value = true
-        } else {
-            cancelPolygonEdit()
-        }
-    }
-
-    private suspend fun finishPersistedGeometryEdit(id: UUID, reopen: Boolean) {
-        _lineEditState.value = null; _polygonEditState.value = null; _featureEditorTarget.value = null; _featureEditorOpen.value = false; _featureEditorFeature.value = null; _selectedPersistedFeature.value = null; _linkEditorSession.value = null; _editingMode.value = MapEditingMode.Select
-        if (reopen) { val f = mapRepository.getFeatureById(id); if (f != null) selectPersistedFeature(f, requestCameraFocus = false) }
-    }
-
-    fun setSearchQuery(query: String) { _searchQuery.value = query }
-    fun setSearchActive(active: Boolean) { 
-        _isSearchActive.value = active
-        if (!active) _searchQuery.value = ""
-    }
-    fun openSearchResult(result: MapSearchResult) { selectFeatureById(result.featureId) }
-    fun revealAndOpenSearchResult(result: MapSearchResult) { 
-        val l = _layers.value.find { it.id == result.layerId }
-        if (l != null && !l.isVisible) { viewModelScope.launch { mapRepository.updateLayer(l.copy(isVisible = true)); selectFeatureById(result.featureId) } }
-        else { selectFeatureById(result.featureId) }
-    }
-
     private fun BasemapLoadAttempt.toKey(): BasemapAttemptKey {
         return BasemapAttemptKey(
             semanticGeneration = this.semanticGeneration,
             attemptId = this.attemptId,
-            renderSessionId = this.renderSessionId ?: UUID(0L, 0L),
+            renderSessionId = this.renderSessionId,
             sourceId = this.sourceId
         )
     }
@@ -1730,18 +1176,27 @@ class MapViewModel @Inject constructor(
             return BasemapLoadSuccessResult(false, attempt.sourceId, rejectionReason = BasemapLoadRejectionReason.TERMINAL_ATTEMPT)
         }
 
-        if (attempt.renderSessionId != _renderSessionId.value) {
-            return BasemapLoadSuccessResult(false, attempt.sourceId, rejectionReason = BasemapLoadRejectionReason.STALE_SESSION)
+        // Phase 2.2h5R3: Full identity check
+        val current = _currentAttempt.value
+        if (current == null ||
+            attempt.attemptId != current.attemptId ||
+            attempt.renderSessionId != current.renderSessionId ||
+            attempt.semanticGeneration != current.semanticGeneration ||
+            attempt.sourceId != current.sourceId ||
+            attempt.capturedSequence != current.capturedSequence ||
+            attempt.reason != current.reason ||
+            attempt.role != current.role ||
+            attempt.provider != current.provider
+        ) {
+            val reason = when {
+                attempt.renderSessionId != _renderSessionId.value -> BasemapLoadRejectionReason.STALE_SESSION
+                attempt.semanticGeneration != _basemapGeneration.value -> BasemapLoadRejectionReason.GENERATION_MISMATCH
+                attempt.sourceId != _requestedSourceId.value -> BasemapLoadRejectionReason.SOURCE_MISMATCH
+                else -> BasemapLoadRejectionReason.ID_MISMATCH
+            }
+            return BasemapLoadSuccessResult(false, attempt.sourceId, rejectionReason = reason)
         }
-        if (attempt.semanticGeneration != _basemapGeneration.value) {
-            return BasemapLoadSuccessResult(false, attempt.sourceId, rejectionReason = BasemapLoadRejectionReason.GENERATION_MISMATCH)
-        }
-        if (attempt.attemptId != _currentAttempt.value?.attemptId) {
-            return BasemapLoadSuccessResult(false, attempt.sourceId, rejectionReason = BasemapLoadRejectionReason.ID_MISMATCH)
-        }
-        if (attempt.sourceId != _requestedSourceId.value) {
-             return BasemapLoadSuccessResult(false, attempt.sourceId, rejectionReason = BasemapLoadRejectionReason.SOURCE_MISMATCH)
-        }
+
         if (_basemapStatus.value != expectedStatus) {
             return BasemapLoadSuccessResult(false, attempt.sourceId, rejectionReason = BasemapLoadRejectionReason.STATUS_MISMATCH)
         }
@@ -1778,9 +1233,11 @@ class MapViewModel @Inject constructor(
             _retryPrimaryAvailable.value = true
         }
         
-        // Close repair epoch if it was one
-        val repairKey = BasemapRepairKey(attempt.renderSessionId!!, attempt.semanticGeneration, sourceId)
-        repairEpochs[repairKey] = BasemapRepairEpochState.EXHAUSTED
+        // Only exhaust repair epoch if it's genuinely REPAIR
+        if (attempt.reason == BasemapLoadAttemptReason.REPAIR) {
+            val repairKey = BasemapRepairKey(attempt.renderSessionId, attempt.semanticGeneration, sourceId)
+            repairEpochs[repairKey] = BasemapRepairEpochState.EXHAUSTED
+        }
 
         _acceptedStyleEvent.value = AcceptedBasemapStyleEvent(nextEventId++, attempt)
         
@@ -1792,7 +1249,7 @@ class MapViewModel @Inject constructor(
         val result = validateAttempt(attempt, expectedStatus)
         
         val key = attempt.toKey()
-        terminalAttempts[key] = reason
+        terminalAttempts.putIfAbsent(key, reason)
         if (terminalAttempts.size > 100) terminalAttempts.remove(terminalAttempts.keys.first())
         
         // Remove snapshots for terminal attempts
@@ -1801,14 +1258,14 @@ class MapViewModel @Inject constructor(
         if (!result.accepted) {
             // If it was the current repair attempt that failed, exhaust the epoch
             if (attempt.reason == BasemapLoadAttemptReason.REPAIR) {
-                val repairKey = BasemapRepairKey(attempt.renderSessionId!!, attempt.semanticGeneration, attempt.sourceId)
+                val repairKey = BasemapRepairKey(attempt.renderSessionId, attempt.semanticGeneration, attempt.sourceId)
                 repairEpochs[repairKey] = BasemapRepairEpochState.EXHAUSTED
             }
             return
         }
         
         if (reason == BasemapTerminalReason.TIMEOUT || reason == BasemapTerminalReason.PROVIDER_FAILURE) {
-            if (attempt.role == BasemapRole.PRIMARY) {
+            if (attempt.role == BasemapRole.PRIMARY && attempt.reason != BasemapLoadAttemptReason.REPAIR) {
                 if (!_fallbackAttempted.value) {
                     _fallbackAttempted.value = true
                     val backupSourceId = basemapProvider.resolveDefaultBackup(_preferredBasemapId.value)
@@ -1818,15 +1275,16 @@ class MapViewModel @Inject constructor(
                     _basemapErrorRes.value = R.string.failed_to_load_basemap
                     _retryPrimaryAvailable.value = true
                 }
-            } else {
+            } else if (attempt.role != BasemapRole.PRIMARY || attempt.reason == BasemapLoadAttemptReason.REPAIR) {
                 _basemapStatus.value = BasemapLoadStatus.FAILED
                 _basemapErrorRes.value = R.string.failed_to_load_basemap
                 _retryPrimaryAvailable.value = true
             }
         }
         
+        // Only exhaust if it's genuinely REPAIR
         if (attempt.reason == BasemapLoadAttemptReason.REPAIR) {
-             val repairKey = BasemapRepairKey(attempt.renderSessionId!!, attempt.semanticGeneration, attempt.sourceId)
+             val repairKey = BasemapRepairKey(attempt.renderSessionId, attempt.semanticGeneration, attempt.sourceId)
              repairEpochs[repairKey] = BasemapRepairEpochState.EXHAUSTED
         }
     }
@@ -1836,6 +1294,8 @@ class MapViewModel @Inject constructor(
             _currentAttempt.value?.let { attempt ->
                 handleBasemapLoadTerminated(BasemapTerminalReason.DISPOSED, attempt)
             }
+            // Clean up snapshots owned by this session
+            cameraSnapshots.keys.filter { it.renderSessionId == sessionId }.forEach { cameraSnapshots.remove(it) }
         }
     }
 
@@ -1882,7 +1342,7 @@ class MapViewModel @Inject constructor(
         val authoritativeSource = _requestedSourceId.value ?: _activeSourceId.value ?: return
         
         val repairKey = BasemapRepairKey(
-            renderSessionId = attempt.renderSessionId!!,
+            renderSessionId = attempt.renderSessionId,
             semanticGeneration = _basemapGeneration.value,
             authoritativeSourceId = authoritativeSource
         )
@@ -1919,8 +1379,11 @@ class MapViewModel @Inject constructor(
         val newGen = _basemapGeneration.value + 1
         _basemapGeneration.value = newGen
         _fallbackAttempted.value = false
+        
         terminalAttempts.clear()
         repairEpochs.clear()
+        cameraSnapshots.clear()
+        _acceptedStyleEvent.value = null
         
         val primarySource = basemapProvider.getPrimaryBasemaps().find { it.preferredId == id }
         if (primarySource != null) {
@@ -1931,6 +1394,37 @@ class MapViewModel @Inject constructor(
             val backupSourceId = basemapProvider.resolveDefaultBackup(id)
             issueAttempt(backupSourceId, BasemapRole.BACKUP, BasemapLoadAttemptReason.BACKUP)
         }
+    }
+
+    private fun issueAttempt(sourceId: BasemapSourceId, role: BasemapRole, reason: BasemapLoadAttemptReason) {
+        val def = basemapProvider.getDefinition(sourceId) ?: return
+        val sessionId = _renderSessionId.value ?: return
+
+        _currentAttempt.value?.let { prev ->
+             terminalAttempts.putIfAbsent(prev.toKey(), BasemapTerminalReason.SUPERSEDED)
+             cameraSnapshots.remove(prev.toKey())
+        }
+
+        val attemptId = nextAttemptId++
+        
+        val attempt = BasemapLoadAttempt(
+            semanticGeneration = _basemapGeneration.value,
+            attemptId = attemptId,
+            renderSessionId = sessionId,
+            sourceId = sourceId,
+            provider = def.provider,
+            role = role,
+            reason = reason,
+            capturedSequence = _cameraInteractionSequence.value
+        )
+        
+        _currentAttempt.value = attempt
+        _requestedSourceId.value = sourceId
+        _basemapStatus.value = if (role == BasemapRole.PRIMARY) BasemapLoadStatus.LOADING_PRIMARY else BasemapLoadStatus.LOADING_BACKUP
+    }
+
+    private fun reapplyActiveSource(sourceId: BasemapSourceId) {
+        issueAttempt(sourceId, basemapProvider.getDefinition(sourceId)?.role ?: BasemapRole.PRIMARY, BasemapLoadAttemptReason.REPAIR)
     }
 
     fun clearBasemapError() { _basemapErrorRes.value = null }
@@ -2018,17 +1512,14 @@ class MapViewModel @Inject constructor(
     }
     
     fun dismissFeatureEditor() {
-        if (_isNewUnsavedFeature.value) {
-            val hasGeom = _draftVertices.value.isNotEmpty() || (_polygonDraft.value?.vertices?.isNotEmpty() == true) || (_newPointDraft.value != null)
-            if (hasGeom) {
-                _discardAction.value = when (_editingMode.value) {
-                    MapEditingMode.AddLine -> PendingEditDiscardAction.DiscardNewLine
-                    MapEditingMode.AddPolygon -> PendingEditDiscardAction.DiscardNewPolygon
-                    else -> PendingEditDiscardAction.DiscardNewPoint
-                }
-                _showDiscardEditDialog.value = true
-                return
+        if (isActualEditorDirty()) {
+            _discardAction.value = when (_editingMode.value) {
+                MapEditingMode.AddLine -> PendingEditDiscardAction.DiscardNewLine
+                MapEditingMode.AddPolygon -> PendingEditDiscardAction.DiscardNewPolygon
+                else -> PendingEditDiscardAction.DiscardNewPoint
             }
+            _showDiscardEditDialog.value = true
+            return
         }
         _featureEditorOpen.value = false; _featureEditorTarget.value = null; _featureEditorFeature.value = null; _linkEditorSession.value = null; _selectedPersistedFeature.value = null
     }
@@ -2050,6 +1541,20 @@ class MapViewModel @Inject constructor(
         _polygonEditState.value?.let { s ->
             val i = s.selectedVertexIndex ?: return@let
             deletePolygonVertex(i)
+        }
+    }
+
+    fun deletePolygonVertex(index: Int) {
+        _polygonEditState.value?.let { s ->
+            val updated = s.workingVertices.toMutableList()
+            if (updated.size > 3 && index in updated.indices) {
+                _polygonEditState.value = s.pushUndo().let { pushed ->
+                    val newVertices = pushed.workingVertices.toMutableList()
+                    newVertices.removeAt(index)
+                    pushed.copy(workingVertices = newVertices, selectedVertexIndex = null).withValidation()
+                }
+                _isPolygonEditDirty.value = true
+            }
         }
     }
     
@@ -2190,7 +1695,7 @@ class MapViewModel @Inject constructor(
     fun completeLocationAction(location: LocationResult.Success, purpose: LocationRequestPurpose) { 
         _currentPhoneLocation.value = location
         if (purpose == LocationRequestPurpose.CreatePoint) handleLocationForCreatePoint(location)
-        savedStateHandle.remove<LocationRequestPurpose?>(KEY_PENDING_PURPOSE)
+        setPendingLocationPurpose(null)
         _locationIssue.value = null
     }
 
@@ -2199,5 +1704,800 @@ class MapViewModel @Inject constructor(
         val requested = layers.find { it.id == currentId }
         if (requested != null && requested.isVisible && !requested.isLocked && requested.deletedAt == null && requested.propertyId == propId && requested.planId == planId) return currentId
         return layers.sortedBy { it.displayOrder }.firstOrNull { it.isVisible && !it.isLocked && it.deletedAt == null && it.propertyId == propId && it.planId == planId }?.id
+    }
+
+    private fun calculateBounds(vertices: List<Pair<Double, Double>>): Pair<Pair<Double, Double>, Pair<Double, Double>> {
+        if (vertices.isEmpty()) return Pair(Pair(0.0, 0.0), Pair(0.0, 0.0))
+        var minLng = Double.POSITIVE_INFINITY
+        var minLat = Double.POSITIVE_INFINITY
+        var maxLng = Double.NEGATIVE_INFINITY
+        var maxLat = Double.NEGATIVE_INFINITY
+        for (v in vertices) {
+            minLng = minOf(minLng, v.first)
+            minLat = minOf(minLat, v.second)
+            maxLng = maxOf(maxLng, v.first)
+            maxLat = maxOf(maxLat, v.second)
+        }
+        return Pair(Pair(minLng, minLat), Pair(maxLng, maxLat))
+    }
+
+    fun cancelGuidedCreation() {
+        _guidedSession.value = null
+        savedStateHandle.remove<String>(KEY_GUIDED_SESSION_ID)
+        savedStateHandle.remove<String>(KEY_GUIDED_PRESET_ID)
+        savedStateHandle.remove<String>(KEY_GUIDED_DRAFT_ID)
+        savedStateHandle.remove<String>(KEY_GUIDED_ITEM_ID)
+        savedStateHandle.remove<String>(KEY_GUIDED_PHASE)
+        savedStateHandle.remove<String>(KEY_GUIDED_NAME)
+        savedStateHandle.remove<String>(KEY_GUIDED_TRACKING)
+        _pendingGuidedPreset.value = null
+        _showPlacementMethod.value = false
+        _showGuidedAddMenu.value = false
+        setPendingLocationPurpose(null)
+        clearStagedPhoto()
+        _saveOutcome.value = null
+        resetEditorStates()
+        if (_editingMode.value in listOf(MapEditingMode.AddPoint, MapEditingMode.AddLine, MapEditingMode.AddPolygon)) {
+            _editingMode.value = MapEditingMode.Select
+        }
+    }
+
+    fun tryCancelGuidedCreation() {
+        if (isActualEditorDirty()) {
+            _discardAction.value = PendingEditDiscardAction.DiscardGuidedCreation
+            _showDiscardEditDialog.value = true
+        } else {
+            cancelGuidedCreation()
+        }
+    }
+
+    fun selectPersistedFeature(feature: MapFeatureEntity?, requestCameraFocus: Boolean = true) {
+        _selectedPersistedFeature.value = feature
+        if (feature != null) {
+            _featureEditorFeature.value = feature
+            _featureEditorOpen.value = true
+            _isNewUnsavedFeature.value = false
+            _featureEditorTarget.value = FeatureEditorTarget.Persisted(feature.id)
+            initializeSystemItemLinkState(feature.id, SystemItemPolicy.MAP_ONLY, feature.infrastructureItemId, false)
+            if (requestCameraFocus) {
+                val geomRes = GeometryUtils.parseFeatureGeometry(feature.geometryJson, feature.geometryType)
+                geomRes.onSuccess { vertices ->
+                    if (feature.geometryType == "POINT") {
+                        _cameraFocus.value = MapCameraFocus.Point(vertices[0].second, vertices[0].first, 17f)
+                    } else {
+                        val bounds = calculateBounds(vertices)
+                        _cameraFocus.value = MapCameraFocus.Bounds(bounds.first, bounds.second, 100)
+                    }
+                }
+            }
+        } else {
+            _featureEditorOpen.value = false
+            _featureEditorTarget.value = null
+            _featureEditorFeature.value = null
+        }
+    }
+
+    fun selectFeatureById(id: UUID) {
+        viewModelScope.launch {
+            val f = mapRepository.getFeatureById(id)
+            if (f != null) selectPersistedFeature(f)
+        }
+    }
+
+    fun requestLocation(purpose: LocationRequestPurpose) {
+        _isLocatingPhone.value = true
+        _locationIssue.value = null
+        setPendingLocationPurpose(purpose)
+        viewModelScope.launch {
+            val result = locationProvider.getCurrentLocation()
+            _isLocatingPhone.value = false
+            when (result) {
+                is LocationResult.Success -> {
+                    val isOld = (System.currentTimeMillis() - result.timestampMillis) > 300000 // 5 mins
+                    val isPoor = result.accuracyMeters > 15f
+                    if (isOld && isPoor) {
+                        _locationIssue.value = LocationIssue(
+                            LocationIssueType.CachedAndPoorAccuracy,
+                            R.string.location_issue_cached_and_poor,
+                            canRetry = true,
+                            canUseAnyway = true,
+                            cachedLocation = result,
+                            purpose = purpose
+                        )
+                    } else if (isPoor) {
+                        _locationIssue.value = LocationIssue(
+                            LocationIssueType.PoorAccuracy,
+                            R.string.location_issue_poor_accuracy,
+                            canRetry = true,
+                            canUseAnyway = true,
+                            cachedLocation = result,
+                            purpose = purpose
+                        )
+                    } else if (isOld) {
+                        _locationIssue.value = LocationIssue(
+                            LocationIssueType.CachedLocation,
+                            R.string.location_issue_cached,
+                            canRetry = true,
+                            canUseAnyway = true,
+                            cachedLocation = result,
+                            purpose = purpose
+                        )
+                    } else {
+                        completeLocationAction(result, purpose)
+                    }
+                }
+                LocationResult.PermissionDenied -> handleTransientDenial(purpose)
+                LocationResult.PermanentlyDenied -> handlePermanentDenial(purpose)
+                LocationResult.ProviderDisabled -> {
+                    _locationIssue.value = LocationIssue(LocationIssueType.ProviderDisabled, R.string.location_issue_provider_disabled, canOpenLocationSettings = true, purpose = purpose)
+                }
+                LocationResult.LocationUnavailable -> {
+                    _locationIssue.value = LocationIssue(LocationIssueType.LocationUnavailable, R.string.location_issue_unavailable, canRetry = true, purpose = purpose)
+                }
+                LocationResult.Timeout -> {
+                    _locationIssue.value = LocationIssue(LocationIssueType.Timeout, R.string.location_issue_timeout, canRetry = true, purpose = purpose)
+                }
+                is LocationResult.Error -> {
+                    _locationIssue.value = LocationIssue(LocationIssueType.GenericError, R.string.location_issue_generic, canRetry = true, purpose = purpose)
+                }
+            }
+        }
+    }
+
+    fun handlePermanentDenial(purpose: LocationRequestPurpose) {
+        _locationIssue.value = LocationIssue(LocationIssueType.PermissionPermanentlyDenied, R.string.location_issue_permission_permanently_denied, purpose = purpose, canOpenAppSettings = true, canContinueManually = (purpose == LocationRequestPurpose.CreatePoint))
+    }
+
+    fun handleTransientDenial(purpose: LocationRequestPurpose) {
+        _locationIssue.value = LocationIssue(LocationIssueType.PermissionDenied, R.string.location_issue_permission_denied, purpose = purpose, canRetry = true, canContinueManually = (purpose == LocationRequestPurpose.CreatePoint))
+    }
+
+    fun setPendingLocationPurpose(purpose: LocationRequestPurpose?) {
+        _pendingLocationPurpose.value = purpose
+        savedStateHandle[KEY_PENDING_PURPOSE] = purpose
+    }
+
+    fun saveFeature(feature: MapFeatureEntity) {
+        _isSavingFeature.value = true
+        _featureOperationErrorRes.value = null
+        viewModelScope.launch {
+            try {
+                saveGate.withLock {
+                    val linkSession = _linkEditorSession.value
+                    val linkedItemId = when (val sel = linkSession?.currentSelection) {
+                        is SystemItemLinkSelection.Existing -> sel.itemId
+                        is SystemItemLinkSelection.PendingDraft -> sel.draftId
+                        is SystemItemLinkSelection.CreateSuggested -> linkSession.pendingDraft?.id
+                        else -> null
+                    }
+                    
+                    val featureToSave = feature.copy(infrastructureItemId = linkedItemId)
+                    
+                    val itemToCreate = if (linkSession != null) {
+                        val draft = linkSession.pendingDraft
+                        if (draft != null && (linkSession.currentSelection is SystemItemLinkSelection.PendingDraft || linkSession.currentSelection == SystemItemLinkSelection.CreateSuggested)) {
+                            InfrastructureItemEntity(
+                                id = draft.id,
+                                propertyId = draft.propertyId,
+                                name = draft.name,
+                                category = draft.category,
+                                subtype = draft.subtype,
+                                isEmergencyItem = draft.isEmergencyItem,
+                                emergencyInstructions = draft.emergencyInstructions,
+                                status = "Active"
+                            )
+                        } else null
+                    } else null
+
+                    mapRepository.saveFeatureWithOptionalItem(featureToSave, itemToCreate)
+
+                    val staged = _stagedPhoto.value
+                    if (staged is StagedCreationPhotoState.Ready) {
+                        val uri = android.net.Uri.parse(staged.uri)
+                        val owner = AttachmentOwner.MapFeature(featureToSave.propertyId, featureToSave.id)
+                        val photoResult = attachmentRepository.importAttachment(
+                            owner = owner,
+                            uri = uri,
+                            type = AttachmentType.Photo,
+                            customDisplayName = "Feature Photo",
+                            caption = null,
+                            cameraCaptureToken = staged.cameraCaptureToken
+                        )
+                        if (photoResult is AttachmentWriteResult.Success) {
+                            consumeStagedPhotoState()
+                            _saveOutcome.value = GuidedSaveOutcome.Success(featureToSave.id)
+                            cancelGuidedCreation()
+                            _featureEditorOpen.value = false
+                        } else {
+                            _saveOutcome.value = GuidedSaveOutcome.FeatureSavedPhotoFailed(featureToSave.propertyId, featureToSave.id)
+                        }
+                    } else {
+                        _saveOutcome.value = GuidedSaveOutcome.Success(featureToSave.id)
+                        cancelGuidedCreation()
+                        _featureEditorOpen.value = false
+                    }
+                }
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                _featureOperationErrorRes.value = R.string.error_save_failed
+            } finally {
+                _isSavingFeature.value = false
+            }
+        }
+    }
+
+    fun deleteFeature(id: UUID) {
+        if (_isDeletingFeature.value) return
+        val pid = _propertyId.value ?: return
+        val mid = _planId.value ?: return
+        _isDeletingFeature.value = true
+        _featureOperationErrorRes.value = null
+        viewModelScope.launch {
+            try {
+                mapRepository.softDeleteFeatureWithAttachments(pid, mid, id)
+                _featureEditorOpen.value = false
+                _featureEditorTarget.value = null
+                _selectedPersistedFeature.value = null
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                _featureOperationErrorRes.value = R.string.error_delete_failed
+            } finally {
+                _isDeletingFeature.value = false
+            }
+        }
+    }
+
+    fun beginMovePoint(featureId: UUID) {
+        viewModelScope.launch {
+            val f = _features.value.find { it.id == featureId } ?: mapRepository.getFeatureById(featureId) ?: run {
+                _featureEditorTarget.value = null
+                _featureEditorFeature.value = null
+                _featureEditorOpen.value = false
+                return@launch
+            }
+            val layer = _layers.value.find { it.id == f.layerId }
+            if (layer?.isLocked == true) {
+                _featureOperationErrorRes.value = R.string.layer_is_locked
+                return@launch
+            }
+            val coordsRes = GeometryUtils.parseFeatureGeometry(f.geometryJson, f.geometryType)
+            coordsRes.onSuccess { vertices ->
+                if (vertices.isNotEmpty()) {
+                    _pointMoveState.value = PointMoveState(featureId, vertices[0].first, vertices[0].second)
+                    _editingMode.value = MapEditingMode.Select
+                    _isPointMoveActive.value = true
+                    _featureEditorOpen.value = false
+                    _featureEditorTarget.value = FeatureEditorTarget.Persisted(featureId)
+                }
+            }
+        }
+    }
+
+    fun proposePointMove(longitude: Double, latitude: Double, isDragging: Boolean = false) {
+        _pointMoveState.value = _pointMoveState.value?.copy(proposedLongitude = longitude, proposedLatitude = latitude, isDragging = isDragging)
+    }
+
+    fun finishPointMoveDrag() { _pointMoveState.value = _pointMoveState.value?.copy(isDragging = false) }
+    fun cancelPointMoveDrag() { _pointMoveState.value = _pointMoveState.value?.copy(proposedLongitude = null, proposedLatitude = null, isDragging = false) }
+
+    fun confirmPointMove() {
+        val s = _pointMoveState.value ?: return
+        val lng = s.proposedLongitude ?: return
+        val lat = s.proposedLatitude ?: return
+        
+        _isSavingFeature.value = true
+        _featureOperationErrorRes.value = null
+        viewModelScope.launch {
+            try {
+                val f = mapRepository.getFeatureById(s.featureId) ?: run {
+                    _pointMoveState.value = null
+                    _isPointMoveActive.value = false
+                    _featureEditorTarget.value = null
+                    _featureEditorFeature.value = null
+                    _featureEditorOpen.value = false
+                    return@launch
+                }
+                mapRepository.updateFeature(f.copy(geometryJson = GeometryUtils.buildPointGeoJson(lng, lat)))
+                _pointMoveState.value = null
+                _isPointMoveActive.value = false
+                selectPersistedFeature(mapRepository.getFeatureById(s.featureId), requestCameraFocus = false)
+            } catch (e: Exception) {
+                _featureOperationErrorRes.value = R.string.error_save_failed
+            } finally {
+                _isSavingFeature.value = false
+            }
+        }
+    }
+
+    fun cancelPointMove() {
+        _pointMoveState.value = null
+        _isPointMoveActive.value = false
+    }
+
+    fun beginPersistedShapeEdit(featureId: UUID) {
+        viewModelScope.launch {
+            val f = _features.value.find { it.id == featureId } ?: mapRepository.getFeatureById(featureId) ?: run {
+                _featureEditorTarget.value = null
+                _featureEditorFeature.value = null
+                _featureEditorOpen.value = false
+                return@launch
+            }
+            val pid = f.propertyId; val mid = f.planId; val lid = f.layerId
+            if (f.geometryType == "LINESTRING") {
+                val coords = GeometryUtils.parseLineStringGeometry(f.geometryJson)
+                _lineEditState.value = LineEditState(featureId, pid, mid, lid, coords, coords, GeometryUtils.calculatePathLength(coords), GeometryUtils.calculatePathLength(coords))
+                _editingMode.value = MapEditingMode.EditLine
+                _isLineEditDirty.value = false
+                _featureEditorTarget.value = FeatureEditorTarget.EditPersistedLine(featureId)
+            } else if (f.geometryType == "POLYGON") {
+                val res = GeometryUtils.parsePolygonGeoJson(f.geometryJson)
+                if (res is PolygonParseResult.Success) {
+                    _polygonEditState.value = PolygonEditState(featureId, pid, mid, lid, res.vertices, res.vertices, GeometryUtils.calculateSphericalArea(res.vertices), GeometryUtils.calculateSphericalArea(res.vertices), GeometryUtils.calculatePolygonPerimeter(res.vertices), GeometryUtils.calculatePolygonPerimeter(res.vertices))
+                    _editingMode.value = MapEditingMode.EditPolygon
+                    _isPolygonEditDirty.value = false
+                    _featureEditorTarget.value = FeatureEditorTarget.EditPersistedPolygon(featureId)
+                }
+            }
+            _featureEditorOpen.value = false
+        }
+    }
+
+    fun beginVertexDrag(index: Int) { 
+        _lineEditState.value = _lineEditState.value?.copy(selectedVertexIndex = index, isDraggingVertex = true, dragStartVertices = _lineEditState.value?.workingVertices) 
+    }
+    fun updateVertexDrag(longitude: Double, latitude: Double) {
+        val s = _lineEditState.value ?: return
+        val idx = s.selectedVertexIndex ?: return
+        val newVertices = s.workingVertices.toMutableList()
+        newVertices[idx] = Pair(longitude, latitude)
+        _lineEditState.value = s.copy(workingVertices = newVertices, workingLengthMeters = GeometryUtils.calculatePathLength(newVertices))
+    }
+    fun finishVertexDrag() {
+        _lineEditState.value?.let { s ->
+             val start = s.dragStartVertices ?: s.workingVertices
+             _lineEditState.value = s.copy(workingVertices = start).pushUndo().copy(workingVertices = s.workingVertices, selectedVertexIndex = null, isDraggingVertex = false, dragStartVertices = null)
+             _isLineEditDirty.value = true
+        }
+    }
+    fun cancelVertexDrag() { _lineEditState.value = _lineEditState.value?.copy(selectedVertexIndex = null, isDraggingVertex = false) }
+
+    fun insertVertex(index: Int, coordinate: Pair<Double, Double>) {
+        val s = _lineEditState.value ?: return
+        val newVertices = s.workingVertices.toMutableList()
+        newVertices.add(index, coordinate)
+        _lineEditState.value = s.pushUndo().copy(workingVertices = newVertices, selectedVertexIndex = index, workingLengthMeters = GeometryUtils.calculatePathLength(newVertices))
+        _isLineEditDirty.value = true
+    }
+
+    fun deleteSelectedVertex() {
+        val s = _lineEditState.value ?: return
+        val idx = s.selectedVertexIndex ?: return
+        if (s.workingVertices.size <= 2) return
+        val newVertices = s.workingVertices.toMutableList()
+        newVertices.removeAt(idx)
+        _lineEditState.value = s.pushUndo().copy(workingVertices = newVertices, selectedVertexIndex = null, workingLengthMeters = GeometryUtils.calculatePathLength(newVertices))
+        _isLineEditDirty.value = true
+    }
+
+    fun undoLineEdit() {
+        _lineEditState.value?.let { s ->
+            if (s.undoStack.isNotEmpty()) {
+                _lineEditState.value = s.popUndo()
+                _isLineEditDirty.value = _lineEditState.value?.workingVertices != _lineEditState.value?.originalVertices
+            }
+        }
+    }
+
+    fun saveLineEdit() {
+        val s = _lineEditState.value ?: return
+        if (s.workingVertices == s.originalVertices) return
+        _isSavingFeature.value = true
+        _featureOperationErrorRes.value = null
+        viewModelScope.launch {
+            try {
+                val f = mapRepository.getFeatureById(s.featureId)
+                if (f != null) {
+                    mapRepository.updateFeature(f.copy(geometryJson = GeometryUtils.buildLineStringGeoJson(s.workingVertices)))
+                }
+                finishPersistedGeometryEdit(s.featureId, reopen = true)
+            } catch (e: Exception) {
+                _featureOperationErrorRes.value = R.string.error_save_failed
+            } finally {
+                _isSavingFeature.value = false
+            }
+        }
+    }
+    
+    fun tryCancelLineEdit() {
+        _lineEditState.value?.let { s ->
+            if (s.workingVertices != s.originalVertices) {
+                _discardAction.value = PendingEditDiscardAction.CancelLineEdit
+                _showDiscardEditDialog.value = true
+            } else {
+                viewModelScope.launch { finishPersistedGeometryEdit(s.featureId, reopen = true) }
+            }
+        } ?: run {
+            _editingMode.value = MapEditingMode.Select
+        }
+    }
+
+    fun beginPolygonVertexDrag(index: Int) { 
+        _polygonEditState.value = _polygonEditState.value?.copy(selectedVertexIndex = index, draggingVertexIndex = index, dragStartVertices = _polygonEditState.value?.workingVertices) 
+    }
+    fun updatePolygonVertexDrag(longitude: Double, latitude: Double) {
+        val s = _polygonEditState.value ?: return
+        val idx = s.selectedVertexIndex ?: return
+        val newVertices = s.workingVertices.toMutableList()
+        newVertices[idx] = Pair(longitude, latitude)
+        _polygonEditState.value = s.copy(workingVertices = newVertices).withValidation()
+    }
+    fun finishPolygonVertexDrag() {
+        _polygonEditState.value?.let { s ->
+            val start = s.dragStartVertices ?: s.workingVertices
+            _polygonEditState.value = s.copy(workingVertices = start).pushUndo().copy(workingVertices = s.workingVertices, selectedVertexIndex = null, draggingVertexIndex = null, dragStartVertices = null)
+            _isPolygonEditDirty.value = true
+        }
+    }
+    fun cancelPolygonVertexDrag() { _polygonEditState.value = _polygonEditState.value?.copy(selectedVertexIndex = null, draggingVertexIndex = null) }
+
+    fun insertPolygonVertex(index: Int, coordinate: Pair<Double, Double>) {
+        val s = _polygonEditState.value ?: return
+        val newVertices = s.workingVertices.toMutableList()
+        newVertices.add(index, coordinate)
+        _polygonEditState.value = s.pushUndo().copy(workingVertices = newVertices, selectedVertexIndex = index).withValidation()
+        _isPolygonEditDirty.value = true
+    }
+
+    fun undoPolygonEdit() {
+        _polygonEditState.value?.let { s ->
+            if (s.undoStack.isNotEmpty()) {
+                _polygonEditState.value = s.popUndo()
+                _isPolygonEditDirty.value = _polygonEditState.value?.workingVertices != _polygonEditState.value?.originalVertices
+            }
+        }
+    }
+
+    fun savePolygonEdit() {
+        val s = _polygonEditState.value ?: return
+        if (s.workingVertices == s.originalVertices) return
+        if (s.validation !is PolygonValidationResult.Valid) return
+        
+        _isSavingFeature.value = true
+        _featureOperationErrorRes.value = null
+        viewModelScope.launch {
+            try {
+                val f = mapRepository.getFeatureById(s.featureId)
+                if (f != null) {
+                    mapRepository.updateFeature(f.copy(geometryJson = GeometryUtils.buildPolygonGeoJson(s.workingVertices)))
+                }
+                finishPersistedGeometryEdit(s.featureId, reopen = true)
+            } catch (e: Exception) {
+                _featureOperationErrorRes.value = R.string.error_save_failed
+            } finally {
+                _isSavingFeature.value = false
+            }
+        }
+    }
+
+    fun tryCancelPolygonEdit() {
+        _polygonEditState.value?.let { s ->
+            if (s.workingVertices != s.originalVertices) {
+                _discardAction.value = PendingEditDiscardAction.CancelPolygonEdit
+                _showDiscardEditDialog.value = true
+            } else {
+                viewModelScope.launch { finishPersistedGeometryEdit(s.featureId, reopen = true) }
+            }
+        } ?: run {
+            _editingMode.value = MapEditingMode.Select
+        }
+    }
+
+    fun beginAddPoint(): Boolean {
+        if (uiState.value.addToMapAvailability.isAvailable) {
+            _editingMode.value = MapEditingMode.AddPoint
+            return true
+        }
+        return false
+    }
+
+    fun beginAddLine(): Boolean {
+        if (uiState.value.addToMapAvailability.isAvailable) {
+            _editingMode.value = MapEditingMode.AddLine
+            _draftVertices.value = emptyList()
+            return true
+        }
+        return false
+    }
+
+    fun beginAddPolygon(): Boolean {
+        if (uiState.value.addToMapAvailability.isAvailable) {
+            val pid = _propertyId.value ?: return false
+            val mid = _planId.value ?: return false
+            val lid = _activeLayerId.value ?: return false
+            _editingMode.value = MapEditingMode.AddPolygon
+            _polygonDraft.value = PolygonDraftState(propertyId = pid, planId = mid, layerId = lid)
+            return true
+        }
+        return false
+    }
+
+    fun addDraftVertex(longitude: Double, latitude: Double) {
+        val current = _draftVertices.value.toMutableList()
+        val newPoint = Pair(longitude, latitude)
+        if (current.isNotEmpty() && GeometryUtils.areCoordinatesEqual(current.last(), newPoint)) return
+        current.add(newPoint)
+        _draftVertices.value = current
+    }
+
+    fun undoDraftVertex() {
+        val current = _draftVertices.value.toMutableList()
+        if (current.isNotEmpty()) {
+            current.removeAt(current.size - 1)
+            _draftVertices.value = current
+        }
+    }
+
+    fun finishDraftLine(): UUID? {
+        val vertices = _draftVertices.value
+        if (vertices.size < 2) return null
+        val pid = _propertyId.value ?: return null
+        val mid = _planId.value ?: return null
+        val lid = _activeLayerId.value ?: return null
+        
+        val id = UUID.randomUUID()
+        val session = _guidedSession.value
+        val label = session?.suggestedLabel ?: context.getString(R.string.label_default_line)
+        
+        val feature = MapFeatureEntity(id = id, propertyId = pid, planId = mid, layerId = lid, geometryType = "LINESTRING", geometryJson = GeometryUtils.buildLineStringGeoJson(vertices), coordinateSpace = "GEOGRAPHIC", styleJson = "{}", accuracySource = "MANUAL", label = label)
+        
+        _featureEditorFeature.value = feature
+        _featureEditorOpen.value = true
+        _isNewUnsavedFeature.value = true
+        _featureEditorTarget.value = FeatureEditorTarget.NewLine(id)
+        _draftVertices.value = emptyList()
+        
+        if (session?.expectedGeometry == GuidedMapGeometry.ROUTE) {
+            savedStateHandle[KEY_GUIDED_PHASE] = GuidedMappingPhase.REVIEWING.name
+            savedStateHandle[KEY_GUIDED_DRAFT_ID] = id.toString()
+            _guidedSession.value = session.copy(phase = GuidedMappingPhase.REVIEWING, targetDraftId = id)
+        }
+        
+        val policy = session?.preset?.systemItemPolicy ?: SystemItemPolicy.MAP_ONLY
+        initializeSystemItemLinkState(id, policy, null, true, suggestedName = session?.suggestedLabel, defaultCategory = session?.preset?.defaultCategory)
+        return id
+    }
+
+    fun cancelDraftLine() { _draftVertices.value = emptyList(); _editingMode.value = MapEditingMode.Select }
+
+    fun addPolygonVertex(longitude: Double, latitude: Double) {
+        val s = _polygonDraft.value ?: return
+        val newPoint = Pair(longitude, latitude)
+        if (s.vertices.isNotEmpty() && GeometryUtils.areCoordinatesEqual(s.vertices.last(), newPoint)) return
+        val newVertices = s.vertices.toMutableList()
+        newVertices.add(newPoint)
+        _polygonDraft.value = s.copy(vertices = newVertices, validation = GeometryUtils.validatePolygonGeometry(newVertices))
+    }
+
+    fun undoPolygonVertex() {
+        val s = _polygonDraft.value ?: return
+        val newVertices = s.vertices.toMutableList()
+        if (newVertices.isNotEmpty()) {
+            newVertices.removeAt(newVertices.size - 1)
+            _polygonDraft.value = s.copy(vertices = newVertices, validation = GeometryUtils.validatePolygonGeometry(newVertices))
+        }
+    }
+
+    fun finishAddPolygon() {
+        val s = _polygonDraft.value ?: return
+        if (s.vertices.size < 3 || s.validation !is PolygonValidationResult.Valid) return
+        val pid = _propertyId.value ?: return
+        val mid = _planId.value ?: return
+        val lid = _activeLayerId.value ?: return
+        
+        val id = s.id
+        val session = _guidedSession.value
+        val label = session?.suggestedLabel ?: context.getString(R.string.label_default_polygon)
+        
+        val feature = MapFeatureEntity(id = id, propertyId = pid, planId = mid, layerId = lid, geometryType = "POLYGON", geometryJson = GeometryUtils.buildPolygonGeoJson(s.vertices), coordinateSpace = "GEOGRAPHIC", styleJson = "{}", accuracySource = "MANUAL", label = label)
+        
+        _featureEditorFeature.value = feature
+        _featureEditorOpen.value = true
+        _isNewUnsavedFeature.value = true
+        _featureEditorTarget.value = FeatureEditorTarget.NewPolygon(id)
+        _polygonDraft.value = null
+        _editingMode.value = MapEditingMode.Select
+        
+        if (session?.expectedGeometry == GuidedMapGeometry.AREA) {
+            savedStateHandle[KEY_GUIDED_PHASE] = GuidedMappingPhase.REVIEWING.name
+            savedStateHandle[KEY_GUIDED_DRAFT_ID] = id.toString()
+            _guidedSession.value = session.copy(phase = GuidedMappingPhase.REVIEWING, targetDraftId = id)
+        }
+        
+        val policy = session?.preset?.systemItemPolicy ?: SystemItemPolicy.MAP_ONLY
+        initializeSystemItemLinkState(id, policy, null, true, suggestedName = session?.suggestedLabel, defaultCategory = session?.preset?.defaultCategory)
+    }
+
+    fun cancelPolygonDraft() { _polygonDraft.value = null; _editingMode.value = MapEditingMode.Select }
+    
+    fun addPointAt(longitude: Double, latitude: Double) {
+        val pid = _propertyId.value ?: return
+        val mid = _planId.value ?: return
+        val lid = _activeLayerId.value ?: return
+        
+        val session = _guidedSession.value
+        val id = session?.targetDraftId ?: UUID.randomUUID()
+        val label = session?.suggestedLabel ?: context.getString(R.string.label_default_point)
+        
+        val feature = MapFeatureEntity(id = id, propertyId = pid, planId = mid, layerId = lid, geometryType = "POINT", geometryJson = GeometryUtils.buildPointGeoJson(longitude, latitude), coordinateSpace = "GEOGRAPHIC", styleJson = "{}", accuracySource = "MANUAL", label = label)
+        _featureEditorFeature.value = feature
+        _featureEditorOpen.value = true
+        _isNewUnsavedFeature.value = true
+        _featureEditorTarget.value = FeatureEditorTarget.NewPoint(id)
+        _editingMode.value = MapEditingMode.Select
+        
+        if (session?.expectedGeometry == GuidedMapGeometry.LOCATION) {
+            savedStateHandle[KEY_GUIDED_PHASE] = GuidedMappingPhase.REVIEWING.name
+            savedStateHandle[KEY_GUIDED_DRAFT_ID] = id.toString()
+            _guidedSession.value = session.copy(phase = GuidedMappingPhase.REVIEWING, targetDraftId = id)
+        }
+        
+        val policy = session?.preset?.systemItemPolicy ?: SystemItemPolicy.MAP_ONLY
+        initializeSystemItemLinkState(id, policy, null, true, suggestedName = session?.suggestedLabel, defaultCategory = session?.preset?.defaultCategory)
+    }
+
+    fun confirmDiscardEdit() {
+        val action = _discardAction.value
+        _showDiscardEditDialog.value = false
+        _discardAction.value = null
+        
+        when (action) {
+            PendingEditDiscardAction.CancelLineEdit -> { 
+                val id = _lineEditState.value?.featureId
+                if (id != null) viewModelScope.launch { finishPersistedGeometryEdit(id, reopen = true) }
+                else { _lineEditState.value = null; _editingMode.value = MapEditingMode.Select }
+            }
+            PendingEditDiscardAction.CancelPolygonEdit -> { 
+                val id = _polygonEditState.value?.featureId
+                if (id != null) viewModelScope.launch { finishPersistedGeometryEdit(id, reopen = true) }
+                else { _polygonEditState.value = null; _editingMode.value = MapEditingMode.Select }
+            }
+            PendingEditDiscardAction.DiscardNewPoint -> { 
+                _newPointDraft.value = null
+                _featureEditorTarget.value = null
+                _featureEditorOpen.value = false
+                _editingMode.value = MapEditingMode.Select 
+            }
+            PendingEditDiscardAction.DiscardNewLine -> { 
+                _draftVertices.value = emptyList()
+                _featureEditorTarget.value = null
+                _featureEditorOpen.value = false
+                _editingMode.value = MapEditingMode.Select 
+            }
+            PendingEditDiscardAction.DiscardNewPolygon -> { 
+                _polygonDraft.value = null
+                _featureEditorTarget.value = null
+                _featureEditorOpen.value = false
+                _editingMode.value = MapEditingMode.Select 
+            }
+            PendingEditDiscardAction.DiscardGuidedCreation -> { cancelGuidedCreation() }
+            is PendingEditDiscardAction.ChangeProperty -> { setProperty(action.propertyId, force = true) }
+            is PendingEditDiscardAction.ChangePlan -> { action.planId?.let { selectPlan(it, force = true) } }
+            null -> {}
+        }
+    }
+
+    fun dismissDiscardDialog() { _showDiscardEditDialog.value = false; _discardAction.value = null }
+
+    fun setGuidedPreset(p: GuidedMapPreset) {
+        val avail = evaluateAddToMapAvailability(
+            _propertyId.value, _plan.value, _layers.value, _activeLayerId.value,
+            _featureEditorTarget.value, _isSearchActive.value, _guidedSession.value,
+            _editingMode.value, _pointMoveState.value, _isSavingFeature.value, _isDeletingFeature.value,
+            _locationIssue.value, _isLocatingPhone.value, _pendingLocationPurpose.value,
+            _starterLayerOperation.value, _isBoundaryAcknowledgmentSaving.value, _showDiscardEditDialog.value,
+            _showBasemapChooser.value, _showHelpSheet.value, _showSafetyLimitations.value,
+            _showLocationDetails.value, _layerPanelOpen.value
+        )
+        if (avail.isAvailable) {
+            _pendingGuidedPreset.value = p
+            if (p.geometry == GuidedMapGeometry.LOCATION) {
+                _showPlacementMethod.value = true
+            } else {
+                startGuidedMapping(p, PlacementMethod.TAP_MAP)
+            }
+        } else {
+            _mapErrorRes.value = avail.reasonRes
+        }
+    }
+
+    fun selectGuidedPresetAndCloseMenu(p: GuidedMapPreset) {
+        _showGuidedAddMenu.value = false
+        setGuidedPreset(p)
+    }
+
+    fun selectGuidedLocationMethod(m: PlacementMethod) {
+        val preset = _pendingGuidedPreset.value ?: return
+        _showPlacementMethod.value = false
+        startGuidedMapping(preset, m)
+    }
+
+    fun startGuidedMapping(p: GuidedMapPreset, m: PlacementMethod) {
+        val pid = _propertyId.value ?: return
+        val mid = _planId.value ?: return
+        
+        val sessionId = UUID.randomUUID()
+        val draftId = UUID.randomUUID()
+        val session = GuidedMappingSession(
+            sessionId = sessionId,
+            propertyId = pid,
+            planId = mid,
+            preset = p,
+            expectedGeometry = p.geometry,
+            suggestedLabel = p.suggestedLabelRes.let { context.getString(it) },
+            targetDraftId = draftId,
+            phase = if (m == PlacementMethod.MY_LOCATION) GuidedMappingPhase.REVIEWING else GuidedMappingPhase.SELECTING_PLACEMENT
+        )
+        _guidedSession.value = session
+        _pendingGuidedPreset.value = null
+
+        if (m == PlacementMethod.MY_LOCATION) {
+            requestLocation(LocationRequestPurpose.CreatePoint)
+        } else {
+            when (p.geometry) {
+                GuidedMapGeometry.LOCATION -> _editingMode.value = MapEditingMode.AddPoint
+                GuidedMapGeometry.ROUTE -> {
+                    _editingMode.value = MapEditingMode.AddLine
+                    _draftVertices.value = emptyList()
+                }
+                GuidedMapGeometry.AREA -> {
+                    if (p.requiresBoundaryAcknowledgment && !_boundaryAcknowledged.value) {
+                        _showBoundaryAcknowledgment.value = true
+                        _editingMode.value = MapEditingMode.Select
+                    } else {
+                        _editingMode.value = MapEditingMode.AddPolygon
+                        _polygonDraft.value = PolygonDraftState(propertyId = pid, planId = mid, layerId = _activeLayerId.value!!)
+                    }
+                }
+            }
+        }
+    }
+
+    fun setSearchQuery(query: String) { _searchQuery.value = query }
+    fun setSearchActive(active: Boolean) { _isSearchActive.value = active; if (!active) _searchQuery.value = "" }
+
+    fun openSearchResult(result: MapSearchResult) {
+        _isSearchActive.value = false
+        viewModelScope.launch {
+            val feature = mapRepository.getFeatureById(result.featureId)
+            selectPersistedFeature(feature)
+        }
+    }
+
+    fun revealAndOpenSearchResult(result: MapSearchResult) {
+        viewModelScope.launch {
+            val layer = _layers.value.find { it.id == result.layerId }
+            if (layer != null && !layer.isVisible) {
+                mapRepository.updateLayer(layer.copy(isVisible = true))
+            }
+            openSearchResult(result)
+        }
+    }
+
+    fun updateVertexPosition(index: Int, longitude: Double, latitude: Double) {
+        _lineEditState.value?.let { s ->
+            val newVertices = s.workingVertices.toMutableList()
+            newVertices[index] = Pair(longitude, latitude)
+            _lineEditState.value = s.copy(workingVertices = newVertices, workingLengthMeters = GeometryUtils.calculatePathLength(newVertices))
+        }
+        _polygonEditState.value?.let { s ->
+            val newVertices = s.workingVertices.toMutableList()
+            newVertices[index] = Pair(longitude, latitude)
+            _polygonEditState.value = s.copy(workingVertices = newVertices).withValidation()
+        }
+    }
+
+    fun selectEditVertex(index: Int) {
+        _lineEditState.value = _lineEditState.value?.copy(selectedVertexIndex = index)
+        _polygonEditState.value = _polygonEditState.value?.copy(selectedVertexIndex = index)
     }
 }
