@@ -1,18 +1,17 @@
 JVM Unit Test Summary
-Phase: 2.2h5R6 (Recreation Lifecycle, Secondary Disposal Truth, and Evidence Closure)
+Phase: 2.2h5R7 (Pending Request Authority, Recreation Coverage, Documentation, and Evidence Closure)
 Result: SUCCESS
-Total: 609
-Passed: 609
+Total: 611
+Passed: 611
 Failed: 0
 Skipped: 0
 Date: 2026-08-01
 App Version: 0.02 (2)
 
 Verified key basemap scenarios:
-- Authoritative state preservation during main MapView disposal.
-- RECREATION attempt issuance upon MapView restore.
-- Explicit secondary controller disposal and terminal reason preservation.
-- Session-keyed UI state isolation in ResilientBasemapLoader.
-- Typed deferred request recording and playback in MapViewModel.
-- Fallback policy reset upon new semantic map requests.
-- Maintenance of version 0.02 build integrity across all manifests.
+- Authoritative pending requests in MapViewModel preserving Source, Role, and Reason.
+- Selection supersession clearing live activeSourceId and resetting fallback eligibility.
+- Preference protection preventing redundant triggers for active pending requests.
+- "Accepted-Backup to New-Selection" regression coverage during deferred recreation.
+- Production-sequence recreation tests for main MapView.
+- Secondary disposal truth with status-gated terminal reason recording.

@@ -3,6 +3,13 @@
 ## [0.02] - Unreleased
 
 ### Added
+- **Beginner-First UX Redesign Phase 2.2h5R7 — Pending Request Authority, Recreation Coverage, Documentation, and Evidence Closure**:
+    - **Authoritative Pending Requests**: Refactored `MapViewModel` to use a typed `PendingBasemapRequest` that captures the complete semantic intent (Source, Role, Reason, Generation) when a MapView is not present.
+    - **Selection Supersession**: New basemap selections now immediately clear old live styles and reset the fallback policy, preventing stale backup configurations from bleeding into new requests.
+    - **Recreation Regression Coverage**: Added comprehensive JVM tests for "Accepted-Backup to New-Selection" flows, verifying that superseded styles are correctly disposed of during deferred transitions.
+    - **Preference Protection**: Hardened the preference collection logic to respect active pending requests, preventing redundant load triggers when the repository confirms a change already in flight.
+    - **Evidence Closure**: Finalized v0.02 Phase 2.2h5R7 documentation and updated QA results for the latest build.
+
 - **Beginner-First UX Redesign Phase 2.2h5R6 — Recreation Lifecycle, Secondary Disposal Truth, and Evidence Closure**:
     - **Typed Deferred Requests**: Implemented `PendingBasemapRequest` in `MapViewModel` to preserve semantic intent across render session gaps, ensuring the correct style loads immediately on `onMapReady`.
     - **Resilient Fallback Reset**: Deferred requests now reset the fallback policy, ensuring a previous backup failure does not block the next explicit selection's backup eligibility.

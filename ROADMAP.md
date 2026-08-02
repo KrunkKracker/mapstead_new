@@ -54,6 +54,7 @@ Purpose: Provide in-context assistance and finalize the onboarding experience.
 - **Phase 3A — Unified Item Details**: Implementing a singular, high-integrity detail surface for all mapped infrastructure items. (NOT STARTED)
 
 **COMPLETED WORK**:
+- Pending Request Authority, Recreation Coverage, Documentation, and Evidence Closure: Implemented authoritative pending requests in MapViewModel to ensure semantic intent survives render session gaps, and added exhaustive regression tests for accepted-backup-to-new-selection flows.
 - Recreation Lifecycle, Secondary Disposal Truth, and Evidence Closure: Implemented typed pending requests for deferred map loads, hardened secondary disposal logic with terminal reason preservation, and finalized Phase 2 documentation.
 - Recreation Lifecycle and Version Closure: Finalizing main recreation state, secondary disposal, and evidence closure.
 - Secondary Repair and Session Retirement: Verified full state transitions for secondary repairs, proper render-session retirement, and deferred map requests.

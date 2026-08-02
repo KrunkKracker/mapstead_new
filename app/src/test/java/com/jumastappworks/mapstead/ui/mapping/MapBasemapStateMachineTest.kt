@@ -559,38 +559,66 @@ class MapBasemapStateMachineTest {
     }
 
     @Test
-    fun `Deferred request resets fallback policy`() = runTest(testDispatcher) {
+    fun `Accepted-Backup to New-Selection regression test`() = runTest(testDispatcher) {
         val job = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
         val sessionA = UUID.randomUUID()
         viewModel.onMapReady(sessionA)
         advanceUntilIdle()
         
-        // 1. Fail primary and backup for STREETS
-        viewModel.handleBasemapLoadTerminated(BasemapTerminalReason.TIMEOUT, viewModel.uiState.value.currentAttempt!!)
+        // 1. Fail primary for STREETS, succeed backup
+        val primaryAttemptA = viewModel.uiState.value.currentAttempt!!
+        viewModel.handleBasemapLoadTerminated(BasemapTerminalReason.TIMEOUT, primaryAttemptA)
         advanceUntilIdle()
-        viewModel.handleBasemapLoadTerminated(BasemapTerminalReason.TIMEOUT, viewModel.uiState.value.currentAttempt!!)
+        val backupAttemptA = viewModel.uiState.value.currentAttempt!!
+        viewModel.handleBasemapLoadSuccess(backupAttemptA)
         advanceUntilIdle()
         
-        assertEquals(BasemapLoadStatus.FAILED, viewModel.uiState.value.basemapStatus)
+        assertEquals(BasemapLoadStatus.LOADED, viewModel.uiState.value.basemapStatus)
+        assertEquals(BasemapSourceId.OPEN_FREE_MAP_LIBERTY, viewModel.uiState.value.activeSourceId)
         
         // 2. Dispose session A
         viewModel.onRenderSessionDisposed(sessionA)
         advanceUntilIdle()
         
-        // 3. Request TOPO (deferred)
-        viewModel.requestBasemap(BasemapId.TOPO)
+        // 3. Request BASE (deferred)
+        viewModel.requestBasemap(BasemapId.BASE)
         advanceUntilIdle()
+        
+        // State must indicate we are loading PRIMARY BASE now, clearing the old live backup
+        assertEquals(BasemapLoadStatus.LOADING_PRIMARY, viewModel.uiState.value.basemapStatus)
+        assertEquals(BasemapSourceId.MAPTILER_BASE, viewModel.uiState.value.requestedSourceId)
+        assertNull("Live style must be cleared when a new selection supersedes it", viewModel.uiState.value.activeSourceId)
+        assertFalse("Fallback policy must be reset for new selection", viewModel.uiState.value.isUsingFallback)
         
         // 4. Register session B
         val sessionB = UUID.randomUUID()
         viewModel.onMapReady(sessionB)
         advanceUntilIdle()
         
-        // 5. Verify it attempts PRIMARY TOPO (not skipping to backup or failing)
-        val attempt = viewModel.uiState.value.currentAttempt!!
-        assertEquals(BasemapSourceId.MAPTILER_TOPO, attempt.sourceId)
-        assertEquals(BasemapRole.PRIMARY, attempt.role)
-        assertEquals(BasemapLoadStatus.LOADING_PRIMARY, viewModel.uiState.value.basemapStatus)
+        val attemptB = viewModel.uiState.value.currentAttempt!!
+        assertEquals(sessionB, attemptB.renderSessionId)
+        assertEquals(BasemapSourceId.MAPTILER_BASE, attemptB.sourceId)
+        assertEquals(BasemapRole.PRIMARY, attemptB.role)
+        job.cancel()
+    }
+
+    @Test
+    fun `Preference collect respects pending request`() = runTest(testDispatcher) {
+        val job = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
+        
+        // 1. Setup deferred request for TOPO
+        viewModel.requestBasemap(BasemapId.TOPO)
+        advanceUntilIdle()
+        
+        val genAfterRequest = viewModel.uiState.value.basemapGeneration
+        assertEquals(BasemapId.TOPO, viewModel.uiState.value.preferredBasemapId)
+        
+        // 2. Simulate preference repo emitting TOPO (confirming the change)
+        userPrefsFlow.value = userPrefsFlow.value.copy(selectedBasemapId = BasemapId.TOPO)
+        advanceUntilIdle()
+        
+        // 3. Verify no new generation or attempt issued by preference collector
+        assertEquals("Preference collector must not supersede pending request", genAfterRequest, viewModel.uiState.value.basemapGeneration)
         job.cancel()
     }
 }

@@ -97,7 +97,10 @@ private data class Triple5<A, B, C, D, E>(val a: A, val b: B, val c: C, val d: D
 private data class Quad<A, B, C, D>(val a: A, val b: B, val c: C, val d: D)
 
 private data class PendingBasemapRequest(
-    val id: BasemapId,
+    val preferredBasemapId: BasemapId,
+    val semanticGeneration: Long,
+    val sourceId: BasemapSourceId,
+    val role: BasemapRole,
     val reason: BasemapLoadAttemptReason
 )
 
@@ -502,6 +505,9 @@ class MapViewModel @Inject constructor(
                 .map { it.selectedBasemapId }
                 .distinctUntilChanged()
                 .collect { id ->
+                    val pending = _pendingBasemapRequest.value
+                    if (pending != null && pending.preferredBasemapId == id) return@collect
+
                     val previous = _preferredBasemapId.value
                     _preferredBasemapId.value = id
                     isPreferencesReady = true
@@ -1133,11 +1139,10 @@ class MapViewModel @Inject constructor(
         
         val pending = _pendingBasemapRequest.value
         if (pending != null) {
-            val sourceId = _requestedSourceId.value
-            if (sourceId != null) {
-                issueAttempt(sourceId, basemapProvider.getDefinition(sourceId)?.role ?: BasemapRole.PRIMARY, pending.reason)
+            if (pending.semanticGeneration == _basemapGeneration.value) {
+                issueAttempt(pending.sourceId, pending.role, pending.reason)
+                _pendingBasemapRequest.value = null
             }
-            _pendingBasemapRequest.value = null
             return
         }
         
@@ -1398,25 +1403,43 @@ class MapViewModel @Inject constructor(
                 startPrimaryLoad(id)
             }
         } else {
-            // Phase 2.2h5R6: Deferral logic reset and semantic recording
-            _pendingBasemapRequest.value = PendingBasemapRequest(id, BasemapLoadAttemptReason.INITIAL)
-            _basemapGeneration.value++
-            _fallbackAttempted.value = false
+            // Phase 2.2h5R7: Authoritative pending request and state reset
+            val newGen = _basemapGeneration.value + 1
+            _basemapGeneration.value = newGen
             
+            val primary = basemapProvider.getPrimaryBasemaps().find { it.preferredId == id }
+            val sourceId: BasemapSourceId
+            val role: BasemapRole
+            if (primary != null) {
+                sourceId = primary.sourceId
+                role = BasemapRole.PRIMARY
+                _basemapStatus.value = BasemapLoadStatus.LOADING_PRIMARY
+            } else {
+                sourceId = basemapProvider.resolveDefaultBackup(id)
+                role = BasemapRole.BACKUP
+                _basemapStatus.value = BasemapLoadStatus.LOADING_BACKUP
+            }
+            
+            _pendingBasemapRequest.value = PendingBasemapRequest(
+                preferredBasemapId = id,
+                semanticGeneration = newGen,
+                sourceId = sourceId,
+                role = role,
+                reason = BasemapLoadAttemptReason.INITIAL
+            )
+            
+            _fallbackAttempted.value = false
             terminalAttempts.clear()
             repairEpochs.clear()
             cameraSnapshots.clear()
             _acceptedStyleEvent.value = null
             
-            val primary = basemapProvider.getPrimaryBasemaps().find { it.preferredId == id }
-            if (primary != null) {
-                _requestedSourceId.value = primary.sourceId
-                _basemapStatus.value = BasemapLoadStatus.LOADING_PRIMARY
-            } else {
-                _requestedSourceId.value = basemapProvider.resolveDefaultBackup(id)
-                _basemapStatus.value = BasemapLoadStatus.LOADING_BACKUP
-            }
+            _activeSourceId.value = null
+            _isUsingFallback.value = false
+            _showBackupChooser.value = false
+            _retryPrimaryAvailable.value = false
             _basemapErrorRes.value = null
+            _requestedSourceId.value = sourceId
         }
         
         viewModelScope.launch { 
