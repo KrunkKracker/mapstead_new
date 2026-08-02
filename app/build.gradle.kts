@@ -166,4 +166,9 @@ tasks.withType<Test>().configureEach {
     maxParallelForks = 1
     forkEvery = 10
     jvmArgs("-XX:+HeapDumpOnOutOfMemoryError")
+    
+    // Phase 2.2h5R9B: Pass no-key expectation as system property
+    if (project.hasProperty("VERIFY_NO_KEY") && project.property("VERIFY_NO_KEY") == "true") {
+        systemProperty("mapstead.expectNoKey", "true")
+    }
 }

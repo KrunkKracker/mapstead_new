@@ -1152,6 +1152,7 @@ class MapViewModel @Inject constructor(
                 // Phase 2.2h5R9: Transactional definition check
                 val def = basemapProvider.getDefinition(pending.sourceId)
                 if (def == null) {
+                    // Phase 2.2h5R9B: Preserve customer's preference but transition to FAILED
                     _pendingBasemapRequest.value = null
                     _basemapStatus.value = BasemapLoadStatus.FAILED
                     _basemapErrorRes.value = R.string.failed_to_load_basemap
@@ -1162,12 +1163,20 @@ class MapViewModel @Inject constructor(
 
                 val attempt = issueAttempt(pending.sourceId, pending.role, pending.reason)
                 if (attempt != null) {
+                    // Phase 2.2h5R9B: MATCHING GENERATION: Clear record only after successful issue
                     _pendingBasemapRequest.value = null
                 }
             } else {
-                // Phase 2.2h5R9: Retire stale pending and re-assert authority
+                // Phase 2.2h5R9B: STALE GENERATION: Retire stale record and re-assert authority without incrementing
                 _pendingBasemapRequest.value = null
-                ensureInitialBasemapLoad()
+                val authId = _preferredBasemapId.value
+                val primary = basemapProvider.getPrimaryBasemaps().find { it.preferredId == authId }
+                if (primary != null) {
+                    issueAttempt(primary.sourceId, BasemapRole.PRIMARY, BasemapLoadAttemptReason.INITIAL)
+                } else {
+                    val backupSourceId = basemapProvider.resolveDefaultBackup(authId)
+                    issueAttempt(backupSourceId, BasemapRole.BACKUP, BasemapLoadAttemptReason.BACKUP)
+                }
             }
             return
         }
@@ -1176,6 +1185,13 @@ class MapViewModel @Inject constructor(
         if (status == BasemapLoadStatus.IDLE) {
             ensureInitialBasemapLoad()
         } else {
+            // Phase 2.2h5R9B: Idempotent recreation check
+            val current = _currentAttempt.value
+            if (current != null && current.renderSessionId == sessionId) {
+                // Already loading/loaded in this session, don't re-issue
+                return
+            }
+
             // Recreation Logic
             val sourceId = if (status == BasemapLoadStatus.LOADED) {
                 _activeSourceId.value

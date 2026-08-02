@@ -51,7 +51,8 @@
 Purpose: Provide in-context assistance and finalize the onboarding experience.
 
 **ACTIVE PHASE**:
-- **Phase 2.2h5R9 — Preference Authority, Transactional Pending Requests, Main Disposal Truth, and Evidence Consistency Closure**: Implementing UI-driven preference overrides, transactional pending request handling, and hardened disposal truth. (IMPLEMENTED / EXTERNAL REVIEW PENDING)
+- **Phase 2.2h5R9B — Stale Pending Recovery, Behavioral Coverage, Documentation, and Evidence Integrity Closure**: COMPLETED.
+- **Phase 2.2h5R9 — Preference Authority, Transactional Pending Requests, Main Disposal Truth, and Evidence Consistency Closure**: COMPLETED.
 
 **COMPLETED WORK**:
 - Preference Authority and Transactional Requests: Implemented `_customerBasemapPreferenceOverride`, generation-validated pending requests, and hardened disposal terminal reasons.

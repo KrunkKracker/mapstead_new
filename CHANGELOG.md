@@ -3,6 +3,11 @@
 ## [0.02] - Unreleased
 
 ### Added
+- **Beginner-First UX Redesign Phase 2.2h5R9B — Stale Pending Recovery, Behavioral Coverage, Documentation, and Evidence Integrity Closure**:
+    - **Backup-Only Attempt Correction**: Corrected metadata (role/reason) for sources without primaries.
+    - **Deterministic Stale-Pending Recovery**: Implemented transactional pending request handling in `onMapReady` to safely retire stale records.
+    - **Full Fallback Regression**: Expanded test coverage to verify complex multi-step fallback scenarios.
+    - **Evidence Integrity**: Added `BuildConfigConsistencyTest` and no-key packaging workflow.
 - **Beginner-First UX Redesign Phase 2.2h5R9 — Preference Authority, Transactional Pending Requests, Main Disposal Truth, and Evidence Consistency Closure**:
     - **Customer Preference Authority**: Implemented a separate in-memory override that protects UI selections from stale repository emissions until persistence is confirmed.
     - **Transactional Pending Consumption**: Updated `onMapReady` to consume `PendingBasemapRequest` only after a concrete session-bound attempt is successfully issued, ensuring no intent is lost during recreation.

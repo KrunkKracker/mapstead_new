@@ -1,3 +1,24 @@
+# Beginner-First UX Redesign Phase 2.2h5R9B — Stale Pending Recovery, Behavioral Coverage, Documentation, and Evidence Integrity Closure
+
+**Status**: COMPLETED
+**Date**: 2026-08-02
+
+## 1. Correct Backup-Only Attempt Reasons
+- Updated `MapViewModel.requestBasemap()` to use `role = BACKUP`, `reason = BACKUP`, `status = LOADING_BACKUP` when no primary is available.
+- Updated `SecondaryBasemapController.startLoad()` to use same metadata for backup-only sources.
+
+## 2. Deterministic Stale-Pending Recovery
+- Refactored `onMapReady` to handle `PendingBasemapRequest` transactionally.
+- MATCHING GENERATION: Issued attempt and cleared record only after success.
+- STALE GENERATION: Retired stale record, resolved current authoritative preference, and issued attempt using current generation.
+- DEFINITION UNAVAILABLE: Preserved preference but transitioned to FAILED with error.
+
+## 3. Full Fallback Regression
+- Added regression tests for Streets -> Liberty -> Base -> Positron fallback chain.
+
+## 4. Evidence Integrity
+- Implemented `BuildConfigConsistencyTest` for `MAPTILER_CONFIGURED` accuracy.
+
 # Beginner-First UX Redesign Phase 2.2h4 — Repository Build Closure, Initialization Race Removal, and Runtime Acceptance
 
 Correct the remaining source-level defects to ensure the basemap implementation is functional, buildable, and verified with accurate identity and attribution.

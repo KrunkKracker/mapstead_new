@@ -8,6 +8,10 @@
 
 **Status**: Resolved. The `AddPropertyViewModel.uiState` aggregation has been refactored to use typed batch combinations, removing all positional casting.
 
+## Phase 2.2h5R9B Fixes
+- [x] Correct Backup-Only Attempt Reasons (Implemented).
+- [x] Deterministic Stale-Pending Recovery (Implemented).
+
 ## Recreation Lifecycle, Secondary Disposal Truth, and Evidence Closure (RESOLVED 2026-08-01)
 
 **Status**: Resolved. Implemented typed pending requests for deferred map loads, hardened secondary disposal logic, and synchronized all documentation to v0.02 Phase 2.2h5R6.

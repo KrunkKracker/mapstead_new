@@ -1,3 +1,16 @@
+# Beginner-First UX Redesign Phase 2.2h5R9B Walkthrough
+
+This phase completes the basemap resilience work by addressing stale state recovery and ensuring metadata integrity for backup-only scenarios.
+
+### 1. Resilient Stale Recovery
+The `onMapReady` logic is now transactional. When the map view is ready, it precisely checks if the pending request matches the current "authoritative" generation. If it's stale, it re-syncs to the current user preference without unnecessary increments.
+
+### 2. Backup Metadata Truth
+Loading attempts for backup-only basemaps (e.g., when API keys are missing) now carry the correct `BACKUP` role and `BACKUP` reason from inception, ensuring clear logs and accurate attribution logic.
+
+### 3. Verification & Evidence
+Full behavioral coverage is provided by new regression tests and a build-config consistency check, ensuring that the "no-key" state is correctly reported and handled.
+
 # Beginner-First UX Redesign Phase 2 Walkthrough — Task-Oriented Add Something
 
 This phase redesigns the core mapping entry point to align with a real-world mental model. Beginners now select the object they want to document (e.g., "Well", "Fence", "House") rather than technical geometry. It also introduces automated record-keeping policies to reduce cognitive load.

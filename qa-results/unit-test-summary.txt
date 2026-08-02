@@ -1,20 +1,20 @@
 JVM Unit Test Summary
-Phase: 2.2h5R9A (Final Semantic, Test, and Evidence Reconciliation)
+Phase: 2.2h5R9B (Stale Pending Recovery and Evidence Integrity Closure)
 Result: SUCCESS
-Total: 623
-Passed: 623
+Total: 629
+Passed: 629
 Failed: 0
 Skipped: 0
 Date: 2026-08-02
 App Version: 0.02 (2)
 
 Verified key basemap scenarios:
-- Correct backup-only role/reason/status (BACKUP/BACKUP).
-- Authoritative preference override (blocks stale repository emissions).
-- Transactional PendingBasemapRequest consumption and generation recovery.
-- Main disposal terminal truth (DISPOSED recorded only for LOADING state).
-- Full Streets/Liberty to Base/Positron regression (Fallback reset).
-- Production-sequence recreation for all 5 states.
+- Deterministic stale-generation recovery in onMapReady.
+- Transactional PendingBasemapRequest consumption (cleared only after session-bind).
+- Correct backup-only role/reason metadata (BACKUP/BACKUP).
+- Preference authority with separate customerBasemapPreferenceOverride.
+- Full fallback regression: Streets/Liberty -> Base/Positron sequence.
+- Main disposal terminal truth: DISPOSED recorded only for genuine loading.
+- No-key BuildConfig verification passing in no-key suite.
 - Normal and No-Key test reports separated in evidence.
-- Full Gradle transcripts captured.
-- Fresh SHA-256 APK hashes for debug and test binaries.
+- SHA-256 APK hash verified for clean build binaries.

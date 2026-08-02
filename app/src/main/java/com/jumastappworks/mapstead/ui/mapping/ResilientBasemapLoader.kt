@@ -56,20 +56,23 @@ class SecondaryBasemapController(
         val primary = basemapProvider.getPrimaryBasemaps().find { it.preferredId == preferredBasemapId }
         val sourceId: BasemapSourceId
         val reason: BasemapLoadAttemptReason
+        val role: BasemapRole
         if (primary != null) {
             sourceId = primary.sourceId
             reason = BasemapLoadAttemptReason.INITIAL
+            role = BasemapRole.PRIMARY
             currentStatus = SecondaryMapStatus.LOADING_PRIMARY
         } else {
             fallbackAttempted = true
             sourceId = basemapProvider.resolveDefaultBackup(preferredBasemapId)
             reason = BasemapLoadAttemptReason.BACKUP
+            role = BasemapRole.BACKUP
             currentStatus = SecondaryMapStatus.LOADING_BACKUP
         }
         
         attemptCounter++
         requestedSourceId = sourceId
-        val attempt = createAttempt(sourceId, reason)
+        val attempt = createAttempt(sourceId, reason, role)
         currentAttempt = attempt
         return attempt
     }
@@ -122,7 +125,7 @@ class SecondaryBasemapController(
                     requestedSourceId = backupId
                     attemptCounter++
                     currentStatus = SecondaryMapStatus.LOADING_BACKUP
-                    val backupAttempt = createAttempt(backupId, BasemapLoadAttemptReason.BACKUP)
+                    val backupAttempt = createAttempt(backupId, BasemapLoadAttemptReason.BACKUP, BasemapRole.BACKUP)
                     currentAttempt = backupAttempt
                     return if (backupAttempt != null) SecondaryControllerAction.LoadAttempt(backupAttempt) else SecondaryControllerAction.Failed
                 } else {
@@ -213,7 +216,7 @@ class SecondaryBasemapController(
         if (repairEpochs.size > 20) repairEpochs.remove(repairEpochs.keys.first())
         
         attemptCounter++
-        val repairAttempt = createAttempt(authSource, BasemapLoadAttemptReason.REPAIR)
+        val repairAttempt = createAttempt(authSource, BasemapLoadAttemptReason.REPAIR, def.role)
         currentAttempt = repairAttempt
         requestedSourceId = authSource
         currentStatus = if (def.role == BasemapRole.PRIMARY) SecondaryMapStatus.LOADING_PRIMARY else SecondaryMapStatus.LOADING_BACKUP
@@ -256,7 +259,7 @@ class SecondaryBasemapController(
         return SecondaryValidationResult.ACCEPTED
     }
 
-    private fun createAttempt(sourceId: BasemapSourceId, reason: BasemapLoadAttemptReason): BasemapLoadAttempt? {
+    private fun createAttempt(sourceId: BasemapSourceId, reason: BasemapLoadAttemptReason, role: BasemapRole): BasemapLoadAttempt? {
         val def = basemapProvider.getDefinition(sourceId) ?: return null
         return BasemapLoadAttempt(
             semanticGeneration = semanticGeneration,
@@ -264,7 +267,7 @@ class SecondaryBasemapController(
             renderSessionId = renderSessionId,
             sourceId = sourceId,
             provider = def.provider,
-            role = def.role,
+            role = role,
             reason = reason,
             capturedSequence = 0L
         )

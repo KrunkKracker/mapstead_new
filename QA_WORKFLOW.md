@@ -8,6 +8,11 @@ Mapstead uses a three-tier testing strategy. Routine development prioritizes Tie
 ### 1. JVM Unit Tests (Robolectric & Coroutines)
 - **Scope**: ViewModel logic, Repository transactions, Cycle detection, Report/Handoff assembly, navigation mapping, and **Operational Record Policies**.
 - **Execution**: `./gradlew testDebugUnitTest`
+
+### Phase 2.2h5R9B Quality Gates
+1. **Deterministic Unit Tests**: Run `./gradlew test` to verify `MapViewModelPhase2Test` and `MapBasemapStateMachineTest`.
+2. **Consistency Check**: Verify `BuildConfigConsistencyTest` passes.
+3. **Packaging Workflow**: Build `no-key` APK using `./gradlew assembleDebug -PKEY_BLANK=true` for evidence submission.
 - **Result**: 617 PASSED (Phase 2.2h5R9)
 
 ### 2. Static Analysis

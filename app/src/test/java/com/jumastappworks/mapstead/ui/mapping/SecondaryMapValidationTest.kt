@@ -273,17 +273,23 @@ class SecondaryMapValidationTest {
     fun `Dispose while FAILED clears currentAttempt and requestedSourceId`() {
         val controller = SecondaryBasemapController(renderSessionId, provider)
         val streetsDef = BasemapDefinition(BasemapSourceId.MAPTILER_STREETS, BasemapProviderType.MAPTILER, BasemapRole.PRIMARY, "url", 0, 0, true, BasemapId.STREETS)
+        val libertyDef = BasemapDefinition(BasemapSourceId.OPEN_FREE_MAP_LIBERTY, BasemapProviderType.OPEN_FREE_MAP, BasemapRole.BACKUP, "url", 0, 0, true)
+        
         every { provider.getPrimaryBasemaps() } returns listOf(streetsDef)
         every { provider.getDefinition(BasemapSourceId.MAPTILER_STREETS) } returns streetsDef
+        every { provider.getDefinition(BasemapSourceId.OPEN_FREE_MAP_LIBERTY) } returns libertyDef
+        every { provider.resolveDefaultBackup(any()) } returns BasemapSourceId.OPEN_FREE_MAP_LIBERTY
 
         // 1. Fail Primary
         val primaryAttempt = controller.startLoad(BasemapId.STREETS)!!
         val action = controller.handleTerminated(BasemapTerminalReason.PROVIDER_FAILURE, primaryAttempt, BasemapId.STREETS)
         
-        // 2. Fail Backup if one was triggered
-        if (action is SecondaryControllerAction.LoadAttempt) {
-            controller.handleTerminated(BasemapTerminalReason.PROVIDER_FAILURE, action.attempt, BasemapId.STREETS)
-        }
+        // 2. Fail Backup (Role is BACKUP)
+        assertTrue("Should have triggered backup", action is SecondaryControllerAction.LoadAttempt)
+        val backupAttempt = (action as SecondaryControllerAction.LoadAttempt).attempt
+        assertEquals(BasemapRole.BACKUP, backupAttempt.role)
+        
+        controller.handleTerminated(BasemapTerminalReason.PROVIDER_FAILURE, backupAttempt, BasemapId.STREETS)
         
         assertEquals(SecondaryMapStatus.FAILED, controller.currentStatus)
         
