@@ -1,17 +1,18 @@
 JVM Unit Test Summary
-Phase: 2.2h5R7 (Pending Request Authority, Recreation Coverage, Documentation, and Evidence Closure)
+Phase: 2.2h5R8 (Recreation Lifecycle and Version Closure)
 Result: SUCCESS
-Total: 611
-Passed: 611
+Total: 614
+Passed: 614
 Failed: 0
 Skipped: 0
 Date: 2026-08-01
 App Version: 0.02 (2)
 
 Verified key basemap scenarios:
-- Authoritative pending requests in MapViewModel preserving Source, Role, and Reason.
-- Selection supersession clearing live activeSourceId and resetting fallback eligibility.
-- Preference protection preventing redundant triggers for active pending requests.
-- "Accepted-Backup to New-Selection" regression coverage during deferred recreation.
-- Production-sequence recreation tests for main MapView.
-- Secondary disposal truth with status-gated terminal reason recording.
+- Authoritative state preservation during main MapView disposal/recreation.
+- Pending semantic request playback with new render session.
+- Explicit secondary disposal with preserved terminal reasons.
+- Fallback policy reset upon new customer selections.
+- Verified recreation sequences for all loading/loaded/failed states.
+- Normal and No-Key test reports maintained as separate evidence trees.
+- SHA-256 APK hash consistency verified for clean build.

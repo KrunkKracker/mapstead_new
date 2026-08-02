@@ -1147,29 +1147,13 @@ class MapViewModel @Inject constructor(
         }
         
         val status = _basemapStatus.value
-        when (status) {
-            BasemapLoadStatus.IDLE -> {
-                ensureInitialBasemapLoad()
-            }
-            BasemapLoadStatus.LOADING_PRIMARY -> {
-                val current = _requestedSourceId.value ?: basemapProvider.getPrimaryBasemaps().find { it.preferredId == _preferredBasemapId.value }?.sourceId
-                if (current != null) {
-                    issueAttempt(current, BasemapRole.PRIMARY, BasemapLoadAttemptReason.RECREATION)
-                }
-            }
-            BasemapLoadStatus.LOADING_BACKUP -> {
-                val current = _requestedSourceId.value ?: basemapProvider.resolveDefaultBackup(_preferredBasemapId.value)
-                issueAttempt(current, BasemapRole.BACKUP, BasemapLoadAttemptReason.RECREATION)
-            }
-            BasemapLoadStatus.LOADED -> {
-                val active = _activeSourceId.value
-                if (active != null) {
-                    issueAttempt(active, basemapProvider.getDefinition(active)?.role ?: BasemapRole.PRIMARY, BasemapLoadAttemptReason.RECREATION)
-                }
-            }
-            BasemapLoadStatus.FAILED -> {
-                // Preserve terminal state.
-            }
+        val sourceToRecreate = _requestedSourceId.value ?: _activeSourceId.value
+        
+        if (sourceToRecreate != null && status != BasemapLoadStatus.IDLE && status != BasemapLoadStatus.FAILED) {
+            val role = basemapProvider.getDefinition(sourceToRecreate)?.role ?: BasemapRole.PRIMARY
+            issueAttempt(sourceToRecreate, role, BasemapLoadAttemptReason.RECREATION)
+        } else if (status == BasemapLoadStatus.IDLE) {
+            ensureInitialBasemapLoad()
         }
     }
 
@@ -1222,7 +1206,7 @@ class MapViewModel @Inject constructor(
              return BasemapLoadSuccessResult(false, attempt.sourceId, rejectionReason = BasemapLoadRejectionReason.REQUESTED_SOURCE_MISMATCH)
         }
 
-        if (_basemapStatus.value != expectedStatus) {
+        if (attempt.reason != BasemapLoadAttemptReason.RECREATION && _basemapStatus.value != expectedStatus) {
             return BasemapLoadSuccessResult(false, attempt.sourceId, rejectionReason = BasemapLoadRejectionReason.STATUS_MISMATCH)
         }
         
@@ -1316,14 +1300,9 @@ class MapViewModel @Inject constructor(
 
     fun onRenderSessionDisposed(sessionId: UUID) {
         if (_renderSessionId.value == sessionId) {
-            val status = _basemapStatus.value
-            val inFlight = status == BasemapLoadStatus.LOADING_PRIMARY || status == BasemapLoadStatus.LOADING_BACKUP
-            
-            if (inFlight) {
-                _currentAttempt.value?.let { attempt ->
-                    if (attempt.renderSessionId == sessionId) {
-                        terminalAttempts.putIfAbsent(attempt.toKey(), BasemapTerminalReason.DISPOSED)
-                    }
+            _currentAttempt.value?.let { attempt ->
+                if (attempt.renderSessionId == sessionId) {
+                    terminalAttempts.putIfAbsent(attempt.toKey(), BasemapTerminalReason.DISPOSED)
                 }
             }
             
@@ -1403,7 +1382,7 @@ class MapViewModel @Inject constructor(
                 startPrimaryLoad(id)
             }
         } else {
-            // Phase 2.2h5R7: Authoritative pending request and state reset
+            // Phase 2.2h5R8: Authoritative pending request and state reset
             val newGen = _basemapGeneration.value + 1
             _basemapGeneration.value = newGen
             
@@ -1496,7 +1475,9 @@ class MapViewModel @Inject constructor(
         
         _currentAttempt.value = attempt
         _requestedSourceId.value = sourceId
-        _basemapStatus.value = if (role == BasemapRole.PRIMARY) BasemapLoadStatus.LOADING_PRIMARY else BasemapLoadStatus.LOADING_BACKUP
+        if (reason != BasemapLoadAttemptReason.RECREATION) {
+            _basemapStatus.value = if (role == BasemapRole.PRIMARY) BasemapLoadStatus.LOADING_PRIMARY else BasemapLoadStatus.LOADING_BACKUP
+        }
     }
 
     private fun reapplyActiveSource(sourceId: BasemapSourceId) {

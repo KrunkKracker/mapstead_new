@@ -3,6 +3,12 @@
 ## [0.02] - Unreleased
 
 ### Added
+- **Beginner-First UX Redesign Phase 2.2h5R8 — Recreation Lifecycle, Secondary Disposal, Evidence, and Version Closure**:
+    - **Recreation Lifecycle Hardening**: Refactored `MapViewModel` to preserve authoritative status and source truth during MapView disposal/recreation, ensuring RECREATION attempts use the exact preserved identity.
+    - **Secondary Disposal Truth**: Refactored `SecondaryBasemapController.dispose()` to correctly record `DISPOSED` terminal reasons while preserving earlier terminal outcomes, using `putIfAbsent` for integrity.
+    - **Exhaustive Test Coverage**: Added production-sequence recreation tests to the main state machine and exhaustive disposal verification for secondary controllers.
+    - **Evidence Closure**: Synchronized all project documentation and QA results for the v0.02 Phase 2.2h5R8 milestone.
+
 - **Beginner-First UX Redesign Phase 2.2h5R7 — Pending Request Authority, Recreation Coverage, Documentation, and Evidence Closure**:
     - **Authoritative Pending Requests**: Refactored `MapViewModel` to use a typed `PendingBasemapRequest` that captures the complete semantic intent (Source, Role, Reason, Generation) when a MapView is not present.
     - **Selection Supersession**: New basemap selections now immediately clear old live styles and reset the fallback policy, preventing stale backup configurations from bleeding into new requests.

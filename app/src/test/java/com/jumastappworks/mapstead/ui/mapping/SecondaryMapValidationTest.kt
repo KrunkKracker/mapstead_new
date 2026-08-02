@@ -251,4 +251,46 @@ class SecondaryMapValidationTest {
         assertEquals(1L, attempt2.attemptId)
         assertNotEquals(controller1.renderSessionId, controller2.renderSessionId)
     }
+
+    @Test
+    fun `Dispose while LOADED does not record DISPOSED terminal reason`() {
+        val controller = SecondaryBasemapController(renderSessionId, provider)
+        val streetsDef = BasemapDefinition(BasemapSourceId.MAPTILER_STREETS, BasemapProviderType.MAPTILER, BasemapRole.PRIMARY, "url", 0, 0, true, BasemapId.STREETS)
+        every { provider.getPrimaryBasemaps() } returns listOf(streetsDef)
+        every { provider.getDefinition(BasemapSourceId.MAPTILER_STREETS) } returns streetsDef
+
+        val attempt = controller.startLoad(BasemapId.STREETS)!!
+        controller.handleSuccess(attempt)
+        
+        controller.dispose()
+        
+        val debug = controller.getDebugState()
+        val key = BasemapAttemptKey(attempt.semanticGeneration, attempt.attemptId, attempt.renderSessionId, attempt.sourceId)
+        assertNull("Loaded attempt should NOT have a DISPOSED terminal reason", debug.terminalReasons[key])
+    }
+
+    @Test
+    fun `Dispose while FAILED clears currentAttempt and requestedSourceId`() {
+        val controller = SecondaryBasemapController(renderSessionId, provider)
+        val streetsDef = BasemapDefinition(BasemapSourceId.MAPTILER_STREETS, BasemapProviderType.MAPTILER, BasemapRole.PRIMARY, "url", 0, 0, true, BasemapId.STREETS)
+        every { provider.getPrimaryBasemaps() } returns listOf(streetsDef)
+        every { provider.getDefinition(BasemapSourceId.MAPTILER_STREETS) } returns streetsDef
+
+        // 1. Fail Primary
+        val primaryAttempt = controller.startLoad(BasemapId.STREETS)!!
+        val action = controller.handleTerminated(BasemapTerminalReason.PROVIDER_FAILURE, primaryAttempt, BasemapId.STREETS)
+        
+        // 2. Fail Backup if one was triggered
+        if (action is SecondaryControllerAction.LoadAttempt) {
+            controller.handleTerminated(BasemapTerminalReason.PROVIDER_FAILURE, action.attempt, BasemapId.STREETS)
+        }
+        
+        assertEquals(SecondaryMapStatus.FAILED, controller.currentStatus)
+        
+        controller.dispose()
+        
+        val debug = controller.getDebugState()
+        assertNull(debug.requestedSourceId)
+        assertEquals(SecondaryMapStatus.IDLE, debug.currentStatus)
+    }
 }

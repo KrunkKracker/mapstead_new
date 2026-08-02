@@ -51,24 +51,20 @@
 Purpose: Provide in-context assistance and finalize the onboarding experience.
 
 **ACTIVE PHASE**:
-- **Phase 3A — Unified Item Details**: Implementing a singular, high-integrity detail surface for all mapped infrastructure items. (NOT STARTED)
+- **Phase 2.2h5R8 — Recreation Lifecycle and Version Closure**: Finalizing main recreation state, secondary disposal, and authoritative pending requests. (IMPLEMENTED / EXTERNAL REVIEW PENDING)
 
 **COMPLETED WORK**:
-- Pending Request Authority, Recreation Coverage, Documentation, and Evidence Closure: Implemented authoritative pending requests in MapViewModel to ensure semantic intent survives render session gaps, and added exhaustive regression tests for accepted-backup-to-new-selection flows.
-- Recreation Lifecycle, Secondary Disposal Truth, and Evidence Closure: Implemented typed pending requests for deferred map loads, hardened secondary disposal logic with terminal reason preservation, and finalized Phase 2 documentation.
-- Recreation Lifecycle and Version Closure: Finalizing main recreation state, secondary disposal, and evidence closure.
-- Secondary Repair and Session Retirement: Verified full state transitions for secondary repairs, proper render-session retirement, and deferred map requests.
+- Recreation Lifecycle and Version Closure: Hardened recreation state preservation in MapViewModel, implemented formal secondary disposal lifecycle, and enforced authoritative pending requests.
+- Pending Request Authority: Ensured semantic intent survives render session gaps with typed pending requests and exhaustive regression tests.
 - Loader Atomicity and Repair Epoch: Verified atomic outcomes, precise repair epochs, and session-scoped camera isolation.
 - Camera and Repair Closure: Verified session-matched camera guards, authoritative snapshot restoration, repair epoch epochs, and strict callback validation.
 - Final Basemap Runtime Closure: Verified session-aware interaction guards, reactive style restoration, terminal tracking, and strict callback validation.
 - Basemap Implementation: Resilient MapTiler v4 integration with bundled branding, attempt-scoped isolation, and automated style repair.
-- State Stabilization: ViewModel refactoring for typed state aggregation and removed error-prone casting.
-- Alpha Readiness: Naming service, system item policies, property-specific guidance, address lookup.
+- Alpha Readiness: Naming service, system item policies, property-specific guidance, address lookup, and creation photo lifecycle.
 - Integrity: System Item draft lifecycle and terminal state cleanup.
 - Reliability: Persistence guard, initial camera stability, and default-world repair.
 - Wizard: Simplified Property setup with atomic Map creation.
 - Tasks: Task-oriented "Add Something" and operational record policies.
-- Photos: Creation photo lifecycle, wiring, and restoration.
 - Location: GPS permission recovery and request-state independence.
 
 **UPCOMING PHASE**:

@@ -477,6 +477,7 @@ class MapBasemapStateMachineTest {
         assertEquals(sessionB, attemptB.renderSessionId)
         assertEquals(streetsDef.sourceId, attemptB.sourceId)
         assertEquals(BasemapLoadAttemptReason.RECREATION, attemptB.reason)
+        assertEquals(BasemapLoadStatus.LOADING_PRIMARY, viewModel.uiState.value.basemapStatus)
         job.cancel()
     }
 
@@ -517,6 +518,7 @@ class MapBasemapStateMachineTest {
         assertEquals(sessionB, attemptB.renderSessionId)
         assertEquals(libertyDef.sourceId, attemptB.sourceId)
         assertEquals(BasemapLoadAttemptReason.RECREATION, attemptB.reason)
+        assertEquals(BasemapLoadStatus.LOADED, viewModel.uiState.value.basemapStatus)
         job.cancel()
     }
 
@@ -619,6 +621,63 @@ class MapBasemapStateMachineTest {
         
         // 3. Verify no new generation or attempt issued by preference collector
         assertEquals("Preference collector must not supersede pending request", genAfterRequest, viewModel.uiState.value.basemapGeneration)
+        job.cancel()
+    }
+
+    @Test
+    fun `Production Sequence Recreation - LOADED to RECREATION`() = runTest(testDispatcher) {
+        val job = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
+        val sessionA = UUID.randomUUID()
+        viewModel.onMapReady(sessionA)
+        advanceUntilIdle()
+        
+        // 1. Succeed Primary
+        viewModel.handleBasemapLoadSuccess(viewModel.uiState.value.currentAttempt!!)
+        advanceUntilIdle()
+        assertEquals(BasemapLoadStatus.LOADED, viewModel.uiState.value.basemapStatus)
+        
+        // Dispose session A
+        viewModel.onRenderSessionDisposed(sessionA)
+        advanceUntilIdle()
+        
+        // 2. Recreation
+        val sessionB = UUID.randomUUID()
+        viewModel.onMapReady(sessionB)
+        advanceUntilIdle()
+        
+        val attemptB = viewModel.uiState.value.currentAttempt!!
+        assertEquals(sessionB, attemptB.renderSessionId)
+        assertEquals(BasemapLoadAttemptReason.RECREATION, attemptB.reason)
+        assertEquals(BasemapLoadStatus.LOADED, viewModel.uiState.value.basemapStatus)
+        job.cancel()
+    }
+
+    @Test
+    fun `Production Sequence Recreation - LOADING_BACKUP to RECREATION`() = runTest(testDispatcher) {
+        val job = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
+        val sessionA = UUID.randomUUID()
+        viewModel.onMapReady(sessionA)
+        advanceUntilIdle()
+        
+        // 1. Fail Primary -> LOADING_BACKUP
+        viewModel.handleBasemapLoadTerminated(BasemapTerminalReason.TIMEOUT, viewModel.uiState.value.currentAttempt!!)
+        advanceUntilIdle()
+        assertEquals(BasemapLoadStatus.LOADING_BACKUP, viewModel.uiState.value.basemapStatus)
+        
+        // Dispose session A
+        viewModel.onRenderSessionDisposed(sessionA)
+        advanceUntilIdle()
+        
+        // 2. Recreation
+        val sessionB = UUID.randomUUID()
+        viewModel.onMapReady(sessionB)
+        advanceUntilIdle()
+        
+        val attemptB = viewModel.uiState.value.currentAttempt!!
+        assertEquals(sessionB, attemptB.renderSessionId)
+        assertEquals(BasemapLoadAttemptReason.RECREATION, attemptB.reason)
+        assertEquals(BasemapRole.BACKUP, attemptB.role)
+        assertEquals(BasemapLoadStatus.LOADING_BACKUP, viewModel.uiState.value.basemapStatus)
         job.cancel()
     }
 }
