@@ -293,4 +293,40 @@ class SecondaryMapValidationTest {
         assertNull(debug.requestedSourceId)
         assertEquals(SecondaryMapStatus.IDLE, debug.currentStatus)
     }
+
+    @Test
+    fun `Dispose while status is LOADED does not record DISPOSED terminal reason`() {
+        val controller = SecondaryBasemapController(renderSessionId, provider)
+        val streetsDef = BasemapDefinition(BasemapSourceId.MAPTILER_STREETS, BasemapProviderType.MAPTILER, BasemapRole.PRIMARY, "url", 0, 0, true, BasemapId.STREETS)
+        every { provider.getPrimaryBasemaps() } returns listOf(streetsDef)
+        every { provider.getDefinition(BasemapSourceId.MAPTILER_STREETS) } returns streetsDef
+
+        val attempt = controller.startLoad(BasemapId.STREETS)!!
+        controller.handleSuccess(attempt)
+        
+        controller.dispose()
+        
+        val debug = controller.getDebugState()
+        val key = BasemapAttemptKey(attempt.semanticGeneration, attempt.attemptId, attempt.renderSessionId, attempt.sourceId)
+        assertNull("Should NOT record terminal reason if already LOADED", debug.terminalReasons[key])
+    }
+
+    @Test
+    fun `Dispose while status is FAILED does not record DISPOSED terminal reason`() {
+        val controller = SecondaryBasemapController(renderSessionId, provider)
+        val streetsDef = BasemapDefinition(BasemapSourceId.MAPTILER_STREETS, BasemapProviderType.MAPTILER, BasemapRole.PRIMARY, "url", 0, 0, true, BasemapId.STREETS)
+        every { provider.getPrimaryBasemaps() } returns listOf(streetsDef)
+        every { provider.getDefinition(BasemapSourceId.MAPTILER_STREETS) } returns streetsDef
+
+        val attempt = controller.startLoad(BasemapId.STREETS)!!
+        controller.handleTerminated(BasemapTerminalReason.PROVIDER_FAILURE, attempt, BasemapId.STREETS)
+        
+        controller.dispose()
+        
+        val debug = controller.getDebugState()
+        val key = BasemapAttemptKey(attempt.semanticGeneration, attempt.attemptId, attempt.renderSessionId, attempt.sourceId)
+        assertEquals(BasemapTerminalReason.PROVIDER_FAILURE, debug.terminalReasons[key])
+        // Verify it wasn't overwritten by DISPOSED
+        assertNotEquals(BasemapTerminalReason.DISPOSED, debug.terminalReasons[key])
+    }
 }

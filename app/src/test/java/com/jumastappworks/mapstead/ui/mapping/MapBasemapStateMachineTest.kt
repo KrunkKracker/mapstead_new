@@ -41,6 +41,8 @@ class MapBasemapStateMachineTest {
     private val baseDef = BasemapDefinition(BasemapSourceId.MAPTILER_BASE, BasemapProviderType.MAPTILER, BasemapRole.PRIMARY, "url", 0, 0, true, BasemapId.BASE, BasemapSourceId.OPEN_FREE_MAP_POSITRON)
     private val topoDef = BasemapDefinition(BasemapSourceId.MAPTILER_TOPO, BasemapProviderType.MAPTILER, BasemapRole.PRIMARY, "url", 0, 0, true, BasemapId.TOPO, BasemapSourceId.OPEN_FREE_MAP_FIORD)
     private val libertyDef = BasemapDefinition(BasemapSourceId.OPEN_FREE_MAP_LIBERTY, BasemapProviderType.OPEN_FREE_MAP, BasemapRole.BACKUP, "url", 0, 0, true)
+    private val positronDef = BasemapDefinition(BasemapSourceId.OPEN_FREE_MAP_POSITRON, BasemapProviderType.OPEN_FREE_MAP, BasemapRole.BACKUP, "url", 0, 0, true)
+    private val fiordDef = BasemapDefinition(BasemapSourceId.OPEN_FREE_MAP_FIORD, BasemapProviderType.OPEN_FREE_MAP, BasemapRole.BACKUP, "url", 0, 0, true)
 
     @Before
     fun setup() {
@@ -53,11 +55,16 @@ class MapBasemapStateMachineTest {
         every { basemapProvider.getDefaultBasemapId() } returns BasemapId.STREETS
         
         every { basemapProvider.getPrimaryBasemaps() } returns listOf(streetsDef, baseDef, topoDef)
-        every { basemapProvider.resolveDefaultBackup(any()) } returns BasemapSourceId.OPEN_FREE_MAP_LIBERTY
+        every { basemapProvider.resolveDefaultBackup(BasemapId.STREETS) } returns BasemapSourceId.OPEN_FREE_MAP_LIBERTY
+        every { basemapProvider.resolveDefaultBackup(BasemapId.BASE) } returns BasemapSourceId.OPEN_FREE_MAP_POSITRON
+        every { basemapProvider.resolveDefaultBackup(BasemapId.TOPO) } returns BasemapSourceId.OPEN_FREE_MAP_FIORD
+
         every { basemapProvider.getDefinition(BasemapSourceId.MAPTILER_STREETS) } returns streetsDef
         every { basemapProvider.getDefinition(BasemapSourceId.MAPTILER_BASE) } returns baseDef
         every { basemapProvider.getDefinition(BasemapSourceId.MAPTILER_TOPO) } returns topoDef
         every { basemapProvider.getDefinition(BasemapSourceId.OPEN_FREE_MAP_LIBERTY) } returns libertyDef
+        every { basemapProvider.getDefinition(BasemapSourceId.OPEN_FREE_MAP_POSITRON) } returns positronDef
+        every { basemapProvider.getDefinition(BasemapSourceId.OPEN_FREE_MAP_FIORD) } returns fiordDef
 
         viewModel = MapViewModel(mapRepo, attachmentRepo, infraRepo, propRepo, resolver, locationProvider, basemapProvider, userPrefs, namingService, context, savedState)
     }
@@ -643,11 +650,82 @@ class MapBasemapStateMachineTest {
         viewModel.handleBasemapLoadTerminated(BasemapTerminalReason.TIMEOUT, primaryAttemptB)
         advanceUntilIdle()
         
-        // 5. Verify it triggers backup for BASE (which is also LIBERTY in this mock)
+        // 5. Verify it triggers backup for BASE (POSITRON)
         val backupAttemptB = viewModel.uiState.value.currentAttempt!!
         assertEquals(BasemapRole.BACKUP, backupAttemptB.role)
-        assertEquals(BasemapSourceId.OPEN_FREE_MAP_LIBERTY, backupAttemptB.sourceId)
+        assertEquals(BasemapSourceId.OPEN_FREE_MAP_POSITRON, backupAttemptB.sourceId)
         assertEquals(BasemapLoadStatus.LOADING_BACKUP, viewModel.uiState.value.basemapStatus)
+        job.cancel()
+    }
+
+    @Test
+    fun `Production Sequence Recreation - IDLE to INITIAL`() = runTest(testDispatcher) {
+        val job = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
+        
+        // Status is IDLE initially
+        assertEquals(BasemapLoadStatus.IDLE, viewModel.uiState.value.basemapStatus)
+        
+        // Register session
+        val session = UUID.randomUUID()
+        viewModel.onMapReady(session)
+        advanceUntilIdle()
+        
+        // Verify INITIAL load
+        val attempt = viewModel.uiState.value.currentAttempt!!
+        assertEquals(BasemapLoadAttemptReason.INITIAL, attempt.reason)
+        assertEquals(BasemapLoadStatus.LOADING_PRIMARY, viewModel.uiState.value.basemapStatus)
+        job.cancel()
+    }
+
+    @Test
+    fun `Production Sequence Recreation - FAILED to FAILED`() = runTest(testDispatcher) {
+        val job = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
+        val sessionA = UUID.randomUUID()
+        viewModel.onMapReady(sessionA)
+        advanceUntilIdle()
+        
+        // Fail primary and backup to reach FAILED state
+        viewModel.handleBasemapLoadTerminated(BasemapTerminalReason.TIMEOUT, viewModel.uiState.value.currentAttempt!!)
+        advanceUntilIdle()
+        viewModel.handleBasemapLoadTerminated(BasemapTerminalReason.TIMEOUT, viewModel.uiState.value.currentAttempt!!)
+        advanceUntilIdle()
+        assertEquals(BasemapLoadStatus.FAILED, viewModel.uiState.value.basemapStatus)
+        
+        // Dispose
+        viewModel.onRenderSessionDisposed(sessionA)
+        advanceUntilIdle()
+        
+        // Recreation
+        val sessionB = UUID.randomUUID()
+        viewModel.onMapReady(sessionB)
+        advanceUntilIdle()
+        
+        // Should remain FAILED with no new attempt
+        assertEquals(BasemapLoadStatus.FAILED, viewModel.uiState.value.basemapStatus)
+        assertNull(viewModel.uiState.value.currentAttempt)
+        job.cancel()
+    }
+
+    @Test
+    fun `Definition Unavailable Pending Recovery`() = runTest(testDispatcher) {
+        val job = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
+        
+        // 1. Setup deferred request for a source that will disappear
+        viewModel.requestBasemap(BasemapId.TOPO)
+        advanceUntilIdle()
+        
+        // 2. Make definition unavailable
+        every { basemapProvider.getDefinition(BasemapSourceId.MAPTILER_TOPO) } returns null
+        
+        // 3. Start map session
+        val session = UUID.randomUUID()
+        viewModel.onMapReady(session)
+        advanceUntilIdle()
+        
+        // 4. Verify FAILED state and cleared requestedSourceId
+        assertEquals(BasemapLoadStatus.FAILED, viewModel.uiState.value.basemapStatus)
+        assertNull(viewModel.uiState.value.requestedSourceId)
+        assertEquals(BasemapId.TOPO, viewModel.uiState.value.preferredBasemapId)
         job.cancel()
     }
 
@@ -793,6 +871,44 @@ class MapBasemapStateMachineTest {
         assertEquals(BasemapLoadAttemptReason.RECREATION, attemptB.reason)
         assertEquals(BasemapRole.BACKUP, attemptB.role)
         assertEquals(BasemapLoadStatus.LOADING_BACKUP, viewModel.uiState.value.basemapStatus)
+        job.cancel()
+    }
+
+    @Test
+    fun `customerBasemapPreferenceOverride Behavioral Test`() = runTest(testDispatcher) {
+        val job = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
+        val session = UUID.randomUUID()
+        
+        // 1. Establish Topo
+        userPrefsFlow.value = userPrefsFlow.value.copy(selectedBasemapId = BasemapId.TOPO)
+        viewModel.onMapReady(session)
+        advanceUntilIdle()
+        assertEquals(BasemapSourceId.MAPTILER_TOPO, viewModel.uiState.value.currentAttempt?.sourceId)
+        
+        // 2. Select Base (Override)
+        // Simulate persistence delay: request update but don't emit from repo yet
+        coEvery { userPrefs.updateSelectedBasemap(any()) } returns Unit
+        viewModel.requestBasemap(BasemapId.BASE)
+        advanceUntilIdle()
+        assertEquals(BasemapId.BASE, viewModel.uiState.value.preferredBasemapId)
+        
+        // 3. Repo emits Streets (Stale Repo Emission)
+        userPrefsFlow.value = userPrefsFlow.value.copy(selectedBasemapId = BasemapId.STREETS)
+        advanceUntilIdle()
+        
+        // 4. Verify Base persists because override is still active (waiting for BASE)
+        assertEquals("Override must persist", BasemapId.BASE, viewModel.uiState.value.preferredBasemapId)
+        assertEquals(BasemapSourceId.MAPTILER_BASE, viewModel.uiState.value.currentAttempt?.sourceId)
+        
+        // 5. Repo finally emits Base (Confirmation)
+        userPrefsFlow.value = userPrefsFlow.value.copy(selectedBasemapId = BasemapId.BASE)
+        advanceUntilIdle()
+        assertEquals(BasemapId.BASE, viewModel.uiState.value.preferredBasemapId)
+        
+        // 6. After confirmation, override is cleared. Next repo change should work.
+        userPrefsFlow.value = userPrefsFlow.value.copy(selectedBasemapId = BasemapId.TOPO)
+        advanceUntilIdle()
+        assertEquals(BasemapId.TOPO, viewModel.uiState.value.preferredBasemapId)
         job.cancel()
     }
 }

@@ -1,18 +1,20 @@
 JVM Unit Test Summary
-Phase: 2.2h5R9 (Preference Authority, Transactional Requests, and Evidence Consistency)
+Phase: 2.2h5R9A (Final Semantic, Test, and Evidence Reconciliation)
 Result: SUCCESS
-Total: 617
-Passed: 617
+Total: 623
+Passed: 623
 Failed: 0
 Skipped: 0
-Date: 2026-08-01
+Date: 2026-08-02
 App Version: 0.02 (2)
 
 Verified key basemap scenarios:
-- Customer preference override authority (blocks stale repository emissions).
-- Transactional PendingBasemapRequest consumption during session transitions.
-- Disposal terminal truth: Mark DISPOSED only for in-flight attempts.
-- Preservation of authoritative status and sources during recreation.
-- Full fallback regression: Old fallback state does not affect new selections.
-- Normal and No-Key test reports maintained in separate evidence trees.
-- SHA-256 APK hash verified after clean R9 build.
+- Correct backup-only role/reason/status (BACKUP/BACKUP).
+- Authoritative preference override (blocks stale repository emissions).
+- Transactional PendingBasemapRequest consumption and generation recovery.
+- Main disposal terminal truth (DISPOSED recorded only for LOADING state).
+- Full Streets/Liberty to Base/Positron regression (Fallback reset).
+- Production-sequence recreation for all 5 states.
+- Normal and No-Key test reports separated in evidence.
+- Full Gradle transcripts captured.
+- Fresh SHA-256 APK hashes for debug and test binaries.

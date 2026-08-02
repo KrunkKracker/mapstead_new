@@ -55,18 +55,21 @@ class SecondaryBasemapController(
 
         val primary = basemapProvider.getPrimaryBasemaps().find { it.preferredId == preferredBasemapId }
         val sourceId: BasemapSourceId
+        val reason: BasemapLoadAttemptReason
         if (primary != null) {
             sourceId = primary.sourceId
+            reason = BasemapLoadAttemptReason.INITIAL
             currentStatus = SecondaryMapStatus.LOADING_PRIMARY
         } else {
             fallbackAttempted = true
             sourceId = basemapProvider.resolveDefaultBackup(preferredBasemapId)
+            reason = BasemapLoadAttemptReason.BACKUP
             currentStatus = SecondaryMapStatus.LOADING_BACKUP
         }
         
         attemptCounter++
         requestedSourceId = sourceId
-        val attempt = createAttempt(sourceId, BasemapLoadAttemptReason.INITIAL)
+        val attempt = createAttempt(sourceId, reason)
         currentAttempt = attempt
         return attempt
     }

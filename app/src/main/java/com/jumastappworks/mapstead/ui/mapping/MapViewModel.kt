@@ -1149,6 +1149,17 @@ class MapViewModel @Inject constructor(
         val pending = _pendingBasemapRequest.value
         if (pending != null) {
             if (pending.semanticGeneration == _basemapGeneration.value) {
+                // Phase 2.2h5R9: Transactional definition check
+                val def = basemapProvider.getDefinition(pending.sourceId)
+                if (def == null) {
+                    _pendingBasemapRequest.value = null
+                    _basemapStatus.value = BasemapLoadStatus.FAILED
+                    _basemapErrorRes.value = R.string.failed_to_load_basemap
+                    _requestedSourceId.value = null
+                    _retryPrimaryAvailable.value = true
+                    return
+                }
+
                 val attempt = issueAttempt(pending.sourceId, pending.role, pending.reason)
                 if (attempt != null) {
                     _pendingBasemapRequest.value = null
@@ -1434,13 +1445,16 @@ class MapViewModel @Inject constructor(
             val primary = basemapProvider.getPrimaryBasemaps().find { it.preferredId == id }
             val sourceId: BasemapSourceId
             val role: BasemapRole
+            val reason: BasemapLoadAttemptReason
             if (primary != null) {
                 sourceId = primary.sourceId
                 role = BasemapRole.PRIMARY
+                reason = BasemapLoadAttemptReason.INITIAL
                 _basemapStatus.value = BasemapLoadStatus.LOADING_PRIMARY
             } else {
                 sourceId = basemapProvider.resolveDefaultBackup(id)
                 role = BasemapRole.BACKUP
+                reason = BasemapLoadAttemptReason.BACKUP
                 _basemapStatus.value = BasemapLoadStatus.LOADING_BACKUP
             }
             
@@ -1449,7 +1463,7 @@ class MapViewModel @Inject constructor(
                 semanticGeneration = newGen,
                 sourceId = sourceId,
                 role = role,
-                reason = BasemapLoadAttemptReason.INITIAL
+                reason = reason
             )
             _requestedSourceId.value = sourceId
         }
