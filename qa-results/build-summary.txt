@@ -1,8 +1,8 @@
-﻿Timestamp: 2026-08-01 21:50:00
-Phase: 2.2h5R8
+﻿Timestamp: 2026-08-01 22:30:00
+Phase: 2.2h5R9
 Command: ./gradlew :app:assembleDebug
 versionName: 0.02
 versionCode: 2
 Build Result: SUCCESS
-Debug APK SHA-256: BC514DC5BFD5F5EE1DDC2D372CEDC417D348C67D324256D352C8108213B4F9C2
-Note: Phase 2.2h5R8 complete. Recreation state preserved and evidence separated.
+Debug APK SHA-256: 5598A67054646B023FC7CFE378FDA4F299B41B20025B164BBAADAC6FBF077EA0
+Note: Phase 2.2h5R9 complete. Preference authority and disposal truth hardened.

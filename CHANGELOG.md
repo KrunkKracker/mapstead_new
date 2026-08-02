@@ -3,6 +3,13 @@
 ## [0.02] - Unreleased
 
 ### Added
+- **Beginner-First UX Redesign Phase 2.2h5R9 — Preference Authority, Transactional Pending Requests, Main Disposal Truth, and Evidence Consistency Closure**:
+    - **Customer Preference Authority**: Implemented a separate in-memory override that protects UI selections from stale repository emissions until persistence is confirmed.
+    - **Transactional Pending Consumption**: Updated `onMapReady` to consume `PendingBasemapRequest` only after a concrete session-bound attempt is successfully issued, ensuring no intent is lost during recreation.
+    - **Main Disposal Terminal Truth**: Restored strict recording of `DISPOSED` terminal reasons, limiting it to genuine in-flight loading attempts and preserving successful/failed outcomes.
+    - **Full Fallback Regression Fix**: Ensured that new selections reset all fallback and generation state, preventing old fallback history from affecting new map choices.
+    - **Evidence Tree Separation**: Finalized the QA process by maintaining separate evidence trees for normal and no-key test reports, with complete command transcripts and verified APK hashes.
+
 - **Beginner-First UX Redesign Phase 2.2h5R8 — Recreation Lifecycle, Secondary Disposal, Evidence, and Version Closure**:
     - **Recreation Lifecycle Hardening**: Refactored `MapViewModel` to preserve authoritative status and source truth during MapView disposal/recreation, ensuring RECREATION attempts use the exact preserved identity.
     - **Secondary Disposal Truth**: Refactored `SecondaryBasemapController.dispose()` to correctly record `DISPOSED` terminal reasons while preserving earlier terminal outcomes, using `putIfAbsent` for integrity.

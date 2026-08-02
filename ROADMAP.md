@@ -51,9 +51,10 @@
 Purpose: Provide in-context assistance and finalize the onboarding experience.
 
 **ACTIVE PHASE**:
-- **Phase 2.2h5R8 — Recreation Lifecycle and Version Closure**: Finalizing main recreation state, secondary disposal, and authoritative pending requests. (IMPLEMENTED / EXTERNAL REVIEW PENDING)
+- **Phase 2.2h5R9 — Preference Authority, Transactional Pending Requests, Main Disposal Truth, and Evidence Consistency Closure**: Implementing UI-driven preference overrides, transactional pending request handling, and hardened disposal truth. (IMPLEMENTED / EXTERNAL REVIEW PENDING)
 
 **COMPLETED WORK**:
+- Preference Authority and Transactional Requests: Implemented `_customerBasemapPreferenceOverride`, generation-validated pending requests, and hardened disposal terminal reasons.
 - Recreation Lifecycle and Version Closure: Hardened recreation state preservation in MapViewModel, implemented formal secondary disposal lifecycle, and enforced authoritative pending requests.
 - Pending Request Authority: Ensured semantic intent survives render session gaps with typed pending requests and exhaustive regression tests.
 - Loader Atomicity and Repair Epoch: Verified atomic outcomes, precise repair epochs, and session-scoped camera isolation.

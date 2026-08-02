@@ -143,7 +143,7 @@ class SecondaryBasemapController(
     fun dispose() {
         if (isDisposed) return
         
-        // Mark current in-flight attempt as DISPOSED if it's LOADING
+        // Phase 2.2h5R9: Terminal truth for disposal
         if (currentStatus == SecondaryMapStatus.LOADING_PRIMARY || currentStatus == SecondaryMapStatus.LOADING_BACKUP) {
             currentAttempt?.let { attempt ->
                 val key = attempt.toKey()
@@ -154,7 +154,10 @@ class SecondaryBasemapController(
         isDisposed = true
         currentAttempt = null
         requestedSourceId = null
-        currentStatus = SecondaryMapStatus.IDLE
+        // Preservation of acceptedSourceId and status for terminal truth
+        if (currentStatus != SecondaryMapStatus.LOADED_PRIMARY && currentStatus != SecondaryMapStatus.LOADED_BACKUP) {
+            currentStatus = SecondaryMapStatus.IDLE
+        }
     }
 
     fun getDebugState(): SecondaryControllerDebugState {

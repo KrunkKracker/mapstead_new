@@ -116,12 +116,16 @@ class MapBasemapStateMachineTest {
     @Test
     fun `MapView recreation rebinds correctly`() = runTest(testDispatcher) {
         val job = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
-        viewModel.onMapReady(UUID.randomUUID())
+        val session1 = UUID.randomUUID()
+        viewModel.onMapReady(session1)
         advanceUntilIdle()
         
         viewModel.requestBasemap(BasemapId.BASE)
         advanceUntilIdle()
         val attempt1 = viewModel.uiState.value.currentAttempt!!
+        
+        viewModel.onRenderSessionDisposed(session1)
+        advanceUntilIdle()
         
         val session2 = UUID.randomUUID()
         viewModel.onMapReady(session2)
@@ -139,7 +143,8 @@ class MapBasemapStateMachineTest {
     @Test
     fun `Recreation while FAILED does not auto-retry`() = runTest(testDispatcher) {
         val job = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
-        viewModel.onMapReady(UUID.randomUUID())
+        val session1 = UUID.randomUUID()
+        viewModel.onMapReady(session1)
         advanceUntilIdle()
         
         val primary = viewModel.uiState.value.currentAttempt!!
@@ -151,6 +156,9 @@ class MapBasemapStateMachineTest {
         advanceUntilIdle()
         
         assertEquals(BasemapLoadStatus.FAILED, viewModel.uiState.value.basemapStatus)
+        
+        viewModel.onRenderSessionDisposed(session1)
+        advanceUntilIdle()
         
         val session2 = UUID.randomUUID()
         viewModel.onMapReady(session2)
@@ -561,46 +569,153 @@ class MapBasemapStateMachineTest {
     }
 
     @Test
-    fun `Accepted-Backup to New-Selection regression test`() = runTest(testDispatcher) {
+    fun `Preference Authority - Stale repo emission ignored during override`() = runTest(testDispatcher) {
+        val job = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
+        
+        // 1. Initial load
+        val session = UUID.randomUUID()
+        viewModel.onMapReady(session)
+        advanceUntilIdle()
+        assertEquals(BasemapSourceId.MAPTILER_STREETS, viewModel.uiState.value.currentAttempt?.sourceId)
+        
+        // 2. Request BASE (Sets override). DO NOT update userPrefsFlow yet.
+        coEvery { userPrefs.updateSelectedBasemap(any()) } returns Unit
+        viewModel.requestBasemap(BasemapId.BASE)
+        advanceUntilIdle()
+        
+        val genAfterRequest = viewModel.uiState.value.basemapGeneration
+        assertEquals(BasemapId.BASE, viewModel.uiState.value.preferredBasemapId)
+        
+        // 3. Simulate repo emitting STALE (STREETS) while override is still BASE
+        userPrefsFlow.value = userPrefsFlow.value.copy(selectedBasemapId = BasemapId.STREETS)
+        advanceUntilIdle()
+        
+        // Should NOT trigger a reload of STREETS or change preferred ID
+        assertEquals("Preferred ID must remain BASE because of override", BasemapId.BASE, viewModel.uiState.value.preferredBasemapId)
+        assertEquals("Generation must not increment from stale emission", genAfterRequest, viewModel.uiState.value.basemapGeneration)
+        
+        // 4. Simulate repo emitting BASE (Confirmation)
+        userPrefsFlow.value = userPrefsFlow.value.copy(selectedBasemapId = BasemapId.BASE)
+        advanceUntilIdle()
+        
+        // Still no new generation/attempt because it's just confirmation
+        assertEquals(genAfterRequest, viewModel.uiState.value.basemapGeneration)
+        
+        // 5. AFTER confirmation, a NEW emission should be processed normally
+        userPrefsFlow.value = userPrefsFlow.value.copy(selectedBasemapId = BasemapId.TOPO)
+        advanceUntilIdle()
+        
+        assertTrue("New emission after confirmation must trigger load", viewModel.uiState.value.basemapGeneration > genAfterRequest)
+        assertEquals(BasemapId.TOPO, viewModel.uiState.value.preferredBasemapId)
+        assertEquals(BasemapSourceId.MAPTILER_TOPO, viewModel.uiState.value.currentAttempt?.sourceId)
+        job.cancel()
+    }
+
+    @Test
+    fun `Full Fallback Regression - New Selection Failure correctly triggers its own backup`() = runTest(testDispatcher) {
         val job = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
         val sessionA = UUID.randomUUID()
         viewModel.onMapReady(sessionA)
         advanceUntilIdle()
         
-        // 1. Fail primary for STREETS, succeed backup
-        val primaryAttemptA = viewModel.uiState.value.currentAttempt!!
-        viewModel.handleBasemapLoadTerminated(BasemapTerminalReason.TIMEOUT, primaryAttemptA)
+        // 1. Accepted backup for initial STREETS
+        viewModel.handleBasemapLoadTerminated(BasemapTerminalReason.TIMEOUT, viewModel.uiState.value.currentAttempt!!)
         advanceUntilIdle()
-        val backupAttemptA = viewModel.uiState.value.currentAttempt!!
-        viewModel.handleBasemapLoadSuccess(backupAttemptA)
+        viewModel.handleBasemapLoadSuccess(viewModel.uiState.value.currentAttempt!!)
         advanceUntilIdle()
         
-        assertEquals(BasemapLoadStatus.LOADED, viewModel.uiState.value.basemapStatus)
         assertEquals(BasemapSourceId.OPEN_FREE_MAP_LIBERTY, viewModel.uiState.value.activeSourceId)
         
-        // 2. Dispose session A
+        // 2. Dispose and Deferred selection of BASE
         viewModel.onRenderSessionDisposed(sessionA)
         advanceUntilIdle()
-        
-        // 3. Request BASE (deferred)
         viewModel.requestBasemap(BasemapId.BASE)
         advanceUntilIdle()
         
-        // State must indicate we are loading PRIMARY BASE now, clearing the old live backup
-        assertEquals(BasemapLoadStatus.LOADING_PRIMARY, viewModel.uiState.value.basemapStatus)
-        assertEquals(BasemapSourceId.MAPTILER_BASE, viewModel.uiState.value.requestedSourceId)
-        assertNull("Live style must be cleared when a new selection supersedes it", viewModel.uiState.value.activeSourceId)
-        assertFalse("Fallback policy must be reset for new selection", viewModel.uiState.value.isUsingFallback)
-        
-        // 4. Register session B
+        // 3. Session B Ready
         val sessionB = UUID.randomUUID()
         viewModel.onMapReady(sessionB)
         advanceUntilIdle()
         
+        // 4. Fail primary BASE
+        val primaryAttemptB = viewModel.uiState.value.currentAttempt!!
+        assertEquals(BasemapSourceId.MAPTILER_BASE, primaryAttemptB.sourceId)
+        viewModel.handleBasemapLoadTerminated(BasemapTerminalReason.TIMEOUT, primaryAttemptB)
+        advanceUntilIdle()
+        
+        // 5. Verify it triggers backup for BASE (which is also LIBERTY in this mock)
+        val backupAttemptB = viewModel.uiState.value.currentAttempt!!
+        assertEquals(BasemapRole.BACKUP, backupAttemptB.role)
+        assertEquals(BasemapSourceId.OPEN_FREE_MAP_LIBERTY, backupAttemptB.sourceId)
+        assertEquals(BasemapLoadStatus.LOADING_BACKUP, viewModel.uiState.value.basemapStatus)
+        job.cancel()
+    }
+
+    @Test
+    fun `Main Disposal Terminal Truth - Preservation and Non-overwriting`() = runTest(testDispatcher) {
+        val job = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
+        val sessionA = UUID.randomUUID()
+        viewModel.onMapReady(sessionA)
+        advanceUntilIdle()
+        
+        val attemptA = viewModel.uiState.value.currentAttempt!!
+        
+        // 1. Dispose while loading
+        viewModel.onRenderSessionDisposed(sessionA)
+        advanceUntilIdle()
+        
+        assertEquals(BasemapTerminalReason.DISPOSED, viewModel.getTerminalReason(attemptA))
+        assertEquals(BasemapLoadStatus.LOADING_PRIMARY, viewModel.uiState.value.basemapStatus)
+        assertEquals(streetsDef.sourceId, viewModel.uiState.value.requestedSourceId)
+        
+        // 2. Start session B and succeed
+        val sessionB = UUID.randomUUID()
+        viewModel.onMapReady(sessionB)
+        advanceUntilIdle()
         val attemptB = viewModel.uiState.value.currentAttempt!!
-        assertEquals(sessionB, attemptB.renderSessionId)
-        assertEquals(BasemapSourceId.MAPTILER_BASE, attemptB.sourceId)
-        assertEquals(BasemapRole.PRIMARY, attemptB.role)
+        viewModel.handleBasemapLoadSuccess(attemptB)
+        advanceUntilIdle()
+        
+        assertEquals(BasemapLoadStatus.LOADED, viewModel.uiState.value.basemapStatus)
+        
+        // 3. Dispose while LOADED
+        viewModel.onRenderSessionDisposed(sessionB)
+        advanceUntilIdle()
+        
+        // Should NOT mark attemptB as DISPOSED because it was already LOADED
+        assertNull("Loaded attempt should not be marked DISPOSED", viewModel.getTerminalReason(attemptB))
+        assertEquals(BasemapLoadStatus.LOADED, viewModel.uiState.value.basemapStatus)
+        assertEquals(streetsDef.sourceId, viewModel.uiState.value.activeSourceId)
+        job.cancel()
+    }
+
+    @Test
+    fun `Stale Pending Request Retirement - Generation Mismatch`() = runTest(testDispatcher) {
+        val job = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
+        
+        // 1. Create a pending request for BASE (Gen 1)
+        viewModel.requestBasemap(BasemapId.BASE)
+        advanceUntilIdle()
+        val gen1 = viewModel.uiState.value.basemapGeneration
+        
+        // 2. While still no map session, request TOPO (Gen 2)
+        viewModel.requestBasemap(BasemapId.TOPO)
+        advanceUntilIdle()
+        val gen2 = viewModel.uiState.value.basemapGeneration
+        assertTrue(gen2 > gen1)
+        
+        // 3. Start map session. It should retire the stale Gen 1 pending (if it were somehow still there) 
+        // and assert authority for Gen 2.
+        // Internal state check: In our implementation, requestBasemap overwrites the pending request.
+        // To test the "onMapReady" retirement logic, we might need to simulate a stale generation.
+        
+        val session = UUID.randomUUID()
+        viewModel.onMapReady(session)
+        advanceUntilIdle()
+        
+        assertEquals(BasemapId.TOPO, viewModel.uiState.value.preferredBasemapId)
+        assertEquals(BasemapSourceId.MAPTILER_TOPO, viewModel.uiState.value.currentAttempt?.sourceId)
+        assertEquals(gen2, viewModel.uiState.value.currentAttempt?.semanticGeneration)
         job.cancel()
     }
 

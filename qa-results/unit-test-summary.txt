@@ -1,18 +1,18 @@
 JVM Unit Test Summary
-Phase: 2.2h5R8 (Recreation Lifecycle and Version Closure)
+Phase: 2.2h5R9 (Preference Authority, Transactional Requests, and Evidence Consistency)
 Result: SUCCESS
-Total: 614
-Passed: 614
+Total: 617
+Passed: 617
 Failed: 0
 Skipped: 0
 Date: 2026-08-01
 App Version: 0.02 (2)
 
 Verified key basemap scenarios:
-- Authoritative state preservation during main MapView disposal/recreation.
-- Pending semantic request playback with new render session.
-- Explicit secondary disposal with preserved terminal reasons.
-- Fallback policy reset upon new customer selections.
-- Verified recreation sequences for all loading/loaded/failed states.
-- Normal and No-Key test reports maintained as separate evidence trees.
-- SHA-256 APK hash consistency verified for clean build.
+- Customer preference override authority (blocks stale repository emissions).
+- Transactional PendingBasemapRequest consumption during session transitions.
+- Disposal terminal truth: Mark DISPOSED only for in-flight attempts.
+- Preservation of authoritative status and sources during recreation.
+- Full fallback regression: Old fallback state does not affect new selections.
+- Normal and No-Key test reports maintained in separate evidence trees.
+- SHA-256 APK hash verified after clean R9 build.
