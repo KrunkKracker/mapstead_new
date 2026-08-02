@@ -51,10 +51,13 @@
 Purpose: Provide in-context assistance and finalize the onboarding experience.
 
 **ACTIVE PHASE**:
-- **Phase 2.2h5R9B — Stale Pending Recovery, Behavioral Coverage, Documentation, and Evidence Integrity Closure**: COMPLETED.
-- **Phase 2.2h5R9 — Preference Authority, Transactional Pending Requests, Main Disposal Truth, and Evidence Consistency Closure**: COMPLETED.
+- **Phase 2.2h5R9C — Preference Confirmation, Stale-Branch Testability, and Evidence Closure**: Finalizing preference confirmation, transactional recovery, and evidence integrity. (IMPLEMENTED / EXTERNAL REVIEW PENDING)
+- **Phase 2.2h5R9B — Stale Pending Recovery, Behavioral Coverage, Documentation, and Evidence Integrity Closure**: COMPLETE.
 
 **COMPLETED WORK**:
+- Preference Confirmation and Authority: Implemented `lastObservedRepositoryBasemapId` confirmation logic, stale emission filtering, and generation-validated selection authority.
+- Stale-Pending Recovery and Transactional Reissue: Refactored `onMapReady` to use `PendingBasemapResolver`, ensuring transactional issue and reissue of authoritative preferences.
+- Secondary Backup-Only: Hardened `SecondaryBasemapController` to correctly handle sources without primaries using the `BACKUP` role and reason.
 - Preference Authority and Transactional Requests: Implemented `_customerBasemapPreferenceOverride`, generation-validated pending requests, and hardened disposal terminal reasons.
 - Recreation Lifecycle and Version Closure: Hardened recreation state preservation in MapViewModel, implemented formal secondary disposal lifecycle, and enforced authoritative pending requests.
 - Pending Request Authority: Ensured semantic intent survives render session gaps with typed pending requests and exhaustive regression tests.

@@ -9,16 +9,16 @@ Mapstead uses a three-tier testing strategy. Routine development prioritizes Tie
 - **Scope**: ViewModel logic, Repository transactions, Cycle detection, Report/Handoff assembly, navigation mapping, and **Operational Record Policies**.
 - **Execution**: `./gradlew testDebugUnitTest`
 
-### Phase 2.2h5R9B Quality Gates
-1. **Deterministic Unit Tests**: Run `./gradlew test` to verify `MapViewModelPhase2Test` and `MapBasemapStateMachineTest`.
-2. **Consistency Check**: Verify `BuildConfigConsistencyTest` passes.
-3. **Packaging Workflow**: Build `no-key` APK using `./gradlew assembleDebug -PKEY_BLANK=true` for evidence submission.
-- **Result**: 617 PASSED (Phase 2.2h5R9)
+### Phase 2.2h5R9C Quality Gates
+1. **Deterministic Unit Tests**: Run `./gradlew test` to verify `MapViewModelPhase2Test`, `MapBasemapStateMachineTest`, and `PendingBasemapResolverTest`.
+2. **Consistency Check**: Verify `BuildConfigConsistencyTest` passes for Phase 2.2h5R9C.
+3. **Packaging Workflow**: Build `no-key` APKs using `./gradlew assembleDebug -PMAPTILER_API_KEY= -PVERIFY_NO_KEY=true`.
+- **Result**: 641 PASSED (Phase 2.2h5R9C)
 
 ### 2. Static Analysis
 - **Scope**: Linting for code quality and schema consistency.
 - **Execution**: `./gradlew lintDebug`
-- **Result**: PASSED (Phase 2.2h5R9) - 0 errors, 248 warnings, 1 hint.
+- **Result**: PASSED (Phase 2.2h5R9C) - 0 errors, 248 warnings, 1 hint.
 
 ### 3. Instrumented UI Tests (Targeted Connected)
 - **Scope**: Cross-component interactions, database migrations, and **"Add Something" workflow**.

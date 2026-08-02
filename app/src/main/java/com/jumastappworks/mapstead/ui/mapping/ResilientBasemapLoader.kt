@@ -63,10 +63,10 @@ class SecondaryBasemapController(
             role = BasemapRole.PRIMARY
             currentStatus = SecondaryMapStatus.LOADING_PRIMARY
         } else {
-            fallbackAttempted = true
+            // Phase 2.2h5R9C: Direct backup-only handling
             sourceId = basemapProvider.resolveDefaultBackup(preferredBasemapId)
-            reason = BasemapLoadAttemptReason.BACKUP
             role = BasemapRole.BACKUP
+            reason = BasemapLoadAttemptReason.BACKUP
             currentStatus = SecondaryMapStatus.LOADING_BACKUP
         }
         

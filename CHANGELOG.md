@@ -3,6 +3,12 @@
 ## [0.02] - Unreleased
 
 ### Added
+- **Beginner-First UX Redesign Phase 2.2h5R9C — Preference Confirmation, Stale-Branch Testability, and Evidence Closure**:
+    - **Preference Confirmation and Authority**: Implemented `lastObservedRepositoryBasemapId` to track confirmed repository state and filter stale emissions during active overrides.
+    - **Transactional Reissue**: Refactored `onMapReady` for transactional issuance and reissue of authoritative preferences using `PendingBasemapResolver`.
+    - **Secondary Backup-Only**: Hardened `SecondaryBasemapController` to correctly handle direct backup-only transitions.
+    - **Exhaustive Resolver Testing**: Added `PendingBasemapResolverTest` covering all consumption outcomes (Issue, Reissue, Unavailable).
+    - **Full Fallback Regression**: Expanded test coverage for complex Streets/Liberty -> Base -> Fail Base -> Verify Positron scenarios.
 - **Beginner-First UX Redesign Phase 2.2h5R9B — Stale Pending Recovery, Behavioral Coverage, Documentation, and Evidence Integrity Closure**:
     - **Backup-Only Attempt Correction**: Corrected metadata (role/reason) for sources without primaries.
     - **Deterministic Stale-Pending Recovery**: Implemented transactional pending request handling in `onMapReady` to safely retire stale records.

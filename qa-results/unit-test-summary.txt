@@ -1,8 +1,8 @@
 JVM Unit Test Summary
-Phase: 2.2h5R9B (Stale Pending Recovery and Evidence Integrity Closure)
+Phase: 2.2h5R9C
 Result: SUCCESS
-Total: 629
-Passed: 629
+Total: 641
+Passed: 641
 Failed: 0
 Skipped: 0
 Date: 2026-08-02

@@ -16,7 +16,7 @@ class BuildConfigConsistencyTest {
             assertTrue("MAPTILER_CONFIGURED must be true when key is provided", configured)
         }
 
-        // Phase 2.2h5R9B: Explicit No-Key Verification via Gradle Property
+        // Phase 2.2h5R9C: Explicit No-Key Verification via Gradle Property
         if (System.getProperty("mapstead.expectNoKey") == "true") {
             assertTrue("BuildConfig.MAPTILER_API_KEY must be blank when expectNoKey is true", key.isBlank())
             assertFalse("BuildConfig.MAPTILER_CONFIGURED must be false when expectNoKey is true", configured)

@@ -96,14 +96,6 @@ private data class Triple3<A, B, C>(val a: A, val b: B, val c: C)
 private data class Triple5<A, B, C, D, E>(val a: A, val b: B, val c: C, val d: D, val e: E)
 private data class Quad<A, B, C, D>(val a: A, val b: B, val c: C, val d: D)
 
-private data class PendingBasemapRequest(
-    val preferredBasemapId: BasemapId,
-    val semanticGeneration: Long,
-    val sourceId: BasemapSourceId,
-    val role: BasemapRole,
-    val reason: BasemapLoadAttemptReason
-)
-
 private data class BasemapStatusBatch(
     val preferredBasemapId: BasemapId,
     val requestedSourceId: BasemapSourceId?,
@@ -361,6 +353,7 @@ class MapViewModel @Inject constructor(
     // Basemap State Machine
     private val _preferredBasemapId = MutableStateFlow<BasemapId>(BasemapId.STREETS)
     private var customerBasemapPreferenceOverride: BasemapId? = null
+    private var lastObservedRepositoryBasemapId: BasemapId? = null
     private val _requestedSourceId = MutableStateFlow<BasemapSourceId?>(null)
     private val _activeSourceId = MutableStateFlow<BasemapSourceId?>(null)
     private val _currentAttempt = MutableStateFlow<BasemapLoadAttempt?>(null)
@@ -507,11 +500,15 @@ class MapViewModel @Inject constructor(
                 .distinctUntilChanged()
                 .collect { id ->
                     isPreferencesReady = true
+                    val prevLastObserved = lastObservedRepositoryBasemapId
+                    lastObservedRepositoryBasemapId = id
+                    
                     val override = customerBasemapPreferenceOverride
                     if (override != null) {
                         if (id == override) {
                             customerBasemapPreferenceOverride = null
                         }
+                        // Phase 2.2h5R9C: Confirm or filter stale repo emissions
                         return@collect
                     }
 
@@ -1146,62 +1143,63 @@ class MapViewModel @Inject constructor(
         _renderSessionId.value = sessionId
         isRenderSessionReady = true
         
-        val pending = _pendingBasemapRequest.value
-        if (pending != null) {
-            if (pending.semanticGeneration == _basemapGeneration.value) {
-                // Phase 2.2h5R9: Transactional definition check
-                val def = basemapProvider.getDefinition(pending.sourceId)
-                if (def == null) {
-                    // Phase 2.2h5R9B: Preserve customer's preference but transition to FAILED
-                    _pendingBasemapRequest.value = null
-                    _basemapStatus.value = BasemapLoadStatus.FAILED
-                    _basemapErrorRes.value = R.string.failed_to_load_basemap
-                    _requestedSourceId.value = null
-                    _retryPrimaryAvailable.value = true
-                    return
-                }
+        val resolution = PendingBasemapResolver.resolve(
+            pending = _pendingBasemapRequest.value,
+            currentGeneration = _basemapGeneration.value,
+            currentPreferredId = _preferredBasemapId.value,
+            sessionId = sessionId,
+            basemapProvider = basemapProvider
+        )
 
-                val attempt = issueAttempt(pending.sourceId, pending.role, pending.reason)
-                if (attempt != null) {
-                    // Phase 2.2h5R9B: MATCHING GENERATION: Clear record only after successful issue
-                    _pendingBasemapRequest.value = null
-                }
-            } else {
-                // Phase 2.2h5R9B: STALE GENERATION: Retire stale record and re-assert authority without incrementing
+        when (resolution) {
+            is PendingConsumptionResult.IssuePending -> {
+                issueAttempt(resolution.request.sourceId, resolution.request.role, resolution.request.reason)
                 _pendingBasemapRequest.value = null
-                val authId = _preferredBasemapId.value
+            }
+            is PendingConsumptionResult.ReissueCurrentAuthority -> {
+                val authId = resolution.preferredBasemapId
                 val primary = basemapProvider.getPrimaryBasemaps().find { it.preferredId == authId }
-                if (primary != null) {
+                val attempt = if (primary != null) {
                     issueAttempt(primary.sourceId, BasemapRole.PRIMARY, BasemapLoadAttemptReason.INITIAL)
                 } else {
                     val backupSourceId = basemapProvider.resolveDefaultBackup(authId)
                     issueAttempt(backupSourceId, BasemapRole.BACKUP, BasemapLoadAttemptReason.BACKUP)
                 }
+                
+                if (attempt != null) {
+                    _pendingBasemapRequest.value = null
+                } else {
+                    _pendingBasemapRequest.value = null
+                    _requestedSourceId.value = null
+                    _basemapStatus.value = BasemapLoadStatus.FAILED
+                }
             }
-            return
-        }
-        
-        val status = _basemapStatus.value
-        if (status == BasemapLoadStatus.IDLE) {
-            ensureInitialBasemapLoad()
-        } else {
-            // Phase 2.2h5R9B: Idempotent recreation check
-            val current = _currentAttempt.value
-            if (current != null && current.renderSessionId == sessionId) {
-                // Already loading/loaded in this session, don't re-issue
-                return
+            PendingConsumptionResult.DefinitionUnavailable -> {
+                _pendingBasemapRequest.value = null
+                _requestedSourceId.value = null
+                _basemapStatus.value = BasemapLoadStatus.FAILED
+                _basemapErrorRes.value = R.string.failed_to_load_basemap
+                _retryPrimaryAvailable.value = true
             }
+            PendingConsumptionResult.NoLiveSession -> {
+                val status = _basemapStatus.value
+                if (status == BasemapLoadStatus.IDLE) {
+                    ensureInitialBasemapLoad()
+                } else {
+                    val current = _currentAttempt.value
+                    if (current != null && current.renderSessionId == sessionId) return
 
-            // Recreation Logic
-            val sourceId = if (status == BasemapLoadStatus.LOADED) {
-                _activeSourceId.value
-            } else if (status == BasemapLoadStatus.LOADING_PRIMARY || status == BasemapLoadStatus.LOADING_BACKUP) {
-                _requestedSourceId.value
-            } else null
-            
-            if (sourceId != null) {
-                val role = basemapProvider.getDefinition(sourceId)?.role ?: BasemapRole.PRIMARY
-                issueAttempt(sourceId, role, BasemapLoadAttemptReason.RECREATION)
+                    val sourceId = if (status == BasemapLoadStatus.LOADED) {
+                        _activeSourceId.value
+                    } else if (status == BasemapLoadStatus.LOADING_PRIMARY || status == BasemapLoadStatus.LOADING_BACKUP) {
+                        _requestedSourceId.value
+                    } else null
+                    
+                    if (sourceId != null) {
+                        val role = basemapProvider.getDefinition(sourceId)?.role ?: BasemapRole.PRIMARY
+                        issueAttempt(sourceId, role, BasemapLoadAttemptReason.RECREATION)
+                    }
+                }
             }
         }
     }
@@ -1431,10 +1429,10 @@ class MapViewModel @Inject constructor(
 
     fun requestBasemap(id: BasemapId) {
         _preferredBasemapId.value = id
-        customerBasemapPreferenceOverride = id
+        customerBasemapPreferenceOverride = if (id != lastObservedRepositoryBasemapId) id else null
         
-        val newGen = _basemapGeneration.value + 1
-        _basemapGeneration.value = newGen
+        _basemapGeneration.update { it + 1 }
+        val newGen = _basemapGeneration.value
         _fallbackAttempted.value = false
         terminalAttempts.clear()
         repairEpochs.clear()
@@ -1457,7 +1455,6 @@ class MapViewModel @Inject constructor(
                 issueAttempt(backupSourceId, BasemapRole.BACKUP, BasemapLoadAttemptReason.BACKUP)
             }
         } else {
-            // Phase 2.2h5R9: Authoritative pending request
             val primary = basemapProvider.getPrimaryBasemaps().find { it.preferredId == id }
             val sourceId: BasemapSourceId
             val role: BasemapRole
@@ -1466,12 +1463,10 @@ class MapViewModel @Inject constructor(
                 sourceId = primary.sourceId
                 role = BasemapRole.PRIMARY
                 reason = BasemapLoadAttemptReason.INITIAL
-                _basemapStatus.value = BasemapLoadStatus.LOADING_PRIMARY
             } else {
                 sourceId = basemapProvider.resolveDefaultBackup(id)
                 role = BasemapRole.BACKUP
                 reason = BasemapLoadAttemptReason.BACKUP
-                _basemapStatus.value = BasemapLoadStatus.LOADING_BACKUP
             }
             
             _pendingBasemapRequest.value = PendingBasemapRequest(
@@ -1482,6 +1477,7 @@ class MapViewModel @Inject constructor(
                 reason = reason
             )
             _requestedSourceId.value = sourceId
+            _basemapStatus.value = if (role == BasemapRole.PRIMARY) BasemapLoadStatus.LOADING_PRIMARY else BasemapLoadStatus.LOADING_BACKUP
         }
         
         viewModelScope.launch { 
@@ -1515,7 +1511,13 @@ class MapViewModel @Inject constructor(
     }
 
     private fun issueAttempt(sourceId: BasemapSourceId, role: BasemapRole, reason: BasemapLoadAttemptReason): BasemapLoadAttempt? {
-        val def = basemapProvider.getDefinition(sourceId) ?: return null
+        val def = basemapProvider.getDefinition(sourceId) ?: run {
+            _requestedSourceId.value = null
+            _basemapStatus.value = BasemapLoadStatus.FAILED
+            _basemapErrorRes.value = R.string.failed_to_load_basemap
+            _retryPrimaryAvailable.value = true
+            return null
+        }
         val sessionId = _renderSessionId.value ?: return null
 
         _currentAttempt.value?.let { prev ->
