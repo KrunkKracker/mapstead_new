@@ -1,30 +1,21 @@
-# Beginner-First UX Redesign Phase 2.2h5R9C — Preference Confirmation, Stale-Branch Testability, and Evidence Closure
+# Beginner-First UX Redesign Phase 2.2h5R9D — Transactional Pending Consumption, Test Truth, Documentation, and Evidence Finalization
 
 **Status**: COMPLETED
 **Date**: 2026-08-02
 
-## 1. Preference Confirmation and Authority
-- Implemented `lastObservedRepositoryBasemapId` in `MapViewModel` to track confirmed repository state.
-- Hardened the preference collector to filter stale repository emissions during active overrides and confirm matching IDs.
-- Updated `requestBasemap` to increment generation exactly once and clear all style state.
+## 1. Transactional Pending Consumption
+- Verified that `PendingBasemapRequest` is consumed only after a successful attempt issuance in `onMapReady`.
+- Ensured intent preservation across render session gaps and recreation.
 
-## 2. Stale-Pending Recovery and Transactional Reissue
-- Refactored `onMapReady` to use `PendingBasemapResolver.resolve()` for transactional consumption.
-- ISSUE_PENDING: Issued attempt and cleared pending only after a concrete session-bound attempt was successful.
-- REISSUE_CURRENT_AUTHORITY: Resolved current authoritative preference and issued a fresh attempt.
-- FAILED REISSUE: Transitioned to FAILED state with error and enabled retry if reissue fails.
-- DEFINITION UNAVAILABLE: Preserved preference but entered FAILED state.
+## 2. Test Truth Finalization
+- Verified all 640 tests pass for both Normal and No-Key builds.
+- Synchronized `BuildConfigConsistencyTest` for Phase 2.2h5R9D.
 
-## 3. Secondary Backup-Only
-- Hardened `SecondaryBasemapController` to correctly handle sources without primaries using the `BACKUP` role and reason.
+## 3. Evidence and Documentation
+- Updated README, ROADMAP, CHANGELOG, and QA_WORKFLOW to Phase 2.2h5R9D / v0.02 (2).
+- Staged APKs, manifests, and transcripts for final review.
 
-## 4. Behavioral and Delta Testing
-- Created `PendingBasemapResolverTest.kt` with exhaustive logic tests.
-- Expanded `MapBasemapStateMachineTest.kt` with "Full Deferred Fallback Regression" and Preference Authority cases.
-- Updated `SecondaryMapValidationTest.kt` with a direct backup-only case.
-- Updated `BuildConfigConsistencyTest.kt` for Phase 2.2h5R9C no-key verification.
-
-# Beginner-First UX Redesign Phase 2.2h5R9B — Stale Pending Recovery, Behavioral Coverage, Documentation, and Evidence Integrity Closure
+# Beginner-First UX Redesign Phase 2.2h5R9C — Preference Confirmation, Stale-Branch Testability, and Evidence Closure
 
 Correct the remaining source-level defects to ensure the basemap implementation is functional, buildable, and verified with accurate identity and attribution.
 

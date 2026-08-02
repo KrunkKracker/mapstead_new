@@ -20,4 +20,10 @@ local.properties
 *.hprof
 java_pid*.hprof
 
-.idea/
+# Evidence staging
+evidence-staging/
+Mapstead-Phase-*.zip
+manifest-sha256.txt
+run_gradle.bat
+test_file.txt
+test_transcript.txt

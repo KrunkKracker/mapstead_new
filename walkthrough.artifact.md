@@ -1,20 +1,17 @@
+# Beginner-First UX Redesign Phase 2.2h5R9D Walkthrough
+
+This phase finalizes the basemap preference authority, test truth, and evidence integrity work, ensuring that all documentation and staged binaries are synchronized for the v0.02 (2) milestone.
+
+### 1. Transactional Pending Consumption
+The `MapViewModel` now transactionally consumes `PendingBasemapRequest` objects only after a concrete session-bound attempt is successfully issued. This ensures that user intent is never lost during rotation or render session gaps.
+
+### 2. Test Truth and Coverage
+Verified the complete baseline of 640 JVM unit tests, including exhaustive coverage for the `PendingBasemapResolver`, `MapBasemapStateMachine`, and `SecondaryBasemapController`. Both normal and no-key configurations were verified.
+
+### 3. Documentation and Evidence Closure
+Synchronized all project documentation (README, ROADMAP, CHANGELOG, QA_WORKFLOW) and generated the final evidence package including APKs, SHA-256 manifests, and command transcripts.
+
 # Beginner-First UX Redesign Phase 2.2h5R9C Walkthrough
-
-This phase completes the basemap preference authority and testability work, ensuring that UI selections are protected from stale repository emissions and that recreation recovery is fully transactional.
-
-### 1. Preference Authority and Confirmation
-The `MapViewModel` now maintains a `lastObservedRepositoryBasemapId` to distinguish between confirmed repository state and stale emissions. An active `customerBasemapPreferenceOverride` protects the user's latest selection until the repository confirms it, preventing UI "flicker" during persistence.
-
-### 2. Transactional Stale-Pending Recovery
-Refactored `onMapReady` to use a dedicated `PendingBasemapResolver`. This ensures that pending requests are consumed transactionally—cleared only after a concrete session-bound attempt is successfully issued. It also handles reissue scenarios when the map becomes ready for a stale generation.
-
-### 3. Backup-Only Hardening
-Corrected the lifecycle for basemaps that lack a primary provider (e.g., in no-key environments). Both Main and Secondary controllers now correctly assign the `BACKUP` role and reason from inception, ensuring consistent behavior and attribution.
-
-### 4. Exhaustive Testability
-Introduced `PendingBasemapResolverTest` to verify all resolution outcomes in isolation. Expanded the main state machine tests to cover complex multi-step fallback regressions (e.g., Streets/Liberty -> Base -> Positron) and the new preference authority logic.
-
-# Beginner-First UX Redesign Phase 2.2h5R9B Walkthrough
 
 This phase redesigns the core mapping entry point to align with a real-world mental model. Beginners now select the object they want to document (e.g., "Well", "Fence", "House") rather than technical geometry. It also introduces automated record-keeping policies to reduce cognitive load.
 

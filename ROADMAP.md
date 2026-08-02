@@ -51,7 +51,8 @@
 Purpose: Provide in-context assistance and finalize the onboarding experience.
 
 **ACTIVE PHASE**:
-- **Phase 2.2h5R9C — Preference Confirmation, Stale-Branch Testability, and Evidence Closure**: Finalizing preference confirmation, transactional recovery, and evidence integrity. (IMPLEMENTED / EXTERNAL REVIEW PENDING)
+- **Phase 2.2h5R9D — Transactional Pending Consumption, Test Truth, Documentation, and Evidence Finalization**: Finalizing transactional pending consumption, test truth, documentation, and evidence. (IMPLEMENTED / EXTERNAL REVIEW PENDING)
+- **Phase 2.2h5R9C — Preference Confirmation, Stale-Branch Testability, and Evidence Closure**: COMPLETE.
 - **Phase 2.2h5R9B — Stale Pending Recovery, Behavioral Coverage, Documentation, and Evidence Integrity Closure**: COMPLETE.
 
 **COMPLETED WORK**:
