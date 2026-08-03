@@ -1,6 +1,14 @@
 # Changelog
 
-## [0.02] - Unreleased
+## [0.03] - Unreleased
+
+### Added
+- **Beginner-First UX Redesign Phase 3A — Unified Item Details Baseline**:
+    - Started the Unified Item Details development cycle.
+    - Focus on a clear, consistent detail experience for Map Features and Infrastructure Records.
+    - Beginner-first UI/UX terminology and layout patterns.
+
+## [0.02] - 2026-08-03
 
 ### Added
 - **Beginner-First UX Redesign Phase 2.2g — Deferred Reactive State Closure**:

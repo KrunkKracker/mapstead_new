@@ -2,7 +2,7 @@
 
 **JuMaSt Appworks LLC**
 
-## Phase 1 — Property Mapping Foundation (v0.02)
+## Phase 1 — Property Mapping Foundation (v0.03)
 - [x] Room Schema with UUID and Audit fields.
 - [x] Navigation 3 state-driven architecture with Adaptive support.
 - [x] Local property profile management.
@@ -21,6 +21,7 @@
 
 ## Phase 3 — Collaborative and Reporting Tools
 - [x] Local property documentation reports (PDF) (Implemented in Phase 5D1).
+- [/] Phase 3A — Unified Item Details: Implementing a singular, high-integrity detail surface for all mapped infrastructure items. (PLANNING)
 - [ ] Multi-device sync and property sharing (NOT STARTED).
 - [ ] QR-code based access sharing for contractors (NOT STARTED).
 - [ ] Automated property health reports (Advanced analysis/PDF) (NOT STARTED).
