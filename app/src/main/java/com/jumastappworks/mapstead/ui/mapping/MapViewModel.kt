@@ -9,10 +9,12 @@ import com.jumastappworks.mapstead.data.attachments.*
 import com.jumastappworks.mapstead.data.backup.TemporaryCameraCapture
 import com.jumastappworks.mapstead.data.db.entities.*
 import com.jumastappworks.mapstead.data.repository.*
+import com.jumastappworks.mapstead.data.attachments.AttachmentDeleteState
 import com.jumastappworks.mapstead.data.mapping.*
 import com.jumastappworks.mapstead.data.prefs.UserPreferences
 import com.jumastappworks.mapstead.data.prefs.UserPreferencesRepository
 import com.jumastappworks.mapstead.util.GeometryUtils
+import com.jumastappworks.mapstead.util.MeasurementFormatter
 import com.jumastappworks.mapstead.util.PolygonParseResult
 import com.jumastappworks.mapstead.util.PolygonValidationReason
 import com.jumastappworks.mapstead.util.PolygonValidationResult
@@ -27,6 +29,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlin.math.abs
 import kotlinx.serialization.json.*
+import org.json.JSONObject
 
 private fun LineEditState.pushUndo(): LineEditState {
     val newStack = undoStack.toMutableList()
@@ -135,7 +138,9 @@ private data class EditorStatusBatch(
     val feature: MapFeatureEntity?,
     val isSaving: Boolean,
     val isDeleting: Boolean,
-    val operationErrorRes: Int?
+    val operationErrorRes: Int?,
+    val isEditing: Boolean,
+    val deleteErrorRes: Int?
 )
 
 private data class EditorGeometryBatch(
@@ -225,7 +230,8 @@ private data class MapAggregationPart2(
     val editorStatus: EditorStatusBatch,
     val editorGeom: EditorGeometryBatch,
     val editorEdit: EditorEditBatch,
-    val editorUi: EditorUiBatch
+    val editorUi: EditorUiBatch,
+    val featureDetail: FeatureDetailUiState?
 )
 
 private data class Part3A(val ep: EditorPhotoBatch, val ws: WorkflowStatusBatch, val wp: WorkflowPrefBatch)
@@ -428,6 +434,8 @@ class MapViewModel @Inject constructor(
     private val _isNewUnsavedFeature = MutableStateFlow(false)
     private val _isPointMoveActive = MutableStateFlow(false)
     private val _featureEditorFeature = MutableStateFlow<MapFeatureEntity?>(null)
+    private val _isEditingFeature = MutableStateFlow(false)
+    private val _deleteFeatureErrorRes = MutableStateFlow<Int?>(null)
     private val _isLineEditDirty = MutableStateFlow(false)
     private val _saveOutcome = MutableStateFlow<GuidedSaveOutcome?>(null)
 
@@ -471,6 +479,132 @@ class MapViewModel @Inject constructor(
         }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     private val _guidedSession = MutableStateFlow<GuidedMappingSession?>(null)
+
+    private val _detailInputBatch = combine(
+        _propertyId,
+        _selectedPersistedFeature,
+        _isEditingFeature,
+        _isDeletingFeature,
+        _deleteFeatureErrorRes,
+        _measurementSystem
+    ) { array ->
+        val pid = array[0] as UUID?
+        val sf = array[1] as MapFeatureEntity?
+        val ie = array[2] as Boolean
+        val id = array[3] as Boolean
+        val de = array[4] as Int?
+        val units = array[5] as com.jumastappworks.mapstead.data.prefs.MeasurementSystem
+        Triple(pid, sf, ie) to Triple(id, de, units)
+    }
+
+    val featureDetailState: StateFlow<FeatureDetailUiState?> = _detailInputBatch.flatMapLatest { (p1, p2) ->
+        val pid = p1.first
+        val feature = p1.second
+        val isEditing = p1.third
+        val isDeleting = p2.first
+        val deleteError = p2.second
+        val units = p2.third
+
+        if (feature == null || isEditing || pid == null) return@flatMapLatest flowOf(null)
+        
+        val itemFlow = feature.infrastructureItemId?.let { infrastructureRepository.observeActiveItem(pid, it) } ?: flowOf(null)
+        val attachmentsFlow = attachmentRepository.getAttachmentsForMapFeature(pid, feature.id).map { list ->
+            list.map { entity ->
+                val fileState = attachmentRepository.resolveAttachmentFile(pid, entity.id, verifyHash = false)
+                com.jumastappworks.mapstead.ui.attachments.AttachmentListItemUiModel(
+                    attachment = entity,
+                    previewUri = (fileState as? AttachmentFileState.Available)?.uri,
+                    isMissing = fileState is AttachmentFileState.Missing,
+                    isDamaged = fileState is AttachmentFileState.Damaged
+                )
+            }
+        }
+        val layerNameFlow = _layers.map { list -> list.find { it.id == feature.layerId }?.name }
+
+        combine(itemFlow, attachmentsFlow, layerNameFlow) { item, attachments, layerName ->
+            val geomLabel = when (feature.geometryType) {
+                "POINT" -> "Marked Location"
+                "LINESTRING" -> "Drawn Route"
+                "POLYGON" -> "Outlined Area"
+                else -> "Map Item"
+            }
+            
+            val category = try { JSONObject(feature.styleJson).optString("category", "Structure") } catch (e: Exception) { "Structure" }
+            val notes = try { JSONObject(feature.styleJson).optString("notes", "").takeIf { it.isNotBlank() } } catch (e: Exception) { null }
+
+            val measurementSummary = deriveMeasurementSummary(feature, units)
+            val accuracySummary = deriveAccuracySummary(feature, units)
+
+            FeatureDetailUiState.Ready(
+                feature = feature,
+                geometryLabel = geomLabel,
+                layerName = layerName,
+                category = category,
+                notes = notes,
+                measurementSummary = measurementSummary,
+                accuracySummary = accuracySummary,
+                linkedItem = item,
+                attachments = attachments,
+                isDeleting = isDeleting,
+                deleteErrorRes = deleteError
+            )
+        }
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    private fun deriveMeasurementSummary(feature: MapFeatureEntity, units: com.jumastappworks.mapstead.data.prefs.MeasurementSystem): FeatureMeasurementSummary {
+        val isPolygon = feature.geometryType == "POLYGON"
+        val isLine = feature.geometryType == "LINESTRING"
+        
+        if (!isLine && !isPolygon) return FeatureMeasurementSummary()
+        
+        return try {
+            val obj = JSONObject(feature.geometryJson)
+            val coords = if (isPolygon) obj.getJSONArray("coordinates").getJSONArray(0) else obj.getJSONArray("coordinates")
+            val list = mutableListOf<Pair<Double, Double>>()
+            for (i in 0 until coords.length()) {
+                val pt = coords.getJSONArray(i)
+                list.add(Pair(pt.getDouble(0), pt.getDouble(1)))
+            }
+            
+            if (isPolygon) {
+                val vertices = list.dropLast(1)
+                val area = GeometryUtils.calculateSphericalArea(vertices)
+                val perimeter = GeometryUtils.calculatePolygonPerimeter(vertices)
+                FeatureMeasurementSummary(
+                    area = MeasurementFormatter.formatArea(area, units),
+                    perimeter = MeasurementFormatter.formatDistance(perimeter, units),
+                    pointsCount = vertices.size
+                )
+            } else {
+                val length = GeometryUtils.calculatePathLength(list)
+                FeatureMeasurementSummary(
+                    length = MeasurementFormatter.formatDistance(length, units),
+                    pointsCount = list.size
+                )
+            }
+        } catch (e: Exception) {
+            FeatureMeasurementSummary()
+        }
+    }
+
+    private fun deriveAccuracySummary(feature: MapFeatureEntity, units: com.jumastappworks.mapstead.data.prefs.MeasurementSystem): FeatureAccuracySummary {
+        val accuracy = feature.horizontalAccuracyMeters?.let {
+            MeasurementFormatter.formatAccuracy(it, units)
+        }
+        
+        val sourceRes = when (feature.accuracySource) {
+            "User Estimated" -> R.string.accuracy_source_user_estimated
+            "Phone GPS" -> R.string.accuracy_source_phone_gps
+            "Measured From Reference" -> R.string.accuracy_source_measured_from_reference
+            "Imported Plan" -> R.string.accuracy_source_imported_plan
+            "Imported Survey" -> R.string.accuracy_source_imported_survey
+            "Professional Utility Locate" -> R.string.accuracy_source_professional_locate
+            "Professionally Surveyed" -> R.string.accuracy_source_professional_surveyed
+            else -> R.string.accuracy_source_unknown
+        }
+        
+        return FeatureAccuracySummary(accuracy = accuracy, sourceRes = sourceRes)
+    }
 
     private val _cameraPersistenceRequests = kotlinx.coroutines.channels.Channel<CameraPersistenceRequest>(kotlinx.coroutines.channels.Channel.CONFLATED)
     private var lastPersistedLat: Double? = null
@@ -650,11 +784,11 @@ class MapViewModel @Inject constructor(
         combine(_featureEditorOpen, _featureEditorTarget, _featureEditorFeature, _isSavingFeature) { o, t, f, s ->
             Quad(o, t, f, s)
         },
-        combine(_isDeletingFeature, _featureOperationErrorRes) { d, er ->
-            d to er
+        combine(_isDeletingFeature, _featureOperationErrorRes, _isEditingFeature, _deleteFeatureErrorRes) { d, er, ie, de ->
+            Quad(d, er, ie, de)
         }
-    ) { p1: Quad<Boolean, FeatureEditorTarget?, MapFeatureEntity?, Boolean>, p2: Pair<Boolean, Int?> ->
-        EditorStatusBatch(p1.a, p1.b, p1.c, p1.d, p2.first, p2.second)
+    ) { p1, p2 ->
+        EditorStatusBatch(p1.a, p1.b, p1.c, p1.d, p2.a, p2.b, p2.c, p2.d)
     }
 
     private val _editorGeomFlow = combine(_draftVertices, _polygonDraft, _polygonValidationReason, _isPolygonEditDirty, _isNewUnsavedFeature) { v, pd, vr, pdy, nu ->
@@ -739,8 +873,15 @@ class MapViewModel @Inject constructor(
         MapAggregationPart1(selection, layers, features, status, basemap)
     }
 
-    private val _aggPart2 = combine(_locationBatchFlow, _editorStatusFlow, _editorGeomFlow, _editorEditFlow, _editorUiFlow) { location, editorStatus, editorGeom, editorEdit, editorUi ->
-        MapAggregationPart2(location, editorStatus, editorGeom, editorEdit, editorUi)
+    private val _aggPart2 = combine(_locationBatchFlow, _editorStatusFlow, _editorGeomFlow, _editorEditFlow, _editorUiFlow, featureDetailState) { array ->
+        MapAggregationPart2(
+            array[0] as LocationStatusBatch,
+            array[1] as EditorStatusBatch,
+            array[2] as EditorGeometryBatch,
+            array[3] as EditorEditBatch,
+            array[4] as EditorUiBatch,
+            array[5] as FeatureDetailUiState?
+        )
     }
 
     private val _aggPart3 = combine(
@@ -908,6 +1049,9 @@ class MapViewModel @Inject constructor(
             newPointDraft = ep.newPointDraft,
             saveOutcome = saveOutcome,
             pendingPhotoPurpose = ep.pendingPhotoPurpose,
+            isEditingFeature = es.isEditing,
+            deleteFeatureErrorRes = es.deleteErrorRes,
+            featureDetailState = part2.featureDetail,
             guidedPrefill = ws.guidedSession?.let { session ->
                 val suggestedLayerId = session.preset.suggestedLayer?.let { type ->
                     userPreferencesRepository.getStarterLayerBinding(session.planId.toString(), type, wc.userPreferences.starterLayerBindings)
@@ -945,6 +1089,8 @@ class MapViewModel @Inject constructor(
         }
         _propertyId.value = id
         _manualActiveLayerId.value = null
+        _isEditingFeature.value = false
+        _deleteFeatureErrorRes.value = null
         resetEditorStates()
         cancelGuidedCreation()
     }
@@ -962,6 +1108,8 @@ class MapViewModel @Inject constructor(
         _openingToken.value = openingToken
         _cameraFocus.value = null
         _cameraPersistenceState.value = CameraPersistenceState.WAITING_FOR_INITIAL_FOCUS
+        _isEditingFeature.value = false
+        _deleteFeatureErrorRes.value = null
         resetEditorStates()
         cancelGuidedCreation()
         
@@ -1691,6 +1839,11 @@ class MapViewModel @Inject constructor(
     }
     fun onOpenAppSettings() { _locationIssue.value = null }
     fun onOpenLocationSettings() { _locationIssue.value = null }
+    
+    fun onEditFeatureClick() { _isEditingFeature.value = true }
+    fun onCancelFeatureEdit() { _isEditingFeature.value = false }
+    fun clearDeleteFeatureError() { _deleteFeatureErrorRes.value = null }
+
     fun continueGuidedLocationManually() { 
         val p = _pendingGuidedPreset.value ?: _guidedSession.value?.preset ?: return
         _locationIssue.value = null
@@ -1716,6 +1869,8 @@ class MapViewModel @Inject constructor(
             return
         }
         _featureEditorOpen.value = false; _featureEditorTarget.value = null; _featureEditorFeature.value = null; _linkEditorSession.value = null; _selectedPersistedFeature.value = null
+        _isEditingFeature.value = false
+        _deleteFeatureErrorRes.value = null
     }
 
     fun setShowPermissionRationale(show: Boolean) { savedStateHandle[KEY_SHOW_RATIONALE] = show }
@@ -1947,6 +2102,8 @@ class MapViewModel @Inject constructor(
 
     fun selectPersistedFeature(feature: MapFeatureEntity?, requestCameraFocus: Boolean = true) {
         _selectedPersistedFeature.value = feature
+        _isEditingFeature.value = false
+        _deleteFeatureErrorRes.value = null
         if (feature != null) {
             _featureEditorFeature.value = feature
             _featureEditorOpen.value = true
@@ -2083,6 +2240,7 @@ class MapViewModel @Inject constructor(
                         } else null
                     } else null
 
+                    val wasNew = _isNewUnsavedFeature.value
                     mapRepository.saveFeatureWithOptionalItem(featureToSave, itemToCreate)
 
                     val staged = _stagedPhoto.value
@@ -2099,16 +2257,22 @@ class MapViewModel @Inject constructor(
                         )
                         if (photoResult is AttachmentWriteResult.Success) {
                             consumeStagedPhotoState()
-                            _saveOutcome.value = GuidedSaveOutcome.Success(featureToSave.id)
-                            cancelGuidedCreation()
-                            _featureEditorOpen.value = false
                         } else {
                             _saveOutcome.value = GuidedSaveOutcome.FeatureSavedPhotoFailed(featureToSave.propertyId, featureToSave.id)
+                            return@withLock
                         }
-                    } else {
+                    }
+
+                    if (wasNew) {
                         _saveOutcome.value = GuidedSaveOutcome.Success(featureToSave.id)
                         cancelGuidedCreation()
-                        _featureEditorOpen.value = false
+                        val persisted = mapRepository.getFeatureById(featureToSave.id)
+                        selectPersistedFeature(persisted, requestCameraFocus = false)
+                    } else {
+                        _isEditingFeature.value = false
+                        val updated = mapRepository.getFeatureById(featureToSave.id)
+                        _selectedPersistedFeature.value = updated
+                        _featureEditorFeature.value = updated
                     }
                 }
             } catch (e: Exception) {
@@ -2126,15 +2290,23 @@ class MapViewModel @Inject constructor(
         val mid = _planId.value ?: return
         _isDeletingFeature.value = true
         _featureOperationErrorRes.value = null
+        _deleteFeatureErrorRes.value = null
         viewModelScope.launch {
             try {
-                mapRepository.softDeleteFeatureWithAttachments(pid, mid, id)
-                _featureEditorOpen.value = false
-                _featureEditorTarget.value = null
-                _selectedPersistedFeature.value = null
+                val result = mapRepository.softDeleteFeatureWithAttachments(pid, mid, id)
+                if (result is AttachmentDeleteState.Deleted || result is AttachmentDeleteState.DeletedWithCleanupWarning) {
+                    _featureEditorOpen.value = false
+                    _featureEditorTarget.value = null
+                    _selectedPersistedFeature.value = null
+                    _isEditingFeature.value = false
+                } else if (result is AttachmentDeleteState.Error) {
+                    _featureOperationErrorRes.value = result.messageRes
+                    _deleteFeatureErrorRes.value = result.messageRes
+                }
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
                 _featureOperationErrorRes.value = R.string.error_delete_failed
+                _deleteFeatureErrorRes.value = R.string.error_delete_failed
             } finally {
                 _isDeletingFeature.value = false
             }

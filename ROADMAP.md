@@ -22,7 +22,8 @@
 ## Phase 3 — Collaborative and Reporting Tools
 - [x] Local property documentation reports (PDF) (Implemented in Phase 5D1).
 - [/] Phase 3A — Unified Item Details: Implementing a singular, high-integrity detail surface for all mapped infrastructure items. (IN PROGRESS)
-    - [x] Phase 3A1 — Unified Infrastructure Details Foundation (IMPLEMENTED)
+    - [x] Phase 3A1 — Unified Infrastructure Details Foundation (COMPLETE)
+    - [x] Phase 3A2 — Unified Map Feature Details (IMPLEMENTED)
 - [ ] Multi-device sync and property sharing (NOT STARTED).
 - [ ] QR-code based access sharing for contractors (NOT STARTED).
 - [ ] Automated property health reports (Advanced analysis/PDF) (NOT STARTED).

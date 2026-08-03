@@ -3,6 +3,14 @@
 ## [0.03] - Unreleased
 
 ### Added
+- **Beginner-First UX Redesign Phase 3A2 — Unified Map Feature Details**:
+    - **Map Feature View/Edit Separation**: Saved map features now open in a read-only `UnifiedFeatureDetailSheet` by default, requiring an explicit "Edit" action to modify.
+    - **Beginner-Friendly Terminology**: Replaced technical geometry terms (Point, LineString, Polygon) with "Marked Location", "Drawn Route", and "Outlined Area".
+    - **Relationship Visibility**: Added a prominent Linked Record card for features connected to infrastructure items, with property-scoped lookup integrity.
+    - **Measurement Summaries**: Integrated automated length, area, and perimeter summaries into the detail view using existing geometry utilities.
+    - **Real Attachment Integration**: Displays actual photo and file thumbnails for map features, handling missing or damaged states gracefully.
+    - **Delete Failure Resilience**: Enhanced deletion logic to capture and display errors while preserving the current view state for retry.
+
 - **Beginner-First UX Redesign Phase 3A1 — Unified Infrastructure Details Foundation**:
     - **Infrastructure View/Edit Separation**: Introduced a dedicated read-only `InfrastructureItemDetailScreen` as the primary entry point for existing items, moving editing to a focused `InfrastructureItemEditorScreen`.
     - **Unified Detail Architecture**: Established a consistent information hierarchy using new shared components (`UnifiedItemDetailScaffold`, `UnifiedItemHeader`, `KeyValueRow`).

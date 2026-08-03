@@ -342,6 +342,8 @@ fun MapsteadNavGraph(
                             photoCount = (attachmentsState as? MapFeatureAttachmentsUiState.Ready)?.photoCount ?: 0,
                             coverThumbnailUri = (attachmentsState as? MapFeatureAttachmentsUiState.Ready)?.coverAttachment?.previewUri,
                             onViewAttachments = { fid -> backStack.add(Route.FeatureAttachments(key.propertyId, key.planId, fid)) },
+                            navigateToAttachmentDetails = { pid, aid -> backStack.add(Route.AttachmentDetails(pid, aid, AttachmentNavigationOrigin.MAP_FEATURE)) },
+                            navigateToInfrastructureDetails = { pid, iid -> backStack.add(Route.InfrastructureItemDetails(pid, iid)) },
                             onNavigateToEditor = { pid, ot, oid, u, t, origin ->
                                 backStack.add(Route.AttachmentEditor(pid, ot, oid, null, u, t, origin))
                             },

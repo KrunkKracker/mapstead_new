@@ -275,6 +275,36 @@ sealed interface FeatureEditorTarget {
     data class EditPersistedPolygon(val featureId: UUID) : FeatureEditorTarget
 }
 
+data class FeatureMeasurementSummary(
+    val length: String? = null,
+    val area: String? = null,
+    val perimeter: String? = null,
+    val pointsCount: Int? = null
+)
+
+data class FeatureAccuracySummary(
+    val accuracy: String? = null,
+    val source: String? = null,
+    val sourceRes: Int? = null
+)
+
+sealed interface FeatureDetailUiState {
+    data object Loading : FeatureDetailUiState
+    data class Ready(
+        val feature: MapFeatureEntity,
+        val geometryLabel: String,
+        val layerName: String?,
+        val category: String,
+        val notes: String?,
+        val measurementSummary: FeatureMeasurementSummary,
+        val accuracySummary: FeatureAccuracySummary,
+        val linkedItem: com.jumastappworks.mapstead.data.db.entities.InfrastructureItemEntity?,
+        val attachments: List<com.jumastappworks.mapstead.ui.attachments.AttachmentListItemUiModel>,
+        val isDeleting: Boolean = false,
+        val deleteErrorRes: Int? = null
+    ) : FeatureDetailUiState
+}
+
 data class FeatureLinkEditorSession(
     val featureId: UUID,
     val isNewFeature: Boolean,
@@ -301,6 +331,8 @@ data class MapUiState(
     val mapErrorRes: Int? = null,
     val layerPanelOpen: Boolean = false,
     val featureEditorOpen: Boolean = false,
+    val isEditingFeature: Boolean = false,
+    val deleteFeatureErrorRes: Int? = null,
     val canAddPoint: Boolean = false,
     val canAddLine: Boolean = false,
     val canAddArea: Boolean = false,
@@ -391,6 +423,7 @@ data class MapUiState(
     val saveOutcome: GuidedSaveOutcome? = null,
     val pendingPhotoPurpose: PendingPhotoPurpose? = null,
     val guidedPrefill: GuidedFeaturePrefill? = null,
+    val featureDetailState: FeatureDetailUiState? = null,
     val openingToken: String? = null,
     val polygonEditSaveBlockReasonRes: Int? = null,
     val lineEditSaveBlockReasonRes: Int? = null,

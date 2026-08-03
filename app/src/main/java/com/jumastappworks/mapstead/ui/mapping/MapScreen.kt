@@ -91,6 +91,8 @@ fun MapScreen(
     coverThumbnailUri: Uri? = null,
     onBack: () -> Unit = {},
     onViewAttachments: (UUID) -> Unit = {},
+    navigateToAttachmentDetails: (UUID, UUID) -> Unit = { _, _ -> },
+    navigateToInfrastructureDetails: (UUID, UUID) -> Unit = { _, _ -> },
     onNavigateToEditor: (UUID, String, UUID, String?, String?, AttachmentNavigationOrigin) -> Unit = { _, _, _, _, _, _ -> },
     onHelpRequest: (HelpTopicId) -> Unit = {}
 ) {
@@ -798,6 +800,8 @@ fun MapScreen(
         photoCount = photoCount,
         coverThumbnailUri = coverThumbnailUri,
         onViewAttachments = onViewAttachments,
+        onAttachmentDetails = navigateToAttachmentDetails,
+        onOpenInfrastructureDetails = navigateToInfrastructureDetails,
         onTakePhoto = { fid ->
             viewModel.setPendingPhotoPurpose(PendingPhotoPurpose.SavedFeatureAttachment(fid))
             mainScope.launch {
@@ -931,6 +935,8 @@ fun MapScreenContent(
     coverThumbnailUri: Uri? = null,
     onBack: () -> Unit = {},
     onViewAttachments: (UUID) -> Unit = {},
+    onAttachmentDetails: (UUID, UUID) -> Unit = { _, _ -> },
+    onOpenInfrastructureDetails: (UUID, UUID) -> Unit = { _, _ -> },
     onTakePhoto: (UUID) -> Unit = {},
     onChoosePhoto: (UUID) -> Unit = {},
     onChooseDocument: (UUID) -> Unit = {},
@@ -1533,75 +1539,111 @@ fun MapScreenContent(
 
             if (layoutInfo.isWidthCompact) {
                 ModalBottomSheet(onDismissRequest = onDismissHandler, sheetState = sheetState) { 
-                    FeatureDetailSheet(
-                        feature = sf, layers = state.layers, infrastructureItems = systemItems, 
-                        isSaving = state.isSavingFeature, isDeleting = state.isDeletingFeature, 
-                        labelError = state.labelError, accuracyError = state.accuracyError,
-                        errorMsg = state.featureOperationErrorRes?.let { stringResource(it) }, onSave = onSaveFeature, 
-                        onDelete = onDeleteFeature, onDismiss = onDismissHandler, 
-                        onSaveNewSystemItem = onSaveNewSystemItem, onMovePointClick = onMovePointClick, 
-                        onEditShapeClick = onEditShapeClick, 
-                        canEditShape = state.canEditShape,
-                        editShapeBlockReason = state.editShapeBlockReasonRes?.let { stringResource(it) },
-                        isNewUnsavedFeature = state.isNewUnsavedFeature,
-                        attachmentCount = attachmentCount,
-                        photoCount = photoCount,
-                        coverThumbnailUri = coverThumbnailUri,
-                        onViewAttachments = { onViewAttachments(sf.id) },
-                        onTakePhoto = { onTakePhoto(sf.id) },
-                        onChoosePhoto = { onChoosePhoto(sf.id) },
-                        onChooseDocument = { onChooseDocument(sf.id) },
-                        measurementSystem = state.measurementSystem,
-                        guidedPrefill = state.guidedPrefill,
-                        systemItemDraft = systemItemDraft,
-                        onClearSystemItemDraft = onClearSystemItemDraft,
-                        linkSelection = linkSelection,
-                        onLinkSelectionChange = onLinkSelectionChange,
-                        stagedPhoto = stagedPhoto,
-                        onRemoveStagedPhoto = onRemoveStagedPhoto,
-                        onTakePhotoCreation = onTakePhotoCreation,
-                        onChoosePhotoCreation = onChoosePhotoCreation,
-                        onCancel = onCancelGuidedCreation,
-                        saveOutcome = state.saveOutcome,
-                        onRetryPhoto = { pid, fid -> viewModel.retryFeaturePhoto(pid, fid) },
-                        onContinueWithoutPhoto = { fid -> viewModel.continueWithoutFeaturePhoto(fid) }
-                    )
+                    if (!state.isNewUnsavedFeature && !state.isEditingFeature && state.featureDetailState is FeatureDetailUiState.Ready) {
+                        UnifiedFeatureDetailSheet(
+                            uiState = state.featureDetailState,
+                            onEditClick = { viewModel.onEditFeatureClick() },
+                            onDeleteClick = { onDeleteFeature(sf.id) },
+                            onAddPhoto = { onTakePhoto(sf.id) },
+                            onAddFile = { onChooseDocument(sf.id) },
+                            onViewAllAttachments = { onViewAttachments(sf.id) },
+                            onAttachmentClick = { aid -> 
+                                state.propertyId?.let { pid -> onAttachmentDetails(pid, aid) }
+                            },
+                            onOpenLinkedRecord = { iid -> 
+                                state.propertyId?.let { pid -> onOpenInfrastructureDetails(pid, iid) }
+                            },
+                            onDismiss = onDismissHandler
+                        )
+                    } else {
+                        FeatureDetailSheet(
+                            feature = sf, layers = state.layers, infrastructureItems = systemItems, 
+                            isSaving = state.isSavingFeature, isDeleting = state.isDeletingFeature, 
+                            labelError = state.labelError, accuracyError = state.accuracyError,
+                            errorMsg = state.featureOperationErrorRes?.let { stringResource(it) }, onSave = onSaveFeature, 
+                            onDelete = onDeleteFeature, onDismiss = onDismissHandler, 
+                            onSaveNewSystemItem = onSaveNewSystemItem, onMovePointClick = onMovePointClick, 
+                            onEditShapeClick = onEditShapeClick, 
+                            canEditShape = state.canEditShape,
+                            editShapeBlockReason = state.editShapeBlockReasonRes?.let { stringResource(it) },
+                            isNewUnsavedFeature = state.isNewUnsavedFeature,
+                            attachmentCount = attachmentCount,
+                            photoCount = photoCount,
+                            coverThumbnailUri = coverThumbnailUri,
+                            onViewAttachments = { onViewAttachments(sf.id) },
+                            onTakePhoto = { onTakePhoto(sf.id) },
+                            onChoosePhoto = { onChoosePhoto(sf.id) },
+                            onChooseDocument = { onChooseDocument(sf.id) },
+                            measurementSystem = state.measurementSystem,
+                            guidedPrefill = state.guidedPrefill,
+                            systemItemDraft = systemItemDraft,
+                            onClearSystemItemDraft = onClearSystemItemDraft,
+                            linkSelection = linkSelection,
+                            onLinkSelectionChange = onLinkSelectionChange,
+                            stagedPhoto = stagedPhoto,
+                            onRemoveStagedPhoto = onRemoveStagedPhoto,
+                            onTakePhotoCreation = onTakePhotoCreation,
+                            onChoosePhotoCreation = onChoosePhotoCreation,
+                            onCancel = if (state.isEditingFeature) { { viewModel.onCancelFeatureEdit() } } else onCancelGuidedCreation,
+                            saveOutcome = state.saveOutcome,
+                            onRetryPhoto = { pid, fid -> viewModel.retryFeaturePhoto(pid, fid) },
+                            onContinueWithoutPhoto = { fid -> viewModel.continueWithoutFeaturePhoto(fid) }
+                        )
+                    }
                 }
             } else {
                 Surface(modifier = Modifier.align(Alignment.CenterStart).fillMaxHeight().widthIn(min = 320.dp, max = 450.dp), tonalElevation = 8.dp) { 
-                    FeatureDetailSheet(
-                        feature = sf, layers = state.layers, infrastructureItems = systemItems, 
-                        isSaving = state.isSavingFeature, isDeleting = state.isDeletingFeature, 
-                        labelError = state.labelError, accuracyError = state.accuracyError,
-                        errorMsg = state.featureOperationErrorRes?.let { stringResource(it) }, onSave = onSaveFeature, 
-                        onDelete = onDeleteFeature, onDismiss = onDismissHandler, 
-                        onSaveNewSystemItem = onSaveNewSystemItem, onMovePointClick = onMovePointClick, 
-                        onEditShapeClick = onEditShapeClick, 
-                        canEditShape = state.canEditShape,
-                        editShapeBlockReason = state.editShapeBlockReasonRes?.let { stringResource(it) },
-                        isNewUnsavedFeature = state.isNewUnsavedFeature,
-                        attachmentCount = attachmentCount,
-                        photoCount = photoCount,
-                        coverThumbnailUri = coverThumbnailUri,
-                        onViewAttachments = { onViewAttachments(sf.id) },
-                        onTakePhoto = { onTakePhoto(sf.id) },
-                        onChoosePhoto = { onChoosePhoto(sf.id) },
-                        onChooseDocument = { onChooseDocument(sf.id) },
-                        measurementSystem = state.measurementSystem,
-                        guidedPrefill = state.guidedPrefill,
-                        systemItemDraft = systemItemDraft,
-                        onClearSystemItemDraft = onClearSystemItemDraft,
-                        linkSelection = linkSelection,
-                        onLinkSelectionChange = onLinkSelectionChange,
-                        stagedPhoto = stagedPhoto,
-                        onRemoveStagedPhoto = onRemoveStagedPhoto,
-                        onTakePhotoCreation = onTakePhotoCreation,
-                        onChoosePhotoCreation = onChoosePhotoCreation,
-                        onCancel = onCancelGuidedCreation,
-                        saveOutcome = state.saveOutcome,
-                        onRetryPhoto = { pid, fid -> viewModel.retryFeaturePhoto(pid, fid) },
-                        onContinueWithoutPhoto = { fid -> viewModel.continueWithoutFeaturePhoto(fid) }
-                    )
+                    if (!state.isNewUnsavedFeature && !state.isEditingFeature && state.featureDetailState is FeatureDetailUiState.Ready) {
+                        UnifiedFeatureDetailSheet(
+                            uiState = state.featureDetailState,
+                            onEditClick = { viewModel.onEditFeatureClick() },
+                            onDeleteClick = { onDeleteFeature(sf.id) },
+                            onAddPhoto = { onTakePhoto(sf.id) },
+                            onAddFile = { onChooseDocument(sf.id) },
+                            onViewAllAttachments = { onViewAttachments(sf.id) },
+                            onAttachmentClick = { aid -> 
+                                state.propertyId?.let { pid -> onAttachmentDetails(pid, aid) }
+                            },
+                            onOpenLinkedRecord = { iid -> 
+                                state.propertyId?.let { pid -> onOpenInfrastructureDetails(pid, iid) }
+                            },
+                            onDismiss = onDismissHandler
+                        )
+                    } else {
+                        FeatureDetailSheet(
+                            feature = sf, layers = state.layers, infrastructureItems = systemItems, 
+                            isSaving = state.isSavingFeature, isDeleting = state.isDeletingFeature, 
+                            labelError = state.labelError, accuracyError = state.accuracyError,
+                            errorMsg = state.featureOperationErrorRes?.let { stringResource(it) }, onSave = onSaveFeature, 
+                            onDelete = onDeleteFeature, onDismiss = onDismissHandler, 
+                            onSaveNewSystemItem = onSaveNewSystemItem, onMovePointClick = onMovePointClick, 
+                            onEditShapeClick = onEditShapeClick, 
+                            canEditShape = state.canEditShape,
+                            editShapeBlockReason = state.editShapeBlockReasonRes?.let { stringResource(it) },
+                            isNewUnsavedFeature = state.isNewUnsavedFeature,
+                            attachmentCount = attachmentCount,
+                            photoCount = photoCount,
+                            coverThumbnailUri = coverThumbnailUri,
+                            onViewAttachments = { onViewAttachments(sf.id) },
+                            onTakePhoto = { onTakePhoto(sf.id) },
+                            onChoosePhoto = { onChoosePhoto(sf.id) },
+                            onChooseDocument = { onChooseDocument(sf.id) },
+                            measurementSystem = state.measurementSystem,
+                            guidedPrefill = state.guidedPrefill,
+                            systemItemDraft = systemItemDraft,
+                            onClearSystemItemDraft = onClearSystemItemDraft,
+                            linkSelection = linkSelection,
+                            onLinkSelectionChange = onLinkSelectionChange,
+                            stagedPhoto = stagedPhoto,
+                            onRemoveStagedPhoto = onRemoveStagedPhoto,
+                            onTakePhotoCreation = onTakePhotoCreation,
+                            onChoosePhotoCreation = onChoosePhotoCreation,
+                            onCancel = if (state.isEditingFeature) { { viewModel.onCancelFeatureEdit() } } else onCancelGuidedCreation,
+                            saveOutcome = state.saveOutcome,
+                            onRetryPhoto = { pid, fid -> viewModel.retryFeaturePhoto(pid, fid) },
+                            onContinueWithoutPhoto = { fid -> viewModel.continueWithoutFeaturePhoto(fid) }
+                        )
+                    }
                 }
             }
         }
