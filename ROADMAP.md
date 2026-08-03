@@ -51,10 +51,11 @@
 Purpose: Provide in-context assistance and finalize the onboarding experience.
 
 **ACTIVE PHASE**:
-- **Phase 2.2h5R9F — Exact-Source Provenance, Behavioral Test Truth, Documentation, and Packaging Closure**: Finalizing exact source provenance, behavioral test truth, and packaging integrity. (IMPLEMENTED / EXTERNAL REVIEW PENDING)
-- **Phase 2.2h5R9E — Current-Source Test Provenance, Pending-State Truth, Documentation, and Evidence Closure**: COMPLETE.
+- **Phase 2.2g — Deferred Reactive State Closure**: Hardening reactive compositions in ViewModels and protecting user edits from late repository results. (IMPLEMENTED / EXTERNAL REVIEW PENDING)
+- **Phase 2.2h — Basemap Implementation**: Resilient MapTiler v4 integration with bundled branding and automated style repair. (COMPLETE)
 
 **COMPLETED WORK**:
+- Final Basemap Runtime and QA Closure (Phase 2.2h5R9F): Verified exact source provenance, behavioral test truth, and packaging integrity.
 - Preference Confirmation and Authority: Implemented `lastObservedRepositoryBasemapId` confirmation logic, stale emission filtering, and generation-validated selection authority.
 - Stale-Pending Recovery and Transactional Reissue: Refactored `onMapReady` to use `PendingBasemapResolver`, ensuring transactional issue and reissue of authoritative preferences.
 - Secondary Backup-Only: Hardened `SecondaryBasemapController` to correctly handle sources without primaries using the `BACKUP` role and reason.

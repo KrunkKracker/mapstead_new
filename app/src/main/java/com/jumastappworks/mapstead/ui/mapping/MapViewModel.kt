@@ -635,8 +635,15 @@ class MapViewModel @Inject constructor(
         )
     }
 
-    private val _locationBatchFlow = combine(_currentPhoneLocation, _isLocatingPhone, _locationIssue, _pendingLocationPurpose, _showPermissionRationale) { l, lp, i, p, r ->
-        LocationStatusBatch(l, lp, i, p, r, _showLocationDetails.value, _hasRequestedLocOnceFlow.value)
+    private val _locationBatchFlow = combine(
+        combine(_currentPhoneLocation, _isLocatingPhone, _locationIssue, _pendingLocationPurpose) { l, lp, i, p ->
+            Quad(l, lp, i, p)
+        },
+        _showPermissionRationale,
+        _showLocationDetails,
+        _hasRequestedLocOnceFlow
+    ) { p1, r, sd, rq ->
+        LocationStatusBatch(p1.a, p1.b, p1.c, p1.d, r, sd, rq)
     }
 
     private val _editorStatusFlow = combine(

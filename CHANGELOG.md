@@ -3,6 +3,10 @@
 ## [0.02] - Unreleased
 
 ### Added
+- **Beginner-First UX Redesign Phase 2.2g — Deferred Reactive State Closure**:
+    - **Reactive Composition Hardening**: Refactored `MapViewModel` and `AddPropertyViewModel` to use full reactive flow composition for location status and property identity, eliminating imperative `.value` reads.
+    - **Late-Result Protection**: Hardened `AddPropertyViewModel` to protect user-entered property data from being overwritten by late repository results during existing-property initialization.
+    - **Behavioral JVM Truth**: Added exhaustive behavioral tests verifying state recomputation, one-time initialization, and process-recreation integrity.
 - **Beginner-First UX Redesign Phase 2.2h5R9F — Exact-Source Provenance, Behavioral Test Truth, Documentation, and Packaging Closure**:
     - **Truthful Pending Consumption**: Refined the `AttemptIssueResult` and `applyPendingConsumptionResult` logic to truthfully model intent retention during session gaps.
     - **Integration Test Truth**: Added real stale-generation integration tests using `@VisibleForTesting` hooks to verify recovery without indirect placeholders or "trust" assertions.

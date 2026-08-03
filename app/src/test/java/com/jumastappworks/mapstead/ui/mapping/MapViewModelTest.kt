@@ -634,4 +634,57 @@ class MapViewModelTest {
         
         assertNull("Purpose should be cleared after success", viewModel.uiState.value.pendingLocationPurpose)
     }
+
+    @Test
+    fun `location batch recomputes on showLocationDetails change`() = runTest {
+        backgroundScope.launch { viewModel.uiState.collect() }
+        advanceUntilIdle()
+        
+        assertFalse(viewModel.uiState.value.showLocationDetails)
+        
+        viewModel.showLocationDetails(true)
+        advanceUntilIdle()
+        
+        assertTrue(viewModel.uiState.value.showLocationDetails)
+    }
+
+    @Test
+    fun `location batch recomputes on hasRequestedLocationOnce change`() = runTest {
+        backgroundScope.launch { viewModel.uiState.collect() }
+        advanceUntilIdle()
+        
+        assertFalse(viewModel.uiState.value.hasRequestedLocationOnce)
+        
+        viewModel.setHasRequestedLocationOnce(true)
+        advanceUntilIdle()
+        
+        assertTrue(viewModel.uiState.value.hasRequestedLocationOnce)
+    }
+
+    @Test
+    fun `recombination does not duplicate one-time location work`() = runTest {
+        val propId = UUID.randomUUID()
+        val planId = UUID.randomUUID()
+        val layer = LayerEntity(id = UUID.randomUUID(), propertyId = propId, planId = planId, name = "L", category = "C")
+        setupContext(propId, planId, listOf(layer))
+        backgroundScope.launch { viewModel.uiState.collect() }
+        viewModel.setActiveLayer(layer.id)
+        advanceUntilIdle()
+
+        coEvery { locationProvider.getCurrentLocation() } returns LocationResult.Success(1.0, 1.0, 5.0f, System.currentTimeMillis(), LocationResult.Success.Source.Fresh, true)
+        
+        // Trigger location request
+        viewModel.requestLocation(LocationRequestPurpose.CreatePoint)
+        advanceUntilIdle()
+        
+        // Verify location request happened once
+        coVerify(exactly = 1) { locationProvider.getCurrentLocation() }
+        
+        // Trigger unrelated recombination (e.g. show details)
+        viewModel.showLocationDetails(true)
+        advanceUntilIdle()
+        
+        // Verify no second location request occurred
+        coVerify(exactly = 1) { locationProvider.getCurrentLocation() }
+    }
 }

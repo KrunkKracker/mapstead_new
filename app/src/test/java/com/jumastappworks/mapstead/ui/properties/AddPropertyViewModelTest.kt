@@ -15,6 +15,7 @@ import io.mockk.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.*
 import org.junit.After
 import org.junit.Assert.*
@@ -359,5 +360,78 @@ class AddPropertyViewModelTest {
         assertNull("Logical purpose should be cleared on terminal denial state for launcher state cleanup", state.pendingLocationPurpose)
         assertFalse(state.locationPermissionLaunchInProgress)
         assertTrue(state.locationIssue?.canRetry == true)
+    }
+
+    @Test
+    fun `identity batch recomputes on existingLoaded change`() = runTest {
+        val job = launch { viewModel.uiState.collect {} }
+        advanceUntilIdle()
+        
+        assertFalse(viewModel.uiState.value.existingPropertyLoaded)
+        
+        savedStateHandle["setup_existing_loaded"] = true
+        advanceUntilIdle()
+        
+        assertTrue(viewModel.uiState.value.existingPropertyLoaded)
+        job.cancel()
+    }
+
+    @Test
+    fun `process-recreated saved state is respected`() = runTest {
+        val recreatedHandle = SavedStateHandle(mapOf("setup_existing_loaded" to true))
+        val recreatedVm = AddPropertyViewModel(propertyRepo, attachmentRepo, locationProvider, addressResolver, userPrefs, context, recreatedHandle)
+        
+        val job = launch { recreatedVm.uiState.collect {} }
+        advanceUntilIdle()
+        
+        assertTrue(recreatedVm.uiState.value.existingPropertyLoaded)
+        job.cancel()
+    }
+
+    @Test
+    fun `existing-property initialization occurs exactly once`() = runTest {
+        val propId = UUID.randomUUID()
+        val prop = PropertyEntity(id = propId, name = "Original", propertyType = "Type")
+        coEvery { propertyRepo.getPropertyById(propId) } returns prop
+        
+        viewModel.loadExistingProperty(propId)
+        advanceUntilIdle()
+        
+        coVerify(exactly = 1) { propertyRepo.getPropertyById(propId) }
+        
+        // Trigger recombination
+        viewModel.setType("New Type")
+        advanceUntilIdle()
+        
+        // Verify no re-load occurred
+        coVerify(exactly = 1) { propertyRepo.getPropertyById(propId) }
+    }
+
+    @Test
+    fun `late repository result does not overwrite customer edits`() = runTest {
+        val propId = UUID.randomUUID()
+        coEvery { propertyRepo.getPropertyById(propId) } coAnswers {
+            delay(1000)
+            PropertyEntity(id = propId, name = "From Repo", propertyType = "Type")
+        }
+        
+        viewModel.loadExistingProperty(propId)
+        // User starts editing before repo returns
+        viewModel.setName("User Edit")
+        
+        advanceTimeBy(1100)
+        advanceUntilIdle()
+        
+        assertEquals("User Edit", viewModel.uiState.value.propertyName)
+    }
+
+    @Test
+    fun `new-property mode remains unaffected`() = runTest {
+        val job = launch { viewModel.uiState.collect {} }
+        advanceUntilIdle()
+        
+        assertTrue(viewModel.uiState.value.target is PropertySetupTarget.New)
+        assertFalse(viewModel.uiState.value.existingPropertyLoaded)
+        job.cancel()
     }
 }

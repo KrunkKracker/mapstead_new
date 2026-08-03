@@ -88,6 +88,9 @@ data class PropertySetupState(
 )
 
 // Internal batch states for type-safe aggregation (Phase 2.2g)
+private data class Triple3<A, B, C>(val a: A, val b: B, val c: C)
+private data class Quad<A, B, C, D>(val a: A, val b: B, val c: C, val d: D)
+
 private data class SetupIdentityBatch(
     val step: SetupStep,
     val target: PropertySetupTarget,
@@ -215,14 +218,17 @@ class AddPropertyViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.Eagerly, MeasurementSystem.IMPERIAL)
 
     private val _identityBatch = combine(
-        savedStateHandle.getStateFlow(KEY_STEP, SetupStep.NAME_AND_TYPE.name),
-        savedStateHandle.getStateFlow(KEY_TARGET_TYPE, "NEW"),
-        savedStateHandle.getStateFlow(KEY_TARGET_ID, _draftId),
-        savedStateHandle.getStateFlow(KEY_NAME, ""),
-        savedStateHandle.getStateFlow<String?>(KEY_TYPE, null)
-    ) { step, type, id, name, pType ->
-        val target = if (type == "EXISTING") PropertySetupTarget.Existing(UUID.fromString(id)) else PropertySetupTarget.New(UUID.fromString(id))
-        SetupIdentityBatch(SetupStep.valueOf(step), target, name, pType, savedStateHandle[KEY_EXISTING_LOADED] ?: false)
+        combine(
+            savedStateHandle.getStateFlow(KEY_STEP, SetupStep.NAME_AND_TYPE.name),
+            savedStateHandle.getStateFlow(KEY_TARGET_TYPE, "NEW"),
+            savedStateHandle.getStateFlow(KEY_TARGET_ID, _draftId),
+            savedStateHandle.getStateFlow(KEY_NAME, "")
+        ) { step, type, id, name -> Quad(step, type, id, name) },
+        savedStateHandle.getStateFlow<String?>(KEY_TYPE, null),
+        savedStateHandle.getStateFlow(KEY_EXISTING_LOADED, false)
+    ) { p1, pType, loaded ->
+        val target = if (p1.b == "EXISTING") PropertySetupTarget.Existing(UUID.fromString(p1.c)) else PropertySetupTarget.New(UUID.fromString(p1.c))
+        SetupIdentityBatch(SetupStep.valueOf(p1.a), target, p1.d, pType, loaded)
     }
 
     private val _locationBatch = combine(
@@ -367,20 +373,29 @@ class AddPropertyViewModel @Inject constructor(
         savedStateHandle[KEY_EXISTING_LOADED] = false
         
         viewModelScope.launch {
-            propertyRepository.getPropertyById(id)?.let { p ->
-                savedStateHandle[KEY_NAME] = p.name
-                nameInput = p.name
-                savedStateHandle[KEY_TYPE] = p.propertyType
+            val p = propertyRepository.getPropertyById(id)
+            if (p != null) {
+                // Phase 2.2g: Protect user edits from late repository results
+                if (savedStateHandle.get<String>(KEY_NAME).isNullOrBlank()) {
+                    savedStateHandle[KEY_NAME] = p.name
+                    nameInput = p.name
+                }
+                if (savedStateHandle.get<String>(KEY_TYPE).isNullOrBlank()) {
+                    savedStateHandle[KEY_TYPE] = p.propertyType
+                }
                 if (p.latitude != null && p.longitude != null) {
-                    savedStateHandle[KEY_CONF_METHOD] = PropertyLocationMethod.MAP.name
-                    savedStateHandle[KEY_CONF_LAT] = p.latitude
-                    savedStateHandle[KEY_CONF_LNG] = p.longitude
-                    savedStateHandle[KEY_CONF_LABEL] = "Saved Location"
+                    if (savedStateHandle.get<String>(KEY_CONF_METHOD) == null) {
+                        savedStateHandle[KEY_CONF_METHOD] = PropertyLocationMethod.MAP.name
+                        savedStateHandle[KEY_CONF_LAT] = p.latitude
+                        savedStateHandle[KEY_CONF_LNG] = p.longitude
+                        savedStateHandle[KEY_CONF_LABEL] = "Saved Location"
+                        savedStateHandle[KEY_DEFERRED] = false
+                    }
                 }
                 savedStateHandle[KEY_STEP] = SetupStep.LOCATE.name
                 savedStateHandle[KEY_METHOD_SCREEN] = PropertyLocationMethod.NONE.name
                 savedStateHandle[KEY_EXISTING_LOADED] = true
-            } ?: run {
+            } else {
                 _errorRes.value = R.string.property_not_found
             }
         }

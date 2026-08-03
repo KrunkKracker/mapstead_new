@@ -1,19 +1,5 @@
 # Deferred Technical Debt and Refactoring
 
-## Basemap and Workflow Reactive Composition
-
-**Status**: Deferred (Phase 2.2h5R9F)
-
-The following reactive compositions are deferred for future hardening:
-
-1. **MapViewModel location-batch reactive composition**:
-   `_locationBatchFlow` directly reads `_showLocationDetails.value` and
-   `_hasRequestedLocOnceFlow.value` rather than combining them as flows.
-
-2. **AddPropertyViewModel existing-loaded reactive composition**:
-   `_identityBatch` directly reads `savedStateHandle[KEY_EXISTING_LOADED]`
-   instead of observing a StateFlow.
-
 ## Phase 3A — Unified Item Details
 
 **Status**: NOT STARTED.

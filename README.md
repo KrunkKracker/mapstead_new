@@ -5,22 +5,13 @@
 Mapstead is a local-first, private property management tool designed for homeowners, small-scale farmers, and rural property owners. It allows you to create high-precision maps of your land, document infrastructure and operational records (wells, septic, electrical), and track maintenance schedules without relying on third-party cloud services.
 
 > [!WARNING]
-> This is unreleased development software (v0.02 (2)). It is currently in a finalization pass (Phase 2.2h5R9F).
+> This is unreleased development software (v0.02 (2)). It is currently in a finalization pass (Phase 2.2g).
 
-- **Phase 2.2h5R9F (Exact-Source Provenance, Behavioral Test Truth, Documentation, and Packaging Closure)**: IMPLEMENTED / EXTERNAL REVIEW PENDING.
-- **Phase 2.2h5R9E (Current-Source Test Provenance, Pending-State Truth, Documentation, and Evidence Closure)**: COMPLETE.
-- **Phase 2.2h5R9D (Transactional Pending Consumption, Test Truth, Documentation, and Evidence Finalization)**: COMPLETE.
-- **Phase 2.2h5R9 (Preference Authority, Pending Requests, and Evidence Closure)**: COMPLETE.
-- **Phase 2.2h5R8 (Recreation Lifecycle and Version Closure)**: COMPLETE.
-- **Phase 2.2h5R7 (Pending Request Authority, Recreation Coverage, Documentation, and Evidence Closure)**: COMPLETE.
-- **Phase 2.2h5R6 (Recreation Lifecycle, Secondary Disposal Truth, and Evidence Closure)**: COMPLETE.
-- **Phase 2.2h5R5 (Recreation Lifecycle and Version Closure)**: COMPLETE.
-- **Phase 2.2h5R4 (Secondary Repair and Session Retirement)**: COMPLETE.
-- **Phase 2.2h5R3 (Loader Atomicity and Repair Epoch)**: COMPLETE.
-- **Phase 2.2h5R2 (Camera and Repair Closure)**: COMPLETE.
-- **Phase 2.2h5R1 (Basemap Runtime Closure)**: COMPLETE.
-- **Phase 2.2h (Basemap Implementation)**: IMPLEMENTED / INSTALLED ACCEPTANCE PENDING.
+- **Phase 2.2g (Deferred Reactive State Closure)**: IMPLEMENTED / EXTERNAL REVIEW PENDING.
+- **Phase 2.2h (Basemap Implementation)**: COMPLETE.
 - **Phase 3A (Unified Item Details)**: NOT STARTED.
+- **Stage 4 (Guidance, Help, and Final Beginner Review)**: IN PROGRESS.
+- **Property Inventory**: BLOCKED.
 
 ## Core Features
 - **MapTiler Integration**: High-quality Streets, Topo, and Satellite Hybrid imagery with resilient OpenFreeMap fallback.
