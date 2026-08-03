@@ -10,6 +10,7 @@
     - **Measurement Summaries**: Integrated automated length, area, and perimeter summaries into the detail view using existing geometry utilities, removing technical vertex counts.
     - **Real Attachment Integration**: Displays actual photo and file thumbnails for map features, with distinct actions for capture versus selection.
     - **Delete Confirmation & Failure Resilience**: Restored explicit deletion confirmation and enhanced error presentation with retry and dismissal support.
+    - **Reliable Retry Mechanism**: Implemented an explicit generation-based retry trigger to ensure the "Retry" button on error screens always forces a data refresh.
     - **Hardened Loading States**: Established strict UI routing to ensure saved features never fall back to the editable form while details are loading or if loading fails.
     - **Safe Geometry Derivation**: Moved geometry parsing and coordinate formatting into the ViewModel to prevent UI-level crashes on malformed data.
 

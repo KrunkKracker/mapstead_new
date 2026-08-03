@@ -436,6 +436,7 @@ class MapViewModel @Inject constructor(
     private val _featureEditorFeature = MutableStateFlow<MapFeatureEntity?>(null)
     private val _isEditingFeature = MutableStateFlow(false)
     private val _deleteFeatureErrorRes = MutableStateFlow<Int?>(null)
+    private val _featureDetailRetryGeneration = MutableStateFlow(0L)
     private val _isLineEditDirty = MutableStateFlow(false)
     private val _saveOutcome = MutableStateFlow<GuidedSaveOutcome?>(null)
 
@@ -480,24 +481,23 @@ class MapViewModel @Inject constructor(
 
     private val _guidedSession = MutableStateFlow<GuidedMappingSession?>(null)
 
-    private val _detailInputBatch = combine(
+    val featureDetailState: StateFlow<FeatureDetailUiState?> = combine(
         _propertyId,
         _selectedPersistedFeature,
         _isEditingFeature,
         _isDeletingFeature,
         _deleteFeatureErrorRes,
-        _measurementSystem
-    ) { array -> array }
-
-    val featureDetailState: StateFlow<FeatureDetailUiState?> = _detailInputBatch.flatMapLatest { array ->
+        _measurementSystem,
+        _featureDetailRetryGeneration
+    ) { array ->
         val pid = array[0] as UUID?
         val feature = array[1] as MapFeatureEntity?
         val isEditing = array[2] as Boolean
         val isDeleting = array[3] as Boolean
         val deleteErrorRes = array[4] as Int?
         val units = array[5] as com.jumastappworks.mapstead.data.prefs.MeasurementSystem
-
-        if (feature == null || isEditing || pid == null) return@flatMapLatest flowOf(null)
+        
+        if (feature == null || isEditing || pid == null) return@combine flowOf(null)
         
         val linkedRecordFlow = feature.infrastructureItemId?.let { itemId ->
             infrastructureRepository.observeActiveItem(pid, itemId).map { item ->
@@ -542,7 +542,7 @@ class MapViewModel @Inject constructor(
             val accuracySummary = deriveAccuracySummary(feature, units)
             val pointCoordinates = derivePointCoordinates(feature)
 
-            FeatureDetailUiState.Ready(
+            val readyState: FeatureDetailUiState = FeatureDetailUiState.Ready(
                 feature = feature,
                 geometryLabel = geomLabel,
                 layerName = layerName,
@@ -555,10 +555,12 @@ class MapViewModel @Inject constructor(
                 attachments = attachments,
                 isDeleting = isDeleting,
                 deleteErrorRes = deleteErrorRes
-            ) as FeatureDetailUiState
+            )
+            readyState
         }.onStart { emit(FeatureDetailUiState.Loading) }
         .catch { emit(FeatureDetailUiState.Error(R.string.error_loading_feature_details)) }
-    }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+    }.flatMapLatest { it }
+    .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     private fun derivePointCoordinates(feature: MapFeatureEntity): String? {
         if (feature.geometryType != "POINT") return null
@@ -1868,6 +1870,7 @@ class MapViewModel @Inject constructor(
     
     fun onEditFeatureClick() { _isEditingFeature.value = true }
     fun onCancelFeatureEdit() { _isEditingFeature.value = false }
+    fun retryFeatureDetails() { _featureDetailRetryGeneration.update { it + 1L } }
     fun clearDeleteFeatureError() { _deleteFeatureErrorRes.value = null }
 
     fun continueGuidedLocationManually() { 
@@ -2130,6 +2133,7 @@ class MapViewModel @Inject constructor(
         _selectedPersistedFeature.value = feature
         _isEditingFeature.value = false
         _deleteFeatureErrorRes.value = null
+        _featureDetailRetryGeneration.value = 0L
         if (feature != null) {
             _featureEditorFeature.value = feature
             _featureEditorOpen.value = true

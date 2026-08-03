@@ -1606,7 +1606,7 @@ fun MapScreenContent(
                         ) {
                             Icon(Icons.Default.ErrorOutline, contentDescription = null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(48.dp))
                             Text(stringResource(detailState.messageRes), textAlign = TextAlign.Center)
-                            Button(onClick = { viewModel.selectPersistedFeature(sf, requestCameraFocus = false) }) {
+                            Button(onClick = { viewModel.retryFeatureDetails() }) {
                                 Text(stringResource(R.string.retry))
                             }
                             TextButton(onClick = onDismissHandler) {

@@ -57,7 +57,7 @@ class MapFeatureDetailTest {
 
     @Test
     fun `selecting existing feature lands on details with beginner labels`() = runTest {
-        val job = backgroundScope.launch { viewModel.uiState.collect {} }
+        backgroundScope.launch { viewModel.uiState.collect {} }
         val propId = UUID.randomUUID()
         val featureId = UUID.randomUUID()
         val feature = MapFeatureEntity(
@@ -67,35 +67,49 @@ class MapFeatureDetailTest {
         )
         
         viewModel.setProperty(propId)
-        viewModel.selectPersistedFeature(feature)
+        viewModel.selectPersistedFeature(feature, requestCameraFocus = false)
         
         val readyState = viewModel.uiState.mapNotNull { it.featureDetailState }.filterIsInstance<FeatureDetailUiState.Ready>().first()
-        
         assertEquals("Drawn Route", readyState.geometryLabel)
-        assertFalse(viewModel.uiState.value.isEditingFeature)
-        job.cancel()
     }
 
     @Test
-    fun `point coordinates are derived safely`() = runTest {
-        val job = backgroundScope.launch { viewModel.uiState.collect {} }
+    fun `explicit retry trigger forces pipeline restart and recovers to Ready`() = runTest {
+        backgroundScope.launch { viewModel.uiState.collect {} }
+        val propId = UUID.randomUUID()
+        val itemId = UUID.randomUUID()
         val feature = MapFeatureEntity(
-            id = UUID.randomUUID(), propertyId = UUID.randomUUID(), planId = UUID.randomUUID(), layerId = UUID.randomUUID(),
-            geometryType = "POINT", geometryJson = "{\"type\":\"Point\",\"coordinates\":[-122.0, 37.0]}",
-            coordinateSpace = "GEOGRAPHIC", styleJson = "{}", accuracySource = "MANUAL", label = "Test Point"
+            id = UUID.randomUUID(), propertyId = propId, planId = UUID.randomUUID(), layerId = UUID.randomUUID(),
+            geometryType = "POINT", geometryJson = "{\"type\":\"Point\",\"coordinates\":[0,0]}",
+            coordinateSpace = "GEOGRAPHIC", styleJson = "{}", accuracySource = "MANUAL", label = "Test Point",
+            infrastructureItemId = itemId
         )
         
-        viewModel.setProperty(feature.propertyId)
-        viewModel.selectPersistedFeature(feature)
+        // 1. Initial Success
+        every { infraRepo.observeActiveItem(any(), any()) } returns flowOf(null)
+        viewModel.setProperty(propId)
+        viewModel.selectPersistedFeature(feature, requestCameraFocus = false)
+        viewModel.uiState.mapNotNull { it.featureDetailState }.filterIsInstance<FeatureDetailUiState.Ready>().first()
+
+        // 2. Mock dependency failure and trigger retry
+        val failFlow = flow<InfrastructureItemEntity?> { throw RuntimeException("Fail") }
+        every { infraRepo.observeActiveItem(any(), any()) } returns failFlow
+        viewModel.retryFeatureDetails()
+        
+        val errorState = viewModel.uiState.mapNotNull { it.featureDetailState }.filterIsInstance<FeatureDetailUiState.Error>().first()
+        assertNotNull(errorState)
+        
+        // 3. Fix dependency and Retry to recover
+        every { infraRepo.observeActiveItem(any(), any()) } returns flowOf(null)
+        viewModel.retryFeatureDetails()
         
         val readyState = viewModel.uiState.mapNotNull { it.featureDetailState }.filterIsInstance<FeatureDetailUiState.Ready>().first()
-        assertEquals("37.000000, -122.000000", readyState.pointCoordinates)
-        job.cancel()
+        assertNotNull(readyState)
     }
 
     @Test
-    fun `accuracy source is normalized`() = runTest {
-        val job = backgroundScope.launch { viewModel.uiState.collect {} }
+    fun `retry keeps selection and does not request camera focus`() = runTest {
+        backgroundScope.launch { viewModel.uiState.collect {} }
         val feature = MapFeatureEntity(
             id = UUID.randomUUID(), propertyId = UUID.randomUUID(), planId = UUID.randomUUID(), layerId = UUID.randomUUID(),
             geometryType = "POINT", geometryJson = "{\"type\":\"Point\",\"coordinates\":[0,0]}",
@@ -103,16 +117,51 @@ class MapFeatureDetailTest {
         )
         
         viewModel.setProperty(feature.propertyId)
-        viewModel.selectPersistedFeature(feature)
+        viewModel.selectPersistedFeature(feature, requestCameraFocus = false)
+        
+        assertNull(viewModel.uiState.value.cameraFocus)
+        
+        viewModel.retryFeatureDetails()
+        
+        assertEquals(feature.id, viewModel.uiState.value.selectedFeature?.id)
+        assertNull("Retry should not request camera focus", viewModel.uiState.value.cameraFocus)
+    }
+
+    @Test
+    fun `point coordinates are derived safely`() = runTest {
+        backgroundScope.launch { viewModel.uiState.collect {} }
+        val feature = MapFeatureEntity(
+            id = UUID.randomUUID(), propertyId = UUID.randomUUID(), planId = UUID.randomUUID(), layerId = UUID.randomUUID(),
+            geometryType = "POINT", geometryJson = "{\"type\":\"Point\",\"coordinates\":[-122.0, 37.0]}",
+            coordinateSpace = "GEOGRAPHIC", styleJson = "{}", accuracySource = "MANUAL", label = "Test Point"
+        )
+        
+        viewModel.setProperty(feature.propertyId)
+        viewModel.selectPersistedFeature(feature, requestCameraFocus = false)
+        
+        val readyState = viewModel.uiState.mapNotNull { it.featureDetailState }.filterIsInstance<FeatureDetailUiState.Ready>().first()
+        assertEquals("37.000000, -122.000000", readyState.pointCoordinates)
+    }
+
+    @Test
+    fun `accuracy source is normalized`() = runTest {
+        backgroundScope.launch { viewModel.uiState.collect {} }
+        val feature = MapFeatureEntity(
+            id = UUID.randomUUID(), propertyId = UUID.randomUUID(), planId = UUID.randomUUID(), layerId = UUID.randomUUID(),
+            geometryType = "POINT", geometryJson = "{\"type\":\"Point\",\"coordinates\":[0,0]}",
+            coordinateSpace = "GEOGRAPHIC", styleJson = "{}", accuracySource = "MANUAL", label = "Test Point"
+        )
+        
+        viewModel.setProperty(feature.propertyId)
+        viewModel.selectPersistedFeature(feature, requestCameraFocus = false)
         
         val readyState = viewModel.uiState.mapNotNull { it.featureDetailState }.filterIsInstance<FeatureDetailUiState.Ready>().first()
         assertEquals(R.string.accuracy_source_user_estimated, readyState.accuracySummary.sourceRes)
-        job.cancel()
     }
 
     @Test
     fun `linked record Unavailable state is used for missing items`() = runTest {
-        val job = backgroundScope.launch { viewModel.uiState.collect {} }
+        backgroundScope.launch { viewModel.uiState.collect {} }
         val propId = UUID.randomUUID()
         val itemId = UUID.randomUUID()
         val feature = MapFeatureEntity(
@@ -125,17 +174,16 @@ class MapFeatureDetailTest {
         every { infraRepo.observeActiveItem(propId, itemId) } returns flowOf(null)
         
         viewModel.setProperty(propId)
-        viewModel.selectPersistedFeature(feature)
+        viewModel.selectPersistedFeature(feature, requestCameraFocus = false)
         
         val readyState = viewModel.uiState.mapNotNull { it.featureDetailState }.filterIsInstance<FeatureDetailUiState.Ready>().first()
         assertTrue(readyState.linkedRecord is LinkedRecordState.Unavailable)
         assertEquals(itemId, (readyState.linkedRecord as LinkedRecordState.Unavailable).itemId)
-        job.cancel()
     }
 
     @Test
     fun `delete failure preserves selection and exposes error`() = runTest {
-        val job = backgroundScope.launch { viewModel.uiState.collect {} }
+        backgroundScope.launch { viewModel.uiState.collect {} }
         val propId = UUID.randomUUID()
         val planId = UUID.randomUUID()
         val featureId = UUID.randomUUID()
@@ -144,7 +192,7 @@ class MapFeatureDetailTest {
         coEvery { mapRepo.softDeleteFeatureWithAttachments(propId, planId, featureId) } returns AttachmentDeleteState.Error(R.string.error_delete_failed)
         
         viewModel.openMapContext(propId, planId, "token")
-        viewModel.selectPersistedFeature(feature)
+        viewModel.selectPersistedFeature(feature, requestCameraFocus = false)
         
         viewModel.deleteFeature(featureId)
         
@@ -154,6 +202,5 @@ class MapFeatureDetailTest {
         viewModel.clearDeleteFeatureError()
         val finalState = viewModel.uiState.filter { it.deleteFeatureErrorRes == null }.first()
         assertNull(finalState.deleteFeatureErrorRes)
-        job.cancel()
     }
 }
