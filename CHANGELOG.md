@@ -3,11 +3,12 @@
 ## [0.02] - Unreleased
 
 ### Added
+- **Beginner-First UX Redesign Phase 2.2h5R9E — Current-Source Test Provenance, Pending-State Truth, Documentation, and Evidence Closure**:
+    - **Pending Consumption Truth**: Introduced a typed `AttemptIssueResult` to truthfully model and handle the outcome of session-bound basemap attempts.
+    - **Testable Stale-Generation Path**: Extracted the mutation logic into `applyPendingConsumptionResult`, enabling direct integration testing of recovery paths without reflection.
+    - **Preference Authority Correction**: Fixed false-positive suite issues with a guaranteed distinct emission sequence for override verification.
+    - **Test Provenance Baseline**: Established a high-integrity evidence baseline mapping source file SHA-256 and method counts directly to the executed JVM reports.
 - **Beginner-First UX Redesign Phase 2.2h5R9D — Transactional Pending Consumption, Test Truth, Documentation, and Evidence Finalization**:
-    - **Transactional Pending Consumption**: Ensured that `PendingBasemapRequest` is only cleared after a successful session-bound attempt, preserving intent across recreation.
-    - **Test Truth Finalization**: Verified all 640 unit tests pass across both normal and no-key configurations.
-    - **Documentation Synchronization**: Updated all project artifacts and walkthroughs to the Phase 2.2h5R9D baseline.
-    - **Evidence Integrity**: Finalized the staging and hashing of APKs, manifests, and test transcripts for review.
 - **Beginner-First UX Redesign Phase 2.2h5R9C — Preference Confirmation, Stale-Branch Testability, and Evidence Closure**:
     - **Preference Confirmation and Authority**: Implemented `lastObservedRepositoryBasemapId` to track confirmed repository state and filter stale emissions during active overrides.
     - **Transactional Reissue**: Refactored `onMapReady` for transactional issuance and reissue of authoritative preferences using `PendingBasemapResolver`.

@@ -1,20 +1,18 @@
 JVM Unit Test Summary
-Phase: 2.2h5R9C
+Phase: 2.2h5R9E (Current-Source Provenance and Pending Truth)
 Result: SUCCESS
-Total: 641
-Passed: 641
+Total: 640
+Passed: 640
 Failed: 0
 Skipped: 0
 Date: 2026-08-02
 App Version: 0.02 (2)
 
 Verified key basemap scenarios:
-- Deterministic stale-generation recovery in onMapReady.
-- Transactional PendingBasemapRequest consumption (cleared only after session-bind).
-- Correct backup-only role/reason metadata (BACKUP/BACKUP).
-- Preference authority with separate customerBasemapPreferenceOverride.
-- Full fallback regression: Streets/Liberty -> Base/Positron sequence.
-- Main disposal terminal truth: DISPOSED recorded only for genuine loading.
-- No-key BuildConfig verification passing in no-key suite.
-- Normal and No-Key test reports separated in evidence.
-- SHA-256 APK hash verified for clean build binaries.
+- Typed Pending Consumption Result (Issued, DefinitionUnavailable, NoLiveSession).
+- Transactional consumption (intent cleared only after session issuance or failure).
+- Deterministic stale-generation recovery via applyPendingConsumptionResult.
+- Idempotency in issueAttempt and application logic.
+- Genuine distinct value preference authority (Topo -> Base -> Streets confirmation).
+- FullFallback regression: Streets/Lib -> Dispose -> Base -> Fail -> Positron.
+- Verified correspondence between source SHA-256 and XML reports (640 tests).

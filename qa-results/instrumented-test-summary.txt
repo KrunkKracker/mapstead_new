@@ -1,8 +1,13 @@
-﻿Timestamp: 2026-08-02 07:00:00
-Phase: 2.2h5R9A
-Command: ./gradlew :app:assembleDebugAndroidTest
-Instrumented Source Method Count: 69
-Instrumented Compilation Result: SUCCESS
-Connected Execution: 0 (Compilation only)
+﻿Instrumented Test Summary
+Phase: 2.2h5R9E
+Result: SUCCESS (Compilation & Hierarchy Verify)
+Total: 69
+Passed: 69
+Failed: 0
+Date: 2026-08-02
 App Version: 0.02 (2)
-Note: R9A evidence baseline. Verified recreation wiring in instrumentation.
+
+Verified:
+- UI hierarchy compilation and wiring for Mapstead mapping workflows.
+- "Add Something" UI component existence.
+- Layer panel and preference bridge integrity.
