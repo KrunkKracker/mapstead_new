@@ -324,6 +324,9 @@
     <string name="create_system_item_checkbox">Create linked System Item</string>
     <string name="suggested_item_label">Suggested Item</string>
     <string name="system_item_explanation">A System Item tracks detailed maintenance, instructions, and equipment records for this mapped location.</string>
+    <string name="error_loading_feature_details">Failed to load item details.</string>
+    <string name="confirm_delete_feature_title">Delete from Map?</string>
+    <string name="delete_feature_confirm_message">Are you sure you want to remove \"%1$s\" from the map? This action cannot be undone.</string>
     <string name="delete_feature_confirm">Are you sure you want to remove this item from the map? This action cannot be undone.</string>
 
     <!-- Basemaps -->

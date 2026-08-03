@@ -17,7 +17,7 @@ import com.jumastappworks.mapstead.R
 @Composable
 fun UnifiedItemHeader(
     name: String,
-    category: String,
+    category: String?,
     subtype: String?,
     icon: ImageVector,
     statusLabel: String,
@@ -64,11 +64,20 @@ fun UnifiedItemHeader(
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold
                     )
-                    Text(
-                        text = if (!subtype.isNullOrBlank()) "$category • $subtype" else category,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.outline
-                    )
+                    val metadataLabel = when {
+                        !category.isNullOrBlank() && !subtype.isNullOrBlank() -> "$category \u2022 $subtype"
+                        !category.isNullOrBlank() -> category
+                        !subtype.isNullOrBlank() -> subtype
+                        else -> null
+                    }
+                    
+                    metadataLabel?.let {
+                        Text(
+                            text = it,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.outline
+                        )
+                    }
                 }
             }
             

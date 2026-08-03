@@ -288,21 +288,30 @@ data class FeatureAccuracySummary(
     val sourceRes: Int? = null
 )
 
+sealed interface LinkedRecordState {
+    data object None : LinkedRecordState
+    data class Available(val item: com.jumastappworks.mapstead.data.db.entities.InfrastructureItemEntity) : LinkedRecordState
+    data class Unavailable(val itemId: java.util.UUID) : LinkedRecordState
+}
+
 sealed interface FeatureDetailUiState {
     data object Loading : FeatureDetailUiState
     data class Ready(
         val feature: MapFeatureEntity,
         val geometryLabel: String,
         val layerName: String?,
-        val category: String,
+        val category: String?,
         val notes: String?,
         val measurementSummary: FeatureMeasurementSummary,
         val accuracySummary: FeatureAccuracySummary,
-        val linkedItem: com.jumastappworks.mapstead.data.db.entities.InfrastructureItemEntity?,
+        val pointCoordinates: String?,
+        val linkedRecord: LinkedRecordState,
         val attachments: List<com.jumastappworks.mapstead.ui.attachments.AttachmentListItemUiModel>,
         val isDeleting: Boolean = false,
         val deleteErrorRes: Int? = null
     ) : FeatureDetailUiState
+    data class Error(val messageRes: Int) : FeatureDetailUiState
+    data object NotFound : FeatureDetailUiState
 }
 
 data class FeatureLinkEditorSession(

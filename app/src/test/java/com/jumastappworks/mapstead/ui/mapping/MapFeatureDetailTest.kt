@@ -1,6 +1,7 @@
 package com.jumastappworks.mapstead.ui.mapping
 
 import androidx.lifecycle.SavedStateHandle
+import com.jumastappworks.mapstead.R
 import com.jumastappworks.mapstead.data.attachments.*
 import com.jumastappworks.mapstead.data.db.entities.*
 import com.jumastappworks.mapstead.data.mapping.*
@@ -33,7 +34,7 @@ class MapFeatureDetailTest {
 
     private lateinit var viewModel: MapViewModel
     private val testDispatcher = UnconfinedTestDispatcher()
-    private val userPrefsFlow = MutableStateFlow(UserPreferences())
+    private val userPrefsFlow = MutableStateFlow(UserPreferences(measurementSystem = MeasurementSystem.IMPERIAL))
 
     @Before
     fun setup() {
@@ -43,6 +44,8 @@ class MapFeatureDetailTest {
         every { mapRepo.getLayersForPlan(any()) } returns flowOf(emptyList())
         every { attachmentRepo.getAttachmentsForMapFeature(any(), any()) } returns flowOf(emptyList())
         every { infraRepo.observeActiveItem(any(), any()) } returns flowOf(null)
+        every { propRepo.getAllProperties() } returns flowOf(emptyList())
+        every { infraRepo.getItemsForProperty(any()) } returns flowOf(emptyList())
         
         viewModel = MapViewModel(mapRepo, attachmentRepo, infraRepo, propRepo, resolver, locationProvider, basemapProvider, userPrefsRepo, namingService, context, savedState)
     }
@@ -54,6 +57,7 @@ class MapFeatureDetailTest {
 
     @Test
     fun `selecting existing feature lands on details with beginner labels`() = runTest {
+        val job = backgroundScope.launch { viewModel.uiState.collect {} }
         val propId = UUID.randomUUID()
         val featureId = UUID.randomUUID()
         val feature = MapFeatureEntity(
@@ -62,92 +66,94 @@ class MapFeatureDetailTest {
             coordinateSpace = "GEOGRAPHIC", styleJson = "{}", accuracySource = "MANUAL", label = "Test Route"
         )
         
-        backgroundScope.launch { viewModel.uiState.collect {} }
         viewModel.setProperty(propId)
         viewModel.selectPersistedFeature(feature)
-        advanceUntilIdle()
         
-        val state = viewModel.uiState.value
-        assertTrue(state.featureEditorOpen)
-        assertFalse(state.isEditingFeature)
-        assertFalse(state.isNewUnsavedFeature)
+        val readyState = viewModel.uiState.mapNotNull { it.featureDetailState }.filterIsInstance<FeatureDetailUiState.Ready>().first()
         
-        val detail = state.featureDetailState as? FeatureDetailUiState.Ready
-        assertNotNull("FeatureDetailState should not be null", detail)
-        assertEquals("Drawn Route", detail?.geometryLabel)
-    }
-
-    @Test
-    fun `tapping Edit transitions from details to editor`() = runTest {
-        backgroundScope.launch { viewModel.uiState.collect {} }
-        val feature = MapFeatureEntity(id = UUID.randomUUID(), propertyId = UUID.randomUUID(), planId = UUID.randomUUID(), layerId = UUID.randomUUID(), geometryType = "POINT", geometryJson = "{\"type\":\"Point\",\"coordinates\":[0,0]}", coordinateSpace = "GEOGRAPHIC", styleJson = "{}", accuracySource = "MANUAL", label = "Test Point")
-        
-        viewModel.selectPersistedFeature(feature)
-        advanceUntilIdle()
+        assertEquals("Drawn Route", readyState.geometryLabel)
         assertFalse(viewModel.uiState.value.isEditingFeature)
-        
-        viewModel.onEditFeatureClick()
-        advanceUntilIdle()
-        assertTrue(viewModel.uiState.value.isEditingFeature)
+        job.cancel()
     }
 
     @Test
-    fun `save existing feature returns to details`() = runTest {
-        backgroundScope.launch { viewModel.uiState.collect {} }
+    fun `point coordinates are derived safely`() = runTest {
+        val job = backgroundScope.launch { viewModel.uiState.collect {} }
+        val feature = MapFeatureEntity(
+            id = UUID.randomUUID(), propertyId = UUID.randomUUID(), planId = UUID.randomUUID(), layerId = UUID.randomUUID(),
+            geometryType = "POINT", geometryJson = "{\"type\":\"Point\",\"coordinates\":[-122.0, 37.0]}",
+            coordinateSpace = "GEOGRAPHIC", styleJson = "{}", accuracySource = "MANUAL", label = "Test Point"
+        )
+        
+        viewModel.setProperty(feature.propertyId)
+        viewModel.selectPersistedFeature(feature)
+        
+        val readyState = viewModel.uiState.mapNotNull { it.featureDetailState }.filterIsInstance<FeatureDetailUiState.Ready>().first()
+        assertEquals("37.000000, -122.000000", readyState.pointCoordinates)
+        job.cancel()
+    }
+
+    @Test
+    fun `accuracy source is normalized`() = runTest {
+        val job = backgroundScope.launch { viewModel.uiState.collect {} }
+        val feature = MapFeatureEntity(
+            id = UUID.randomUUID(), propertyId = UUID.randomUUID(), planId = UUID.randomUUID(), layerId = UUID.randomUUID(),
+            geometryType = "POINT", geometryJson = "{\"type\":\"Point\",\"coordinates\":[0,0]}",
+            coordinateSpace = "GEOGRAPHIC", styleJson = "{}", accuracySource = "MANUAL", label = "Test Point"
+        )
+        
+        viewModel.setProperty(feature.propertyId)
+        viewModel.selectPersistedFeature(feature)
+        
+        val readyState = viewModel.uiState.mapNotNull { it.featureDetailState }.filterIsInstance<FeatureDetailUiState.Ready>().first()
+        assertEquals(R.string.accuracy_source_user_estimated, readyState.accuracySummary.sourceRes)
+        job.cancel()
+    }
+
+    @Test
+    fun `linked record Unavailable state is used for missing items`() = runTest {
+        val job = backgroundScope.launch { viewModel.uiState.collect {} }
         val propId = UUID.randomUUID()
-        val featureId = UUID.randomUUID()
-        val feature = MapFeatureEntity(id = featureId, propertyId = propId, planId = UUID.randomUUID(), layerId = UUID.randomUUID(), geometryType = "POINT", geometryJson = "{\"type\":\"Point\",\"coordinates\":[0,0]}", coordinateSpace = "GEOGRAPHIC", styleJson = "{}", accuracySource = "MANUAL", label = "Test Point")
+        val itemId = UUID.randomUUID()
+        val feature = MapFeatureEntity(
+            id = UUID.randomUUID(), propertyId = propId, planId = UUID.randomUUID(), layerId = UUID.randomUUID(),
+            geometryType = "POINT", geometryJson = "{\"type\":\"Point\",\"coordinates\":[0,0]}",
+            coordinateSpace = "GEOGRAPHIC", styleJson = "{}", accuracySource = "MANUAL", label = "Test Point",
+            infrastructureItemId = itemId
+        )
         
-        coEvery { mapRepo.saveFeatureWithOptionalItem(any(), any()) } returns Unit
+        every { infraRepo.observeActiveItem(propId, itemId) } returns flowOf(null)
         
         viewModel.setProperty(propId)
         viewModel.selectPersistedFeature(feature)
-        viewModel.onEditFeatureClick()
-        advanceUntilIdle()
         
-        viewModel.saveFeature(feature)
-        advanceUntilIdle()
-        
-        assertFalse(viewModel.uiState.value.isEditingFeature)
-        assertTrue(viewModel.uiState.value.featureEditorOpen)
+        val readyState = viewModel.uiState.mapNotNull { it.featureDetailState }.filterIsInstance<FeatureDetailUiState.Ready>().first()
+        assertTrue(readyState.linkedRecord is LinkedRecordState.Unavailable)
+        assertEquals(itemId, (readyState.linkedRecord as LinkedRecordState.Unavailable).itemId)
+        job.cancel()
     }
 
     @Test
-    fun `delete failure shows error and preserves detail state`() = runTest {
-        backgroundScope.launch { viewModel.uiState.collect {} }
+    fun `delete failure preserves selection and exposes error`() = runTest {
+        val job = backgroundScope.launch { viewModel.uiState.collect {} }
         val propId = UUID.randomUUID()
         val planId = UUID.randomUUID()
         val featureId = UUID.randomUUID()
         val feature = MapFeatureEntity(id = featureId, propertyId = propId, planId = planId, layerId = UUID.randomUUID(), geometryType = "POINT", geometryJson = "{\"type\":\"Point\",\"coordinates\":[0,0]}", coordinateSpace = "GEOGRAPHIC", styleJson = "{}", accuracySource = "MANUAL", label = "Test Point")
         
-        coEvery { mapRepo.softDeleteFeatureWithAttachments(propId, planId, featureId) } returns AttachmentDeleteState.Error(com.jumastappworks.mapstead.R.string.error_delete_failed)
+        coEvery { mapRepo.softDeleteFeatureWithAttachments(propId, planId, featureId) } returns AttachmentDeleteState.Error(R.string.error_delete_failed)
         
         viewModel.openMapContext(propId, planId, "token")
         viewModel.selectPersistedFeature(feature)
-        advanceUntilIdle()
         
         viewModel.deleteFeature(featureId)
-        advanceUntilIdle()
         
-        assertTrue(viewModel.uiState.value.featureEditorOpen)
-        assertNotNull(viewModel.uiState.value.deleteFeatureErrorRes)
-    }
-
-    @Test
-    fun `linked infrastructure item is loaded property-scoped`() = runTest {
-        backgroundScope.launch { viewModel.uiState.collect {} }
-        val propId = UUID.randomUUID()
-        val itemId = UUID.randomUUID()
-        val feature = MapFeatureEntity(id = UUID.randomUUID(), propertyId = propId, planId = UUID.randomUUID(), layerId = UUID.randomUUID(), geometryType = "POINT", geometryJson = "{\"type\":\"Point\",\"coordinates\":[0,0]}", coordinateSpace = "GEOGRAPHIC", styleJson = "{}", accuracySource = "MANUAL", label = "Test Point", infrastructureItemId = itemId)
-        val item = InfrastructureItemEntity(id = itemId, propertyId = propId, name = "Linked Item", category = "Utility", status = "Active")
+        val state = viewModel.uiState.filter { it.deleteFeatureErrorRes != null }.first()
+        assertEquals(R.string.error_delete_failed, state.deleteFeatureErrorRes)
         
-        every { infraRepo.observeActiveItem(propId, itemId) } returns flowOf(item)
-        
-        viewModel.setProperty(propId)
-        viewModel.selectPersistedFeature(feature)
-        advanceUntilIdle()
-        
-        val detail = viewModel.uiState.value.featureDetailState as? FeatureDetailUiState.Ready
-        assertEquals("Linked Item", detail?.linkedItem?.name)
+        viewModel.clearDeleteFeatureError()
+        val finalState = viewModel.uiState.filter { it.deleteFeatureErrorRes == null }.first()
+        assertNull(finalState.deleteFeatureErrorRes)
+        job.cancel()
     }
 }

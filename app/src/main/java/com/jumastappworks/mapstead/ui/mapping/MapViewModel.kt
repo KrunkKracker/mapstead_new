@@ -487,27 +487,24 @@ class MapViewModel @Inject constructor(
         _isDeletingFeature,
         _deleteFeatureErrorRes,
         _measurementSystem
-    ) { array ->
-        val pid = array[0] as UUID?
-        val sf = array[1] as MapFeatureEntity?
-        val ie = array[2] as Boolean
-        val id = array[3] as Boolean
-        val de = array[4] as Int?
-        val units = array[5] as com.jumastappworks.mapstead.data.prefs.MeasurementSystem
-        Triple(pid, sf, ie) to Triple(id, de, units)
-    }
+    ) { array -> array }
 
-    val featureDetailState: StateFlow<FeatureDetailUiState?> = _detailInputBatch.flatMapLatest { (p1, p2) ->
-        val pid = p1.first
-        val feature = p1.second
-        val isEditing = p1.third
-        val isDeleting = p2.first
-        val deleteError = p2.second
-        val units = p2.third
+    val featureDetailState: StateFlow<FeatureDetailUiState?> = _detailInputBatch.flatMapLatest { array ->
+        val pid = array[0] as UUID?
+        val feature = array[1] as MapFeatureEntity?
+        val isEditing = array[2] as Boolean
+        val isDeleting = array[3] as Boolean
+        val deleteErrorRes = array[4] as Int?
+        val units = array[5] as com.jumastappworks.mapstead.data.prefs.MeasurementSystem
 
         if (feature == null || isEditing || pid == null) return@flatMapLatest flowOf(null)
         
-        val itemFlow = feature.infrastructureItemId?.let { infrastructureRepository.observeActiveItem(pid, it) } ?: flowOf(null)
+        val linkedRecordFlow = feature.infrastructureItemId?.let { itemId ->
+            infrastructureRepository.observeActiveItem(pid, itemId).map { item ->
+                if (item != null) LinkedRecordState.Available(item) else LinkedRecordState.Unavailable(itemId)
+            }
+        } ?: flowOf(LinkedRecordState.None)
+
         val attachmentsFlow = attachmentRepository.getAttachmentsForMapFeature(pid, feature.id).map { list ->
             list.map { entity ->
                 val fileState = attachmentRepository.resolveAttachmentFile(pid, entity.id, verifyHash = false)
@@ -521,7 +518,7 @@ class MapViewModel @Inject constructor(
         }
         val layerNameFlow = _layers.map { list -> list.find { it.id == feature.layerId }?.name }
 
-        combine(itemFlow, attachmentsFlow, layerNameFlow) { item, attachments, layerName ->
+        combine(linkedRecordFlow, attachmentsFlow, layerNameFlow) { linkedRecord, attachments, layerName ->
             val geomLabel = when (feature.geometryType) {
                 "POINT" -> "Marked Location"
                 "LINESTRING" -> "Drawn Route"
@@ -529,27 +526,52 @@ class MapViewModel @Inject constructor(
                 else -> "Map Item"
             }
             
-            val category = try { JSONObject(feature.styleJson).optString("category", "Structure") } catch (e: Exception) { "Structure" }
-            val notes = try { JSONObject(feature.styleJson).optString("notes", "").takeIf { it.isNotBlank() } } catch (e: Exception) { null }
+            val styleJson = feature.styleJson
+            val styleObj = try { Json.parseToJsonElement(styleJson).jsonObject } catch (e: Exception) { null }
+            
+            // Prefer linked record category if available
+            val rawCategory = if (linkedRecord is LinkedRecordState.Available) {
+                linkedRecord.item.category
+            } else {
+                styleObj?.get("category")?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotBlank() }
+            }
+            
+            val notes = styleObj?.get("notes")?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotBlank() }
 
             val measurementSummary = deriveMeasurementSummary(feature, units)
             val accuracySummary = deriveAccuracySummary(feature, units)
+            val pointCoordinates = derivePointCoordinates(feature)
 
             FeatureDetailUiState.Ready(
                 feature = feature,
                 geometryLabel = geomLabel,
                 layerName = layerName,
-                category = category,
+                category = rawCategory,
                 notes = notes,
                 measurementSummary = measurementSummary,
                 accuracySummary = accuracySummary,
-                linkedItem = item,
+                pointCoordinates = pointCoordinates,
+                linkedRecord = linkedRecord,
                 attachments = attachments,
                 isDeleting = isDeleting,
-                deleteErrorRes = deleteError
-            )
-        }
+                deleteErrorRes = deleteErrorRes
+            ) as FeatureDetailUiState
+        }.onStart { emit(FeatureDetailUiState.Loading) }
+        .catch { emit(FeatureDetailUiState.Error(R.string.error_loading_feature_details)) }
     }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    private fun derivePointCoordinates(feature: MapFeatureEntity): String? {
+        if (feature.geometryType != "POINT") return null
+        return try {
+            val element = Json.parseToJsonElement(feature.geometryJson).jsonObject
+            val coords = element["coordinates"]?.jsonArray ?: return null
+            val lng = coords[0].jsonPrimitive.double
+            val lat = coords[1].jsonPrimitive.double
+            String.format(java.util.Locale.US, "%.6f, %.6f", lat, lng)
+        } catch (e: Exception) {
+            null
+        }
+    }
 
     private fun deriveMeasurementSummary(feature: MapFeatureEntity, units: com.jumastappworks.mapstead.data.prefs.MeasurementSystem): FeatureMeasurementSummary {
         val isPolygon = feature.geometryType == "POLYGON"
@@ -558,12 +580,17 @@ class MapViewModel @Inject constructor(
         if (!isLine && !isPolygon) return FeatureMeasurementSummary()
         
         return try {
-            val obj = JSONObject(feature.geometryJson)
-            val coords = if (isPolygon) obj.getJSONArray("coordinates").getJSONArray(0) else obj.getJSONArray("coordinates")
+            val element = Json.parseToJsonElement(feature.geometryJson).jsonObject
+            val coordsArray = if (isPolygon) {
+                element["coordinates"]?.jsonArray?.get(0)?.jsonArray
+            } else {
+                element["coordinates"]?.jsonArray
+            } ?: return FeatureMeasurementSummary()
+            
             val list = mutableListOf<Pair<Double, Double>>()
-            for (i in 0 until coords.length()) {
-                val pt = coords.getJSONArray(i)
-                list.add(Pair(pt.getDouble(0), pt.getDouble(1)))
+            for (i in 0 until coordsArray.size) {
+                val pt = coordsArray[i].jsonArray
+                list.add(Pair(pt[0].jsonPrimitive.double, pt[1].jsonPrimitive.double))
             }
             
             if (isPolygon) {
@@ -572,14 +599,12 @@ class MapViewModel @Inject constructor(
                 val perimeter = GeometryUtils.calculatePolygonPerimeter(vertices)
                 FeatureMeasurementSummary(
                     area = MeasurementFormatter.formatArea(area, units),
-                    perimeter = MeasurementFormatter.formatDistance(perimeter, units),
-                    pointsCount = vertices.size
+                    perimeter = MeasurementFormatter.formatDistance(perimeter, units)
                 )
             } else {
                 val length = GeometryUtils.calculatePathLength(list)
                 FeatureMeasurementSummary(
-                    length = MeasurementFormatter.formatDistance(length, units),
-                    pointsCount = list.size
+                    length = MeasurementFormatter.formatDistance(length, units)
                 )
             }
         } catch (e: Exception) {
@@ -592,14 +617,15 @@ class MapViewModel @Inject constructor(
             MeasurementFormatter.formatAccuracy(it, units)
         }
         
-        val sourceRes = when (feature.accuracySource) {
-            "User Estimated" -> R.string.accuracy_source_user_estimated
-            "Phone GPS" -> R.string.accuracy_source_phone_gps
-            "Measured From Reference" -> R.string.accuracy_source_measured_from_reference
-            "Imported Plan" -> R.string.accuracy_source_imported_plan
-            "Imported Survey" -> R.string.accuracy_source_imported_survey
-            "Professional Utility Locate" -> R.string.accuracy_source_professional_locate
-            "Professionally Surveyed" -> R.string.accuracy_source_professional_surveyed
+        val sourceRes = when (feature.accuracySource?.uppercase(java.util.Locale.ROOT)) {
+            "USER ESTIMATED" -> R.string.accuracy_source_user_estimated
+            "PHONE GPS", "GPS" -> R.string.accuracy_source_phone_gps
+            "MEASURED FROM REFERENCE" -> R.string.accuracy_source_measured_from_reference
+            "IMPORTED PLAN" -> R.string.accuracy_source_imported_plan
+            "IMPORTED SURVEY" -> R.string.accuracy_source_imported_survey
+            "PROFESSIONAL UTILITY LOCATE" -> R.string.accuracy_source_professional_locate
+            "PROFESSIONALLY SURVEYED" -> R.string.accuracy_source_professional_surveyed
+            "MANUAL" -> R.string.accuracy_source_user_estimated // Normalize Manual to User Estimated
             else -> R.string.accuracy_source_unknown
         }
         

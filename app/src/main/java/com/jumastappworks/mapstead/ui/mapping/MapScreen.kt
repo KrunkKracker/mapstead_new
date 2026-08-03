@@ -74,6 +74,7 @@ import kotlinx.coroutines.flow.first
 import java.util.UUID
 import kotlin.math.*
 import kotlinx.coroutines.CancellationException
+import androidx.compose.ui.text.style.TextAlign
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -777,6 +778,7 @@ fun MapScreen(
         onDeleteFeature = { viewModel.deleteFeature(it) },
         onOpenSearchResult = { viewModel.openSearchResult(it) },
         onRevealAndOpenSearchResult = { viewModel.revealAndOpenSearchResult(it) },
+        onNavigateToEditor = onNavigateToEditor,
         onSaveNewSystemItem = viewModel::prepareSystemItemDraft,
         onMovePointClick = { viewModel.beginMovePoint(it) },
         onEditShapeClick = { viewModel.beginPersistedShapeEdit(it) }, onUndoEditClick = { viewModel.undoLineEdit() },
@@ -911,6 +913,7 @@ fun MapScreenContent(
     onDeleteFeature: (UUID) -> Unit,
     onOpenSearchResult: (MapSearchResult) -> Unit,
     onRevealAndOpenSearchResult: (MapSearchResult) -> Unit,
+    onNavigateToEditor: (UUID, String, UUID, String?, String?, AttachmentNavigationOrigin) -> Unit,
     onSaveNewSystemItem: (PendingSystemItemInput) -> UUID,
     onMovePointClick: (UUID) -> Unit,
     onEditShapeClick: (UUID) -> Unit,
@@ -978,6 +981,24 @@ fun MapScreenContent(
     val keyboardController = LocalSoftwareKeyboardController.current
     
     val currentOnCameraMoved by rememberUpdatedState(onCameraMoved)
+    val mainScope = rememberCoroutineScope()
+    val cameraLauncher = rememberLauncherForActivityResult(contract = ActivityResultContracts.TakePicture()) { success -> viewModel.handleCameraResult(success) }
+    val photoPickerLauncher = rememberLauncherForActivityResult(contract = ActivityResultContracts.PickVisualMedia()) { uri ->
+        val pid = state.propertyId
+        val feature = state.selectedFeature ?: state.featureEditorFeature
+        if (pid != null && uri != null && feature != null) {
+            onNavigateToEditor(pid, "MAP_FEATURE", feature.id, uri.toString(), null, AttachmentNavigationOrigin.MAP_FEATURE)
+        }
+        viewModel.clearPendingPhotoPurpose()
+    }
+    val documentPickerLauncher = rememberLauncherForActivityResult(contract = ActivityResultContracts.OpenDocument()) { uri ->
+        val pid = state.propertyId
+        val feature = state.selectedFeature ?: state.featureEditorFeature
+        if (pid != null && uri != null && feature != null) {
+            onNavigateToEditor(pid, "MAP_FEATURE", feature.id, uri.toString(), null, AttachmentNavigationOrigin.MAP_FEATURE)
+        }
+        viewModel.clearPendingPhotoPurpose()
+    }
 
     keyboardController?.hide()
 
@@ -1534,18 +1555,38 @@ fun MapScreenContent(
 
         if (state.featureEditorOpen && (state.selectedFeature != null || state.featureEditorFeature != null)) {
             val sf = state.featureEditorFeature ?: state.selectedFeature!!
-
             val onDismissHandler = { onDismissFeatureEditor() }
 
-            if (layoutInfo.isWidthCompact) {
-                ModalBottomSheet(onDismissRequest = onDismissHandler, sheetState = sheetState) { 
-                    if (!state.isNewUnsavedFeature && !state.isEditingFeature && state.featureDetailState is FeatureDetailUiState.Ready) {
+            val detailContent: @Composable () -> Unit = {
+                val detailState = state.featureDetailState
+                when (detailState) {
+                    is FeatureDetailUiState.Loading -> {
+                        Box(modifier = Modifier.fillMaxWidth().height(300.dp), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator()
+                        }
+                    }
+                    is FeatureDetailUiState.Ready -> {
                         UnifiedFeatureDetailSheet(
-                            uiState = state.featureDetailState,
+                            uiState = detailState,
                             onEditClick = { viewModel.onEditFeatureClick() },
                             onDeleteClick = { onDeleteFeature(sf.id) },
-                            onAddPhoto = { onTakePhoto(sf.id) },
-                            onAddFile = { onChooseDocument(sf.id) },
+                            onTakePhoto = {
+                                viewModel.setPendingPhotoPurpose(PendingPhotoPurpose.SavedFeatureAttachment(sf.id))
+                                mainScope.launch {
+                                    viewModel.createCameraCapture().onSuccess { capture ->
+                                        viewModel.setInFlightCapture(capture.uri.toString(), capture.token)
+                                        cameraLauncher.launch(capture.uri)
+                                    }
+                                }
+                            },
+                            onChoosePhoto = {
+                                viewModel.setPendingPhotoPurpose(PendingPhotoPurpose.SavedFeatureAttachment(sf.id))
+                                photoPickerLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                            },
+                            onAddFile = {
+                                viewModel.setPendingPhotoPurpose(PendingPhotoPurpose.SavedFeatureAttachment(sf.id))
+                                documentPickerLauncher.launch(arrayOf("application/pdf", "text/plain", "image/*"))
+                            },
                             onViewAllAttachments = { onViewAttachments(sf.id) },
                             onAttachmentClick = { aid -> 
                                 state.propertyId?.let { pid -> onAttachmentDetails(pid, aid) }
@@ -1553,96 +1594,98 @@ fun MapScreenContent(
                             onOpenLinkedRecord = { iid -> 
                                 state.propertyId?.let { pid -> onOpenInfrastructureDetails(pid, iid) }
                             },
-                            onDismiss = onDismissHandler
+                            onDismiss = onDismissHandler,
+                            onClearDeleteError = { viewModel.clearDeleteFeatureError() }
                         )
+                    }
+                    is FeatureDetailUiState.Error -> {
+                        Column(
+                            modifier = Modifier.fillMaxWidth().padding(32.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            Icon(Icons.Default.ErrorOutline, contentDescription = null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(48.dp))
+                            Text(stringResource(detailState.messageRes), textAlign = TextAlign.Center)
+                            Button(onClick = { viewModel.selectPersistedFeature(sf, requestCameraFocus = false) }) {
+                                Text(stringResource(R.string.retry))
+                            }
+                            TextButton(onClick = onDismissHandler) {
+                                Text(stringResource(R.string.back))
+                            }
+                        }
+                    }
+                    is FeatureDetailUiState.NotFound -> {
+                        Column(
+                            modifier = Modifier.fillMaxWidth().padding(32.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            Icon(Icons.Default.SearchOff, contentDescription = null, modifier = Modifier.size(48.dp))
+                            Text(stringResource(R.string.error_feature_not_found), textAlign = TextAlign.Center)
+                            Button(onClick = onDismissHandler) {
+                                Text(stringResource(R.string.dismiss))
+                            }
+                        }
+                    }
+                    null -> {
+                        // Fallback if state hasn't reached Loading yet
+                        Box(modifier = Modifier.fillMaxWidth().height(300.dp), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator()
+                        }
+                    }
+                }
+            }
+
+            val editorContent: @Composable () -> Unit = {
+                FeatureDetailSheet(
+                    feature = sf, layers = state.layers, infrastructureItems = systemItems, 
+                    isSaving = state.isSavingFeature, isDeleting = state.isDeletingFeature, 
+                    labelError = state.labelError, accuracyError = state.accuracyError,
+                    errorMsg = state.featureOperationErrorRes?.let { stringResource(it) }, onSave = onSaveFeature, 
+                    onDelete = onDeleteFeature, onDismiss = onDismissHandler, 
+                    onSaveNewSystemItem = onSaveNewSystemItem, onMovePointClick = onMovePointClick, 
+                    onEditShapeClick = onEditShapeClick, 
+                    canEditShape = state.canEditShape,
+                    editShapeBlockReason = state.editShapeBlockReasonRes?.let { stringResource(it) },
+                    isNewUnsavedFeature = state.isNewUnsavedFeature,
+                    attachmentCount = attachmentCount,
+                    photoCount = photoCount,
+                    coverThumbnailUri = coverThumbnailUri,
+                    onViewAttachments = { onViewAttachments(sf.id) },
+                    onTakePhoto = { onTakePhoto(sf.id) },
+                    onChoosePhoto = { onChoosePhoto(sf.id) },
+                    onChooseDocument = { onChooseDocument(sf.id) },
+                    measurementSystem = state.measurementSystem,
+                    guidedPrefill = state.guidedPrefill,
+                    systemItemDraft = systemItemDraft,
+                    onClearSystemItemDraft = onClearSystemItemDraft,
+                    linkSelection = linkSelection,
+                    onLinkSelectionChange = onLinkSelectionChange,
+                    stagedPhoto = stagedPhoto,
+                    onRemoveStagedPhoto = onRemoveStagedPhoto,
+                    onTakePhotoCreation = onTakePhotoCreation,
+                    onChoosePhotoCreation = onChoosePhotoCreation,
+                    onCancel = if (state.isEditingFeature) { { viewModel.onCancelFeatureEdit() } } else onCancelGuidedCreation,
+                    saveOutcome = state.saveOutcome,
+                    onRetryPhoto = { pid, fid -> viewModel.retryFeaturePhoto(pid, fid) },
+                    onContinueWithoutPhoto = { fid -> viewModel.continueWithoutFeaturePhoto(fid) }
+                )
+            }
+
+            if (layoutInfo.isWidthCompact) {
+                ModalBottomSheet(onDismissRequest = onDismissHandler, sheetState = sheetState) { 
+                    if (state.isNewUnsavedFeature || state.isEditingFeature) {
+                        editorContent()
                     } else {
-                        FeatureDetailSheet(
-                            feature = sf, layers = state.layers, infrastructureItems = systemItems, 
-                            isSaving = state.isSavingFeature, isDeleting = state.isDeletingFeature, 
-                            labelError = state.labelError, accuracyError = state.accuracyError,
-                            errorMsg = state.featureOperationErrorRes?.let { stringResource(it) }, onSave = onSaveFeature, 
-                            onDelete = onDeleteFeature, onDismiss = onDismissHandler, 
-                            onSaveNewSystemItem = onSaveNewSystemItem, onMovePointClick = onMovePointClick, 
-                            onEditShapeClick = onEditShapeClick, 
-                            canEditShape = state.canEditShape,
-                            editShapeBlockReason = state.editShapeBlockReasonRes?.let { stringResource(it) },
-                            isNewUnsavedFeature = state.isNewUnsavedFeature,
-                            attachmentCount = attachmentCount,
-                            photoCount = photoCount,
-                            coverThumbnailUri = coverThumbnailUri,
-                            onViewAttachments = { onViewAttachments(sf.id) },
-                            onTakePhoto = { onTakePhoto(sf.id) },
-                            onChoosePhoto = { onChoosePhoto(sf.id) },
-                            onChooseDocument = { onChooseDocument(sf.id) },
-                            measurementSystem = state.measurementSystem,
-                            guidedPrefill = state.guidedPrefill,
-                            systemItemDraft = systemItemDraft,
-                            onClearSystemItemDraft = onClearSystemItemDraft,
-                            linkSelection = linkSelection,
-                            onLinkSelectionChange = onLinkSelectionChange,
-                            stagedPhoto = stagedPhoto,
-                            onRemoveStagedPhoto = onRemoveStagedPhoto,
-                            onTakePhotoCreation = onTakePhotoCreation,
-                            onChoosePhotoCreation = onChoosePhotoCreation,
-                            onCancel = if (state.isEditingFeature) { { viewModel.onCancelFeatureEdit() } } else onCancelGuidedCreation,
-                            saveOutcome = state.saveOutcome,
-                            onRetryPhoto = { pid, fid -> viewModel.retryFeaturePhoto(pid, fid) },
-                            onContinueWithoutPhoto = { fid -> viewModel.continueWithoutFeaturePhoto(fid) }
-                        )
+                        detailContent()
                     }
                 }
             } else {
                 Surface(modifier = Modifier.align(Alignment.CenterStart).fillMaxHeight().widthIn(min = 320.dp, max = 450.dp), tonalElevation = 8.dp) { 
-                    if (!state.isNewUnsavedFeature && !state.isEditingFeature && state.featureDetailState is FeatureDetailUiState.Ready) {
-                        UnifiedFeatureDetailSheet(
-                            uiState = state.featureDetailState,
-                            onEditClick = { viewModel.onEditFeatureClick() },
-                            onDeleteClick = { onDeleteFeature(sf.id) },
-                            onAddPhoto = { onTakePhoto(sf.id) },
-                            onAddFile = { onChooseDocument(sf.id) },
-                            onViewAllAttachments = { onViewAttachments(sf.id) },
-                            onAttachmentClick = { aid -> 
-                                state.propertyId?.let { pid -> onAttachmentDetails(pid, aid) }
-                            },
-                            onOpenLinkedRecord = { iid -> 
-                                state.propertyId?.let { pid -> onOpenInfrastructureDetails(pid, iid) }
-                            },
-                            onDismiss = onDismissHandler
-                        )
+                    if (state.isNewUnsavedFeature || state.isEditingFeature) {
+                        editorContent()
                     } else {
-                        FeatureDetailSheet(
-                            feature = sf, layers = state.layers, infrastructureItems = systemItems, 
-                            isSaving = state.isSavingFeature, isDeleting = state.isDeletingFeature, 
-                            labelError = state.labelError, accuracyError = state.accuracyError,
-                            errorMsg = state.featureOperationErrorRes?.let { stringResource(it) }, onSave = onSaveFeature, 
-                            onDelete = onDeleteFeature, onDismiss = onDismissHandler, 
-                            onSaveNewSystemItem = onSaveNewSystemItem, onMovePointClick = onMovePointClick, 
-                            onEditShapeClick = onEditShapeClick, 
-                            canEditShape = state.canEditShape,
-                            editShapeBlockReason = state.editShapeBlockReasonRes?.let { stringResource(it) },
-                            isNewUnsavedFeature = state.isNewUnsavedFeature,
-                            attachmentCount = attachmentCount,
-                            photoCount = photoCount,
-                            coverThumbnailUri = coverThumbnailUri,
-                            onViewAttachments = { onViewAttachments(sf.id) },
-                            onTakePhoto = { onTakePhoto(sf.id) },
-                            onChoosePhoto = { onChoosePhoto(sf.id) },
-                            onChooseDocument = { onChooseDocument(sf.id) },
-                            measurementSystem = state.measurementSystem,
-                            guidedPrefill = state.guidedPrefill,
-                            systemItemDraft = systemItemDraft,
-                            onClearSystemItemDraft = onClearSystemItemDraft,
-                            linkSelection = linkSelection,
-                            onLinkSelectionChange = onLinkSelectionChange,
-                            stagedPhoto = stagedPhoto,
-                            onRemoveStagedPhoto = onRemoveStagedPhoto,
-                            onTakePhotoCreation = onTakePhotoCreation,
-                            onChoosePhotoCreation = onChoosePhotoCreation,
-                            onCancel = if (state.isEditingFeature) { { viewModel.onCancelFeatureEdit() } } else onCancelGuidedCreation,
-                            saveOutcome = state.saveOutcome,
-                            onRetryPhoto = { pid, fid -> viewModel.retryFeaturePhoto(pid, fid) },
-                            onContinueWithoutPhoto = { fid -> viewModel.continueWithoutFeaturePhoto(fid) }
-                        )
+                        detailContent()
                     }
                 }
             }
@@ -1770,7 +1813,7 @@ private fun reinstallMapsteadOverlays(style: Style, state: MapUiState) {
             MapsteadMapOverlayInstaller.removeSourceAndLayers(style, MapsteadMapOverlayInstaller.DRAFT_POLYGON_SOURCE_ID, listOf(MapsteadMapOverlayInstaller.DRAFT_POLYGON_FILL_LAYER_ID, MapsteadMapOverlayInstaller.DRAFT_POLYGON_OUTLINE_LAYER_ID))
         }
         val verticesJson = vertices.joinToString(",") { "{\"type\":\"Feature\",\"geometry\":{\"type\":\"Point\",\"coordinates\":[${it.first},${it.second}]}}" }
-        MapsteadMapOverlayInstaller.installOrUpdateSource(style, MapsteadMapOverlayInstaller.DRAFT_POLYGON_VERTICES_SOURCE_ID, "{\"type\":\"FeatureCollection\",\"features\":[$verticesJson]}")
+        MapsteadMapOverlayInstaller.installOrUpdateSource(style, MapsteadMapOverlayInstaller.DRAFT_POLYGON_VERTICES_SOURCE_ID, verticesJson)
         MapsteadMapOverlayInstaller.installPolygonDraftLayers(style)
     } else {
         MapsteadMapOverlayInstaller.removeSourceAndLayers(style, MapsteadMapOverlayInstaller.DRAFT_POLYGON_SOURCE_ID, listOf(MapsteadMapOverlayInstaller.DRAFT_POLYGON_FILL_LAYER_ID, MapsteadMapOverlayInstaller.DRAFT_POLYGON_OUTLINE_LAYER_ID))

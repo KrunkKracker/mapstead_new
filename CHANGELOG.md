@@ -6,10 +6,12 @@
 - **Beginner-First UX Redesign Phase 3A2 — Unified Map Feature Details**:
     - **Map Feature View/Edit Separation**: Saved map features now open in a read-only `UnifiedFeatureDetailSheet` by default, requiring an explicit "Edit" action to modify.
     - **Beginner-Friendly Terminology**: Replaced technical geometry terms (Point, LineString, Polygon) with "Marked Location", "Drawn Route", and "Outlined Area".
-    - **Relationship Visibility**: Added a prominent Linked Record card for features connected to infrastructure items, with property-scoped lookup integrity.
-    - **Measurement Summaries**: Integrated automated length, area, and perimeter summaries into the detail view using existing geometry utilities.
-    - **Real Attachment Integration**: Displays actual photo and file thumbnails for map features, handling missing or damaged states gracefully.
-    - **Delete Failure Resilience**: Enhanced deletion logic to capture and display errors while preserving the current view state for retry.
+    - **Relationship Visibility**: Added a prominent Linked Record card for features connected to infrastructure items, with property-scoped lookup integrity and clear handling of unavailable links.
+    - **Measurement Summaries**: Integrated automated length, area, and perimeter summaries into the detail view using existing geometry utilities, removing technical vertex counts.
+    - **Real Attachment Integration**: Displays actual photo and file thumbnails for map features, with distinct actions for capture versus selection.
+    - **Delete Confirmation & Failure Resilience**: Restored explicit deletion confirmation and enhanced error presentation with retry and dismissal support.
+    - **Hardened Loading States**: Established strict UI routing to ensure saved features never fall back to the editable form while details are loading or if loading fails.
+    - **Safe Geometry Derivation**: Moved geometry parsing and coordinate formatting into the ViewModel to prevent UI-level crashes on malformed data.
 
 - **Beginner-First UX Redesign Phase 3A1 — Unified Infrastructure Details Foundation**:
     - **Infrastructure View/Edit Separation**: Introduced a dedicated read-only `InfrastructureItemDetailScreen` as the primary entry point for existing items, moving editing to a focused `InfrastructureItemEditorScreen`.

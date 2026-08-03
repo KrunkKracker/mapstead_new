@@ -2,7 +2,6 @@ package com.jumastappworks.mapstead.ui.mapping
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Launch
@@ -11,12 +10,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.jumastappworks.mapstead.R
-import com.jumastappworks.mapstead.data.db.entities.InfrastructureItemEntity
 import com.jumastappworks.mapstead.data.db.entities.MapFeatureEntity
 import com.jumastappworks.mapstead.ui.components.AttachmentsSection
 import com.jumastappworks.mapstead.ui.components.details.*
@@ -28,14 +25,62 @@ fun UnifiedFeatureDetailSheet(
     uiState: FeatureDetailUiState.Ready,
     onEditClick: () -> Unit,
     onDeleteClick: () -> Unit,
-    onAddPhoto: () -> Unit,
+    onTakePhoto: () -> Unit,
+    onChoosePhoto: () -> Unit,
     onAddFile: () -> Unit,
     onViewAllAttachments: () -> Unit,
     onAttachmentClick: (UUID) -> Unit,
     onOpenLinkedRecord: (UUID) -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onClearDeleteError: () -> Unit
 ) {
     val feature = uiState.feature
+    var showDeleteConfirm by remember { mutableStateOf(false) }
+
+    // Delete Failure Dialog
+    uiState.deleteErrorRes?.let { errorRes ->
+        AlertDialog(
+            onDismissRequest = onClearDeleteError,
+            title = { Text(stringResource(R.string.error_occurred)) },
+            text = { Text(stringResource(errorRes)) },
+            confirmButton = {
+                TextButton(onClick = onClearDeleteError) {
+                    Text(stringResource(R.string.ok))
+                }
+            }
+        )
+    }
+
+    // Delete Confirmation Dialog
+    if (showDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { if (!uiState.isDeleting) showDeleteConfirm = false },
+            title = { Text(stringResource(R.string.confirm_delete_feature_title)) },
+            text = { 
+                Text(stringResource(R.string.delete_feature_confirm_message, feature.label ?: stringResource(R.string.label_custom))) 
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showDeleteConfirm = false
+                        onDeleteClick()
+                    },
+                    enabled = !uiState.isDeleting,
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text(stringResource(R.string.delete))
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showDeleteConfirm = false },
+                    enabled = !uiState.isDeleting
+                ) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        )
+    }
     
     Column(
         modifier = Modifier
@@ -68,7 +113,7 @@ fun UnifiedFeatureDetailSheet(
                 DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error) },
-                        onClick = { expanded = false; onDeleteClick() },
+                        onClick = { expanded = false; showDeleteConfirm = true },
                         leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) }
                     )
                 }
@@ -102,18 +147,9 @@ fun UnifiedFeatureDetailSheet(
                 measurements.length?.let { KeyValueRow(label = "Length", value = it) }
                 measurements.area?.let { KeyValueRow(label = "Area", value = it) }
                 measurements.perimeter?.let { KeyValueRow(label = "Perimeter", value = it) }
-                measurements.pointsCount?.let { KeyValueRow(label = "Points", value = "$it points") }
                 
-                if (feature.geometryType == "POINT") {
-                    // Show coordinates for points
-                    val obj = org.json.JSONObject(feature.geometryJson)
-                    val coords = obj.getJSONArray("coordinates")
-                    val lng = coords.getDouble(0)
-                    val lat = coords.getDouble(1)
-                    KeyValueRow(
-                        label = "Coordinates",
-                        value = String.format(java.util.Locale.US, "%.6f, %.6f", lat, lng)
-                    )
+                uiState.pointCoordinates?.let {
+                    KeyValueRow(label = "Coordinates", value = it)
                 }
             }
 
@@ -131,13 +167,20 @@ fun UnifiedFeatureDetailSheet(
 
             // Linked Record
             DetailSection(title = "Documentation Record") {
-                if (uiState.linkedItem != null) {
-                    LinkedRecordCard(
-                        item = uiState.linkedItem,
-                        onClick = { onOpenLinkedRecord(uiState.linkedItem.id) }
-                    )
-                } else {
-                    SectionEmptyState(text = "No documentation record linked.")
+                when (val link = uiState.linkedRecord) {
+                    is LinkedRecordState.Available -> {
+                        LinkedRecordCard(
+                            name = link.item.name,
+                            category = link.item.category,
+                            onClick = { onOpenLinkedRecord(link.item.id) }
+                        )
+                    }
+                    is LinkedRecordState.Unavailable -> {
+                        SectionEmptyState(text = "Documentation record unavailable.")
+                    }
+                    LinkedRecordState.None -> {
+                        SectionEmptyState(text = "No documentation record linked.")
+                    }
                 }
             }
 
@@ -152,8 +195,8 @@ fun UnifiedFeatureDetailSheet(
             DetailSection(title = stringResource(R.string.attachments_header)) {
                 AttachmentsSection(
                     attachments = uiState.attachments,
-                    onAddPhoto = onAddPhoto,
-                    onTakeExtentPhoto = onAddPhoto,
+                    onAddPhoto = onChoosePhoto,
+                    onTakeExtentPhoto = onTakePhoto,
                     onAddDocument = onAddFile,
                     onViewAll = onViewAllAttachments,
                     onAttachmentClick = onAttachmentClick
@@ -179,7 +222,8 @@ fun UnifiedFeatureDetailSheet(
 
 @Composable
 private fun LinkedRecordCard(
-    item: InfrastructureItemEntity,
+    name: String,
+    category: String,
     onClick: () -> Unit
 ) {
     Card(
@@ -199,12 +243,12 @@ private fun LinkedRecordCard(
             )
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = item.name,
+                    text = name,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = item.category,
+                    text = category,
                     style = MaterialTheme.typography.bodySmall
                 )
             }
