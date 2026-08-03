@@ -6,6 +6,7 @@
     <string name="cancel">Cancel</string>
     <string name="back">Back</string>
     <string name="dismiss">Dismiss</string>
+    <string name="edit_label">Edit</string>
     <string name="clear">Clear</string>
     <string name="acknowledge">I understand</string>
     <string name="save">Save</string>

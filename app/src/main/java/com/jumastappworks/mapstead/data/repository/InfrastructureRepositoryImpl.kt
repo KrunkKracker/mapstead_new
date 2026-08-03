@@ -26,6 +26,9 @@ class InfrastructureRepositoryImpl @Inject constructor(
     override suspend fun getActiveItemForProperty(propertyId: UUID, itemId: UUID): InfrastructureItemEntity? =
         dao.getActiveItemForProperty(propertyId, itemId)
 
+    override fun observeActiveItem(propertyId: UUID, itemId: UUID): Flow<InfrastructureItemEntity?> =
+        dao.observeActiveItem(propertyId, itemId)
+
     override suspend fun insertItem(item: InfrastructureItemEntity) {
         dao.insertItem(item.copy(
             updatedAt = Instant.now()

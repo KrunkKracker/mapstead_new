@@ -12,7 +12,7 @@ class VersionDisplayTest {
     
     @Test
     fun `version values are correct`() {
-        assertEquals("0.02", BuildConfig.VERSION_NAME)
-        assertEquals(2, BuildConfig.VERSION_CODE)
+        assertEquals("0.03", BuildConfig.VERSION_NAME)
+        assertEquals(3, BuildConfig.VERSION_CODE)
     }
 }

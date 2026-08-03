@@ -9,6 +9,7 @@ interface InfrastructureRepository {
     fun getEmergencyItems(propertyId: UUID): Flow<List<InfrastructureItemEntity>>
     suspend fun getItemById(id: UUID): InfrastructureItemEntity?
     suspend fun getActiveItemForProperty(propertyId: UUID, itemId: UUID): InfrastructureItemEntity?
+    fun observeActiveItem(propertyId: UUID, itemId: UUID): Flow<InfrastructureItemEntity?>
     suspend fun insertItem(item: InfrastructureItemEntity)
     suspend fun updateItem(item: InfrastructureItemEntity)
     suspend fun updateItemForProperty(propertyId: UUID, item: InfrastructureItemEntity): InfrastructureWriteResult

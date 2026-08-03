@@ -36,7 +36,8 @@ class NavigationLogicTest {
         assertEquals(MainDestination.Properties, Route.EditProperty(propId).topLevelDestination())
         assertEquals(MainDestination.Properties, Route.PropertyDashboard(propId).topLevelDestination())
         assertEquals(MainDestination.Properties, Route.InfrastructureList(propId).topLevelDestination())
-        assertEquals(MainDestination.Properties, Route.InfrastructureItem(propId).topLevelDestination())
+        assertEquals(MainDestination.Properties, Route.InfrastructureItemDetails(propId, UUID.randomUUID()).topLevelDestination())
+        assertEquals(MainDestination.Properties, Route.InfrastructureItemEditor(propId).topLevelDestination())
 
         // Map section
         assertEquals(MainDestination.Map, Route.Plans(propId).topLevelDestination())

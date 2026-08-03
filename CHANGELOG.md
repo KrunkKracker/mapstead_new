@@ -3,10 +3,13 @@
 ## [0.03] - Unreleased
 
 ### Added
-- **Beginner-First UX Redesign Phase 3A — Unified Item Details Baseline**:
-    - Started the Unified Item Details development cycle.
-    - Focus on a clear, consistent detail experience for Map Features and Infrastructure Records.
-    - Beginner-first UI/UX terminology and layout patterns.
+- **Beginner-First UX Redesign Phase 3A1 — Unified Infrastructure Details Foundation**:
+    - **Infrastructure View/Edit Separation**: Introduced a dedicated read-only `InfrastructureItemDetailScreen` as the primary entry point for existing items, moving editing to a focused `InfrastructureItemEditorScreen`.
+    - **Unified Detail Architecture**: Established a consistent information hierarchy using new shared components (`UnifiedItemDetailScaffold`, `UnifiedItemHeader`, `KeyValueRow`).
+    - **Emergency elevation**: Critical instructions and emergency designations are now elevated to a high-visibility card near the top of the detail screen.
+    - **Map Location Awareness**: Added support for items linked from multiple map features, providing direct "Show on Map" navigation for each location.
+    - **Reactive Observation**: Implemented `observeActiveItem` in the repository to ensure detail views reflect the latest database state immediately.
+    - **Simplified Editor**: Refactored the infrastructure editor to focus solely on form data, removing summaries and destructive actions.
 
 ## [0.02] - 2026-08-03
 

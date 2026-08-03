@@ -72,6 +72,9 @@ interface InfrastructureDao {
     @Query("SELECT * FROM infrastructure_items WHERE id = :id AND propertyId = :propertyId AND deletedAt IS NULL")
     suspend fun getActiveItemForProperty(propertyId: UUID, id: UUID): InfrastructureItemEntity?
 
+    @Query("SELECT * FROM infrastructure_items WHERE id = :id AND propertyId = :propertyId AND deletedAt IS NULL")
+    fun observeActiveItem(propertyId: UUID, id: UUID): Flow<InfrastructureItemEntity?>
+
     @Query("SELECT * FROM infrastructure_items WHERE propertyId = :propertyId AND parentItemId = :itemId AND deletedAt IS NULL")
     fun getChildrenForItem(propertyId: UUID, itemId: UUID): Flow<List<InfrastructureItemEntity>>
 

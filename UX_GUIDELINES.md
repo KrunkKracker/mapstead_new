@@ -68,6 +68,14 @@ Mapstead is designed for property owners who may not be GIS experts or heavy mob
 ## Navigation & Outcomes
 *   **Authoritative Navigation**: ViewModels should emit high-level outcome states. Screens are the sole owners of navigation calls, triggered by observing these outcomes.
 
+## Unified Item Details
+*   **Read-Only First**: Existing items must open into a clean, read-only detail screen. Editing is a secondary action triggered by an explicit "Edit" button.
+*   **Information Hierarchy**: Prioritize item name, category, and status in a prominent header. High-priority items (like Emergency Instructions) must be elevated to the top.
+*   **Progressive Disclosure**: Group detailed information into titled sections. Omit empty or unsupported fields to reduce cognitive load.
+*   **Relationship Visibility**: Clearly present links between spatial Map Features and documentation Records. Use beginner-facing labels like "Map Locations" or "Documentation Record."
+*   **Consistent Action Placement**: Use the Top App Bar overflow for destructive actions (Delete) and keep primary actions (Edit, Show on Map) easily reachable.
+*   **Responsive Details**: Constrain detail content width on tablets and large screens to maintain a readable line length, while keeping full width on phones.
+
 ## Mapping & GIS Standards
 *   **Coordinate Ordering**: Internally and in data exchange, always use `(longitude, latitude)`. In the UI, display as `(Latitude, Longitude)` where appropriate for human reading, clearly labeled.
 *   **Point Movement**: Support both dragging and tapping for point relocation. Provide an original-location ghost to maintain context until the move is confirmed.
