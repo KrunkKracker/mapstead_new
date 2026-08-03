@@ -9,17 +9,17 @@ Mapstead uses a three-tier testing strategy. Routine development prioritizes Tie
 - **Scope**: ViewModel logic, Repository transactions, Cycle detection, Report/Handoff assembly, navigation mapping, and **Operational Record Policies**.
 - **Execution**: `./gradlew testDebugUnitTest`
 
-### Phase 2.2h5R9E Quality Gates
-1. **Provenance Verification**: Confirm `test-provenance.txt` SHA-256 and method counts match source.
+### Phase 2.2h5R9F Quality Gates
+1. **Provenance Verification**: Confirm source raw hashes match ZIP and `test-provenance.txt`.
 2. **Deterministic Unit Tests**: Run `./gradlew test` to verify `MapViewModelPhase2Test`, `MapBasemapStateMachineTest`, and `PendingBasemapResolverTest`.
-3. **Consistency Check**: Verify `BuildConfigConsistencyTest` passes for Phase 2.2h5R9E.
+3. **Consistency Check**: Verify `BuildConfigConsistencyTest` passes for Phase 2.2h5R9F.
 4. **Packaging Workflow**: Build `no-key` APKs using `./gradlew assembleDebug -PMAPTILER_API_KEY= -PVERIFY_NO_KEY=true`.
-- **Result**: 640 PASSED (Phase 2.2h5R9E)
+- **Result**: 642 PASSED (Phase 2.2h5R9F)
 
 ### 2. Static Analysis
 - **Scope**: Linting for code quality and schema consistency.
 - **Execution**: `./gradlew lintDebug`
-- **Result**: PASSED (Phase 2.2h5R9E) - 0 errors, 248 warnings, 1 hint.
+- **Result**: PASSED (Phase 2.2h5R9F) - 0 errors, 248 warnings, 1 hint.
 
 ### 3. Instrumented UI Tests (Targeted Connected)
 - **Scope**: Cross-component interactions, database migrations, and **"Add Something" workflow**.

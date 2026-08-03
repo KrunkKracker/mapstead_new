@@ -3,12 +3,12 @@
 ## [0.02] - Unreleased
 
 ### Added
+- **Beginner-First UX Redesign Phase 2.2h5R9F — Exact-Source Provenance, Behavioral Test Truth, Documentation, and Packaging Closure**:
+    - **Truthful Pending Consumption**: Refined the `AttemptIssueResult` and `applyPendingConsumptionResult` logic to truthfully model intent retention during session gaps.
+    - **Integration Test Truth**: Added real stale-generation integration tests using `@VisibleForTesting` hooks to verify recovery without indirect placeholders or "trust" assertions.
+    - **Exact Source Provenance**: Established a strict provenance chain from the submitted source ZIP raw hashes to the final executed JVM test reports and binary metadata.
+    - **Packaging Integrity**: Verified review-safe blank-key APKs and captured configured local metadata prior to no-key clean builds.
 - **Beginner-First UX Redesign Phase 2.2h5R9E — Current-Source Test Provenance, Pending-State Truth, Documentation, and Evidence Closure**:
-    - **Pending Consumption Truth**: Introduced a typed `AttemptIssueResult` to truthfully model and handle the outcome of session-bound basemap attempts.
-    - **Testable Stale-Generation Path**: Extracted the mutation logic into `applyPendingConsumptionResult`, enabling direct integration testing of recovery paths without reflection.
-    - **Preference Authority Correction**: Fixed false-positive suite issues with a guaranteed distinct emission sequence for override verification.
-    - **Test Provenance Baseline**: Established a high-integrity evidence baseline mapping source file SHA-256 and method counts directly to the executed JVM reports.
-- **Beginner-First UX Redesign Phase 2.2h5R9D — Transactional Pending Consumption, Test Truth, Documentation, and Evidence Finalization**:
 - **Beginner-First UX Redesign Phase 2.2h5R9C — Preference Confirmation, Stale-Branch Testability, and Evidence Closure**:
     - **Preference Confirmation and Authority**: Implemented `lastObservedRepositoryBasemapId` to track confirmed repository state and filter stale emissions during active overrides.
     - **Transactional Reissue**: Refactored `onMapReady` for transactional issuance and reissue of authoritative preferences using `PendingBasemapResolver`.

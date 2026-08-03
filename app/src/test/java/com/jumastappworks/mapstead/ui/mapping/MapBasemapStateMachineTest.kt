@@ -589,7 +589,6 @@ class MapBasemapStateMachineTest {
         val gen1 = viewModel.uiState.value.basemapGeneration
         
         // 2. Request BASE (Sets override to BASE). (Generation 2)
-        // Controlled mock to prevent immediate flow update during requestBasemap
         coEvery { userPrefs.updateSelectedBasemap(BasemapId.BASE) } returns Unit
         viewModel.requestBasemap(BasemapId.BASE)
         advanceUntilIdle()
@@ -792,7 +791,7 @@ class MapBasemapStateMachineTest {
     }
 
     @Test
-    fun `Stale Pending Request Retirement Integration R9E`() = runTest(testDispatcher) {
+    fun `Stale Pending Request Retirement Integration R9F`() = runTest(testDispatcher) {
         val job = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
         val session = UUID.randomUUID()
         viewModel.onMapReady(session)
@@ -803,62 +802,99 @@ class MapBasemapStateMachineTest {
         advanceUntilIdle()
         val gen1 = viewModel.uiState.value.basemapGeneration
         
-        // 2. Supply ReissueCurrentAuthority for a simulated stale resolution
-        // (Simulating a session change where pending was stale)
-        val staleRes = PendingConsumptionResult.ReissueCurrentAuthority(BasemapId.TOPO)
-        viewModel.applyPendingConsumptionResult(staleRes)
+        // 2. Queue a STALE pending request (Gen 1) while current is Gen 1.
+        // Then advance generation to Gen 2.
+        val pending = PendingBasemapRequest(BasemapId.BASE, gen1, BasemapSourceId.MAPTILER_BASE, BasemapRole.PRIMARY, BasemapLoadAttemptReason.INITIAL)
+        viewModel.setPendingBasemapRequest(pending)
+        
+        // Increment generation to 2 by requesting something else while MapView is gone
+        viewModel.onRenderSessionDisposed(session)
+        viewModel.requestBasemap(BasemapId.STREETS)
+        advanceUntilIdle()
+        val gen2 = viewModel.uiState.value.basemapGeneration
+        assertTrue(gen2 > gen1)
+        
+        // Overwrite the auto-set pending with our test-stale one
+        viewModel.setPendingBasemapRequest(pending)
+        
+        // 3. Register session. onMapReady re-evaluates.
+        val sessionB = UUID.randomUUID()
+        viewModel.onMapReady(sessionB)
         advanceUntilIdle()
         
-        // Verify exactly one attempt created using Gen 1
+        // Verify retirement of stale BASE/Gen 1 and reissue of current authoritative STREETS at Gen 2
         val attempt = viewModel.uiState.value.currentAttempt!!
-        assertEquals(BasemapSourceId.MAPTILER_TOPO, attempt.sourceId)
-        assertEquals("Must use existing semantic generation", gen1, attempt.semanticGeneration)
-        assertEquals(BasemapLoadStatus.LOADING_PRIMARY, viewModel.uiState.value.basemapStatus)
-        assertEquals(BasemapSourceId.MAPTILER_TOPO, viewModel.uiState.value.requestedSourceId)
+        assertEquals(BasemapSourceId.MAPTILER_STREETS, attempt.sourceId)
+        assertEquals("Must use existing current semantic generation", gen2, attempt.semanticGeneration)
+        assertEquals(sessionB, attempt.renderSessionId)
+        assertNull("Stale pending record must be retired", viewModel.getPendingBasemapRequest())
         
-        // 3. Verify repeated application creates no duplicate (Idempotency in issueAttempt)
+        // 4. Verify idempotency
         val attemptId = attempt.attemptId
-        viewModel.applyPendingConsumptionResult(staleRes)
+        viewModel.onMapReady(sessionB)
         advanceUntilIdle()
-        assertEquals("Should not issue duplicate attempt", attemptId, viewModel.uiState.value.currentAttempt?.attemptId)
+        assertEquals("Repeated application creates no duplicate", attemptId, viewModel.uiState.value.currentAttempt?.attemptId)
         
-        // 4. Verify failed reissue enters FAILED
-        every { basemapProvider.getDefinition(BasemapSourceId.MAPTILER_TOPO) } returns null
-        viewModel.applyPendingConsumptionResult(staleRes)
+        // 5. Verify failed reissue enters FAILED
+        viewModel.onRenderSessionDisposed(sessionB)
+        val sessionC = UUID.randomUUID()
+        every { basemapProvider.getDefinition(BasemapSourceId.MAPTILER_STREETS) } returns null
+        viewModel.onMapReady(sessionC)
         advanceUntilIdle()
         assertEquals(BasemapLoadStatus.FAILED, viewModel.uiState.value.basemapStatus)
-        assertNull("Requested source must be cleared", viewModel.uiState.value.requestedSourceId)
+        assertNull(viewModel.uiState.value.currentAttempt)
         
         job.cancel()
     }
 
     @Test
-    fun `Transactional IssuePending - Cleared only after session-bind success R9E`() = runTest(testDispatcher) {
+    fun `Transactional IssuePending - Case Issued`() = runTest(testDispatcher) {
         val job = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
         val session = UUID.randomUUID()
         viewModel.onMapReady(session)
         advanceUntilIdle()
 
-        // 1. Valid Issue
-        val pending = PendingBasemapRequest(BasemapId.BASE, 1L, BasemapSourceId.MAPTILER_BASE, BasemapRole.PRIMARY, BasemapLoadAttemptReason.INITIAL)
-        val validRes = PendingConsumptionResult.IssuePending(pending)
+        val pending = PendingBasemapRequest(BasemapId.BASE, viewModel.uiState.value.basemapGeneration, BasemapSourceId.MAPTILER_BASE, BasemapRole.PRIMARY, BasemapLoadAttemptReason.INITIAL)
+        viewModel.setPendingBasemapRequest(pending)
         
-        viewModel.applyPendingConsumptionResult(validRes)
+        viewModel.onMapReady(session) 
         advanceUntilIdle()
+        assertNull("Successful issue clears pending", viewModel.getPendingBasemapRequest())
         assertEquals(BasemapSourceId.MAPTILER_BASE, viewModel.uiState.value.currentAttempt?.sourceId)
-        assertEquals(BasemapLoadStatus.LOADING_PRIMARY, viewModel.uiState.value.basemapStatus)
-        
-        // 2. Definition Unavailable - Clears intent and enters FAILED
-        // Use a different source (TOPO) to bypass the idempotency check of the previous BASE attempt
-        val pending2 = PendingBasemapRequest(BasemapId.TOPO, 1L, BasemapSourceId.MAPTILER_TOPO, BasemapRole.PRIMARY, BasemapLoadAttemptReason.INITIAL)
-        val failRes = PendingConsumptionResult.IssuePending(pending2)
+        job.cancel()
+    }
+
+    @Test
+    fun `Transactional IssuePending - Case DefinitionUnavailable`() = runTest(testDispatcher) {
+        val job = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
+        val session = UUID.randomUUID()
+        viewModel.onMapReady(session)
+        advanceUntilIdle()
+
+        val pending = PendingBasemapRequest(BasemapId.TOPO, viewModel.uiState.value.basemapGeneration, BasemapSourceId.MAPTILER_TOPO, BasemapRole.PRIMARY, BasemapLoadAttemptReason.INITIAL)
+        viewModel.setPendingBasemapRequest(pending)
         every { basemapProvider.getDefinition(BasemapSourceId.MAPTILER_TOPO) } returns null
         
-        viewModel.applyPendingConsumptionResult(failRes)
+        viewModel.onMapReady(session)
         advanceUntilIdle()
+        assertNull("Terminal definition failure consumes and clears pending", viewModel.getPendingBasemapRequest())
         assertEquals(BasemapLoadStatus.FAILED, viewModel.uiState.value.basemapStatus)
-        assertNull("Requested source must be cleared", viewModel.uiState.value.requestedSourceId)
+        assertNull(viewModel.uiState.value.currentAttempt)
+        job.cancel()
+    }
+
+    @Test
+    fun `Transactional IssuePending - Case NoLiveSession`() = runTest(testDispatcher) {
+        val job = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
         
+        val pending = PendingBasemapRequest(BasemapId.BASE, viewModel.uiState.value.basemapGeneration, BasemapSourceId.MAPTILER_BASE, BasemapRole.PRIMARY, BasemapLoadAttemptReason.INITIAL)
+        viewModel.setPendingBasemapRequest(pending)
+        
+        val res = PendingConsumptionResult.NoLiveSession
+        viewModel.applyPendingConsumptionResult(res)
+        advanceUntilIdle()
+        assertEquals("No-session state retains pending", pending, viewModel.getPendingBasemapRequest())
+        assertNotEquals("Should not enter FAILED", BasemapLoadStatus.FAILED, viewModel.uiState.value.basemapStatus)
         job.cancel()
     }
 

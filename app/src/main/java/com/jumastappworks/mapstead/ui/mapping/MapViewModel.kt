@@ -368,6 +368,15 @@ class MapViewModel @Inject constructor(
     private val _basemapStatus = MutableStateFlow(BasemapLoadStatus.IDLE)
     private val _basemapGeneration = MutableStateFlow(0L)
     private val _pendingBasemapRequest = MutableStateFlow<PendingBasemapRequest?>(null)
+    
+    @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE)
+    internal fun getPendingBasemapRequest() = _pendingBasemapRequest.value
+
+    @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE)
+    internal fun setPendingBasemapRequest(request: PendingBasemapRequest?) {
+        _pendingBasemapRequest.value = request
+    }
+
     private val _basemapErrorRes = MutableStateFlow<Int?>(null)
     private val _isUsingFallback = MutableStateFlow(false)
     private val _fallbackAttempted = MutableStateFlow(false)
@@ -1185,7 +1194,7 @@ class MapViewModel @Inject constructor(
         }
     }
 
-    @VisibleForTesting
+    @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE)
     internal fun applyPendingConsumptionResult(
         resolution: PendingConsumptionResult
     ) {
@@ -1193,23 +1202,35 @@ class MapViewModel @Inject constructor(
 
         when (resolution) {
             is PendingConsumptionResult.IssuePending -> {
-                // Phase 2.2h5R9E: Idempotency check before issuing
+                // Phase 2.2h5R9F: Idempotency check before issuing
                 val current = _currentAttempt.value
-                if (current != null && current.renderSessionId == sessionId && current.sourceId == resolution.request.sourceId && current.semanticGeneration == resolution.request.semanticGeneration) {
+                if (current != null && current.renderSessionId == sessionId && 
+                    current.sourceId == resolution.request.sourceId && 
+                    current.semanticGeneration == resolution.request.semanticGeneration) {
                     _pendingBasemapRequest.value = null
                     return
                 }
 
                 val result = issueAttempt(resolution.request.sourceId, resolution.request.role, resolution.request.reason)
-                if (result is AttemptIssueResult.Issued || result is AttemptIssueResult.DefinitionUnavailable) {
-                    _pendingBasemapRequest.value = null
+                when (result) {
+                    is AttemptIssueResult.Issued -> {
+                        // Successful session binding
+                        _pendingBasemapRequest.value = null
+                    }
+                    AttemptIssueResult.DefinitionUnavailable -> {
+                        // Terminal failure consumes and clears pending
+                        _pendingBasemapRequest.value = null
+                    }
+                    AttemptIssueResult.NoLiveSession -> {
+                        // Retain intent
+                    }
                 }
             }
             is PendingConsumptionResult.ReissueCurrentAuthority -> {
                 _pendingBasemapRequest.value = null
                 val authId = resolution.preferredBasemapId
                 
-                // Phase 2.2h5R9E: Idempotency check for authority reissue
+                // Phase 2.2h5R9F: Idempotency check for authority reissue
                 val current = _currentAttempt.value
                 if (current != null && current.renderSessionId == sessionId) {
                     val currentDef = basemapProvider.getDefinition(current.sourceId)
@@ -1226,6 +1247,7 @@ class MapViewModel @Inject constructor(
                 }
             }
             PendingConsumptionResult.DefinitionUnavailable -> {
+                // Phase 2.2h5R9F: Terminal definition failure consumes and clears pending
                 _pendingBasemapRequest.value = null
                 _requestedSourceId.value = null
                 _currentAttempt.value = null
@@ -1234,7 +1256,7 @@ class MapViewModel @Inject constructor(
                 _retryPrimaryAvailable.value = true
             }
             PendingConsumptionResult.NoLiveSession -> {
-                // Retain intent
+                // Retain intent unchanged
             }
         }
     }

@@ -51,8 +51,8 @@
 Purpose: Provide in-context assistance and finalize the onboarding experience.
 
 **ACTIVE PHASE**:
-- **Phase 2.2h5R9E — Current-Source Test Provenance, Pending-State Truth, Documentation, and Evidence Closure**: Finalizing current-source test provenance, pending-state truth, and evidence integrity. (IMPLEMENTED / EXTERNAL REVIEW PENDING)
-- **Phase 2.2h5R9D — Transactional Pending Consumption, Test Truth, Documentation, and Evidence Finalization**: COMPLETE.
+- **Phase 2.2h5R9F — Exact-Source Provenance, Behavioral Test Truth, Documentation, and Packaging Closure**: Finalizing exact source provenance, behavioral test truth, and packaging integrity. (IMPLEMENTED / EXTERNAL REVIEW PENDING)
+- **Phase 2.2h5R9E — Current-Source Test Provenance, Pending-State Truth, Documentation, and Evidence Closure**: COMPLETE.
 
 **COMPLETED WORK**:
 - Preference Confirmation and Authority: Implemented `lastObservedRepositoryBasemapId` confirmation logic, stale emission filtering, and generation-validated selection authority.
