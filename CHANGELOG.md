@@ -10,6 +10,10 @@
     - **Map Location Awareness**: Added support for items linked from multiple map features, providing direct "Show on Map" navigation for each location.
     - **Reactive Observation**: Implemented `observeActiveItem` in the repository to ensure detail views reflect the latest database state immediately.
     - **Simplified Editor**: Refactored the infrastructure editor to focus solely on form data, removing summaries and destructive actions.
+    - **Navigation Integrity**: Implemented intelligent backstack logic to prevent duplicate detail screens after saving edits.
+    - **Real Attachment Integration**: Integrated full `AttachmentListItemUiModel` resolution into the detail screen for truthful photo and file summaries.
+    - **Delete Failure Handling**: Added explicit error capturing and presentation for failed deletion attempts.
+    - **Property-Scoped Lookups**: Hardened parent item lookups to be strictly property-scoped, preventing cross-property data leaks.
 
 ## [0.02] - 2026-08-03
 

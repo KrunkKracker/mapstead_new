@@ -81,4 +81,39 @@ class NavigationLogicTest {
         // Properties root matches Properties destination
         assertTrue(Route.Properties.matchesTopLevelRoot(MainDestination.Properties, null))
     }
+
+    @Test
+    fun testInfrastructureSaveNavigationLogic() {
+        val propId = UUID.randomUUID()
+        val itemId = UUID.randomUUID()
+        val backStack = mutableListOf<Route>()
+
+        // Case 1: Saving a NEW item
+        // Initial state: [List, Editor]
+        backStack.add(Route.InfrastructureList(propId))
+        backStack.add(Route.InfrastructureItemEditor(propId, null))
+
+        handleInfrastructureSave(itemId, wasEditing = false, propId, backStack)
+
+        // Expected: [List, Details]
+        assertEquals(2, backStack.size)
+        assertTrue(backStack[0] is Route.InfrastructureList)
+        assertTrue(backStack[1] is Route.InfrastructureItemDetails)
+        assertEquals(itemId, (backStack[1] as Route.InfrastructureItemDetails).itemId)
+
+        // Case 2: Saving an EXISTING item
+        // Initial state: [List, Details, Editor]
+        backStack.clear()
+        backStack.add(Route.InfrastructureList(propId))
+        backStack.add(Route.InfrastructureItemDetails(propId, itemId))
+        backStack.add(Route.InfrastructureItemEditor(propId, itemId))
+
+        handleInfrastructureSave(itemId, wasEditing = true, propId, backStack)
+
+        // Expected: [List, Details] (Popped editor, returned to details)
+        assertEquals(2, backStack.size)
+        assertTrue(backStack[0] is Route.InfrastructureList)
+        assertTrue(backStack[1] is Route.InfrastructureItemDetails)
+        assertEquals(itemId, (backStack[1] as Route.InfrastructureItemDetails).itemId)
+    }
 }

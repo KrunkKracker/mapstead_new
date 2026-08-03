@@ -401,9 +401,12 @@ fun MapsteadNavGraph(
                             viewModel = vm,
                             onNavigateBack = { if (backStack.isNotEmpty()) backStack.removeAt(backStack.size - 1) },
                             onSaveSuccess = { iid ->
-                                // Pop editor, add details for the item
-                                if (backStack.isNotEmpty()) backStack.removeAt(backStack.size - 1)
-                                backStack.add(Route.InfrastructureItemDetails(key.propertyId, iid))
+                                handleInfrastructureSave(
+                                    savedItemId = iid,
+                                    wasEditing = key.itemId != null,
+                                    propertyId = key.propertyId,
+                                    backStack = backStack
+                                )
                             },
                             onHelpClick = { topicId -> backStack.add(Route.HelpTopic(topicId)) }
                         )
@@ -770,4 +773,20 @@ fun sanitizeDisabledBackupRoute(routes: List<Route>): List<Route> {
     val filtered = routes.filter { it !is Route.Backup }
     val clean = filtered.filter { it !is Route.Settings }
     return clean + Route.Settings
+}
+
+internal fun handleInfrastructureSave(
+    savedItemId: UUID,
+    wasEditing: Boolean,
+    propertyId: UUID,
+    backStack: MutableList<Route>
+) {
+    if (wasEditing) {
+        // Pop editor, detail is already below it
+        if (backStack.isNotEmpty()) backStack.removeAt(backStack.size - 1)
+    } else {
+        // Pop editor, push new detail
+        if (backStack.isNotEmpty()) backStack.removeAt(backStack.size - 1)
+        backStack.add(Route.InfrastructureItemDetails(propertyId, savedItemId))
+    }
 }

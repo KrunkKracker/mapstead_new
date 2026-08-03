@@ -3,22 +3,27 @@ package com.jumastappworks.mapstead.ui.infrastructure
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Launch
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.jumastappworks.mapstead.R
+import com.jumastappworks.mapstead.data.attachments.AttachmentNavigationOrigin
 import com.jumastappworks.mapstead.data.db.entities.InfrastructureItemEntity
 import com.jumastappworks.mapstead.data.db.entities.MapFeatureEntity
 import com.jumastappworks.mapstead.ui.components.AttachmentsSection
 import com.jumastappworks.mapstead.ui.components.details.*
 import java.util.UUID
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InfrastructureItemDetailScreen(
     propertyId: UUID,
@@ -43,6 +48,22 @@ fun InfrastructureItemDetailScreen(
         viewModel.init(propertyId, itemId)
     }
 
+    val readyState = state as? InfrastructureItemDetailUiState.Ready
+    
+    // Deletion Error handling
+    readyState?.deleteErrorRes?.let { errorRes ->
+        AlertDialog(
+            onDismissRequest = { viewModel.clearDeleteError() },
+            title = { Text(stringResource(R.string.error_occurred)) },
+            text = { Text(stringResource(errorRes)) },
+            confirmButton = {
+                TextButton(onClick = { viewModel.clearDeleteError() }) {
+                    Text(stringResource(R.string.ok))
+                }
+            }
+        )
+    }
+
     when (val uiState = state) {
         is InfrastructureItemDetailUiState.Loading -> {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -50,18 +71,43 @@ fun InfrastructureItemDetailScreen(
             }
         }
         is InfrastructureItemDetailUiState.NotFound -> {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(stringResource(R.string.property_not_found))
+            Scaffold(
+                topBar = {
+                    TopAppBar(
+                        title = { Text(stringResource(R.string.error_feature_not_found)) },
+                        navigationIcon = {
+                            IconButton(onClick = onNavigateBack) {
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
+                            }
+                        }
+                    )
+                }
+            ) { padding ->
+                Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+                    Text(
+                        text = "This item could not be found or has been deleted.",
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(32.dp)
+                    )
+                }
             }
         }
         is InfrastructureItemDetailUiState.Error -> {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(uiState.message, color = MaterialTheme.colorScheme.error)
-            }
-        }
-        is InfrastructureItemDetailUiState.Deleting -> {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
+            Scaffold(
+                topBar = {
+                    TopAppBar(
+                        title = { Text(stringResource(R.string.error_occurred)) },
+                        navigationIcon = {
+                            IconButton(onClick = onNavigateBack) {
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
+                            }
+                        }
+                    )
+                }
+            ) { padding ->
+                Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+                    Text(uiState.message, color = MaterialTheme.colorScheme.error, textAlign = TextAlign.Center)
+                }
             }
         }
         is InfrastructureItemDetailUiState.Ready -> {
@@ -87,14 +133,13 @@ fun InfrastructureItemDetailScreen(
         AlertDialog(
             onDismissRequest = { showDeleteConfirm = false },
             title = { Text(stringResource(R.string.confirm_delete_item_title)) },
-            text = { Text(stringResource(R.string.delete_item_confirm, (state as? InfrastructureItemDetailUiState.Ready)?.item?.name ?: "")) },
+            text = { Text(stringResource(R.string.delete_item_confirm, readyState?.item?.name ?: "")) },
             confirmButton = {
                 TextButton(
                     onClick = {
                         showDeleteConfirm = false
                         viewModel.deleteItem(
-                            onSuccess = { onNavigateBack() },
-                            onError = { /* Handle error */ }
+                            onSuccess = { onNavigateBack() }
                         )
                     }
                 ) {
@@ -134,7 +179,7 @@ private fun InfrastructureItemDetailContent(
         actions = {
             var expanded by remember { mutableStateOf(false) }
             Box {
-                IconButton(onClick = { expanded = true }) {
+                IconButton(onClick = { expanded = true }, enabled = !uiState.isDeleting) {
                     Icon(Icons.Default.MoreVert, contentDescription = "More Actions")
                 }
                 DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
@@ -147,6 +192,10 @@ private fun InfrastructureItemDetailContent(
             }
         }
     ) {
+        if (uiState.isDeleting) {
+            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+        }
+
         UnifiedItemHeader(
             name = item.name,
             category = item.category,
@@ -204,7 +253,7 @@ private fun InfrastructureItemDetailContent(
 
         DetailSection(title = stringResource(R.string.attachments_header)) {
             AttachmentsSection(
-                attachments = emptyList(), // TODO: Adapt for summary or count
+                attachments = uiState.attachments,
                 onAddPhoto = onAddPhoto,
                 onTakeExtentPhoto = onAddPhoto,
                 onAddDocument = onAddFile,

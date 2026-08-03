@@ -3,12 +3,14 @@ package com.jumastappworks.mapstead.ui.infrastructure
 import com.jumastappworks.mapstead.data.db.entities.InfrastructureItemEntity
 import com.jumastappworks.mapstead.data.db.entities.MapFeatureEntity
 import com.jumastappworks.mapstead.data.db.entities.PropertyEntity
+import com.jumastappworks.mapstead.data.db.entities.AttachmentEntity
 import com.jumastappworks.mapstead.data.repository.*
+import com.jumastappworks.mapstead.data.attachments.*
 import io.mockk.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.*
 import org.junit.After
 import org.junit.Assert.*
@@ -31,6 +33,9 @@ class InfrastructureItemDetailViewModelTest {
 
     @Before
     fun setup() {
+        mockkStatic(android.net.Uri::class)
+        every { android.net.Uri.parse(any()) } returns mockk(relaxed = true)
+        
         Dispatchers.setMain(testDispatcher)
         viewModel = InfrastructureItemDetailViewModel(
             infraRepo, propertyRepo, mapRepo, attachmentRepo, maintenanceRepo, relationshipRepo
@@ -40,6 +45,7 @@ class InfrastructureItemDetailViewModelTest {
     @After
     fun tearDown() {
         Dispatchers.resetMain()
+        unmockkAll()
     }
 
     @Test
@@ -57,6 +63,7 @@ class InfrastructureItemDetailViewModelTest {
         every { relationshipRepo.observeRelationshipsForItem(propId, itemId) } returns MutableStateFlow(emptyList())
         every { relationshipRepo.getChildrenForItem(propId, itemId) } returns MutableStateFlow(emptyList())
 
+        backgroundScope.launch { viewModel.uiState.collect {} }
         viewModel.init(propId, itemId)
         
         val state = viewModel.uiState.value
@@ -81,6 +88,7 @@ class InfrastructureItemDetailViewModelTest {
         every { relationshipRepo.observeRelationshipsForItem(any(), any()) } returns MutableStateFlow(emptyList())
         every { relationshipRepo.getChildrenForItem(any(), any()) } returns MutableStateFlow(emptyList())
 
+        backgroundScope.launch { viewModel.uiState.collect {} }
         viewModel.init(wrongPropId, itemId)
         
         val state = viewModel.uiState.value
@@ -100,6 +108,7 @@ class InfrastructureItemDetailViewModelTest {
         every { relationshipRepo.observeRelationshipsForItem(any(), any()) } returns MutableStateFlow(emptyList())
         every { relationshipRepo.getChildrenForItem(any(), any()) } returns MutableStateFlow(emptyList())
 
+        backgroundScope.launch { viewModel.uiState.collect {} }
         viewModel.init(propId, itemId)
         
         val state = viewModel.uiState.value
@@ -123,6 +132,7 @@ class InfrastructureItemDetailViewModelTest {
         every { relationshipRepo.observeRelationshipsForItem(any(), any()) } returns MutableStateFlow(emptyList())
         every { relationshipRepo.getChildrenForItem(any(), any()) } returns MutableStateFlow(emptyList())
 
+        backgroundScope.launch { viewModel.uiState.collect {} }
         viewModel.init(propId, itemId)
         
         val state = viewModel.uiState.value
@@ -141,13 +151,104 @@ class InfrastructureItemDetailViewModelTest {
         
         every { infraRepo.observeActiveItem(propId, itemId) } returns MutableStateFlow(item)
         coEvery { infraRepo.softDeleteItemForProperty(propId, itemId) } returns InfrastructureWriteResult.Success(itemId)
-        
+        every { propertyRepo.getAllProperties() } returns MutableStateFlow(emptyList<PropertyEntity>())
+        every { mapRepo.getFeaturesForItem(any()) } returns MutableStateFlow(emptyList())
+        every { attachmentRepo.getAttachmentsForInfrastructureItem(any(), any()) } returns MutableStateFlow(emptyList())
+        every { maintenanceRepo.getRecordsForItem(any()) } returns MutableStateFlow(emptyList())
+        every { relationshipRepo.observeRelationshipsForItem(any(), any()) } returns MutableStateFlow(emptyList())
+        every { relationshipRepo.getChildrenForItem(any(), any()) } returns MutableStateFlow(emptyList())
+
+        backgroundScope.launch { viewModel.uiState.collect {} }
         viewModel.init(propId, itemId)
         
         var successCalled = false
-        viewModel.deleteItem(onSuccess = { successCalled = true }, onError = {})
+        viewModel.deleteItem(onSuccess = { successCalled = true })
         
         assertTrue(successCalled)
-        assertEquals(InfrastructureItemDetailUiState.Deleting, viewModel.uiState.value)
+        val state = viewModel.uiState.value as InfrastructureItemDetailUiState.Ready
+        assertTrue(state.isDeleting)
+    }
+
+    @Test
+    fun `Ready state contains resolved attachments`() = runTest(testDispatcher) {
+        val propId = UUID.randomUUID()
+        val itemId = UUID.randomUUID()
+        val item = InfrastructureItemEntity(id = itemId, propertyId = propId, name = "Item", category = "T", status = "Active")
+        
+        val attachment = AttachmentEntity(
+            id = UUID.randomUUID(),
+            propertyId = propId,
+            infrastructureItemId = itemId,
+            displayName = "Photo",
+            attachmentType = "Photo",
+            localUri = "content://test"
+        )
+        val uri = android.net.Uri.parse("content://test")
+        
+        every { infraRepo.observeActiveItem(propId, itemId) } returns MutableStateFlow(item)
+        every { attachmentRepo.getAttachmentsForInfrastructureItem(propId, itemId) } returns MutableStateFlow(listOf(attachment))
+        coEvery { attachmentRepo.resolveAttachmentFile(propId, attachment.id, any()) } returns AttachmentFileState.Available(uri, 100L, "hash")
+        every { propertyRepo.getAllProperties() } returns MutableStateFlow(emptyList<PropertyEntity>())
+        every { mapRepo.getFeaturesForItem(any()) } returns MutableStateFlow(emptyList())
+        every { maintenanceRepo.getRecordsForItem(any()) } returns MutableStateFlow(emptyList())
+        every { relationshipRepo.observeRelationshipsForItem(any(), any()) } returns MutableStateFlow(emptyList())
+        every { relationshipRepo.getChildrenForItem(any(), any()) } returns MutableStateFlow(emptyList())
+
+        backgroundScope.launch { viewModel.uiState.collect {} }
+        viewModel.init(propId, itemId)
+        
+        val state = viewModel.uiState.value as InfrastructureItemDetailUiState.Ready
+        assertEquals(1, state.attachments.size)
+        assertEquals(uri, state.attachments[0].previewUri)
+        assertFalse(state.attachments[0].isMissing)
+    }
+
+    @Test
+    fun `property-scoped parent lookup is used`() = runTest(testDispatcher) {
+        val propId = UUID.randomUUID()
+        val itemId = UUID.randomUUID()
+        val parentId = UUID.randomUUID()
+        val item = InfrastructureItemEntity(id = itemId, propertyId = propId, name = "Item", category = "T", status = "Active", parentItemId = parentId)
+        val parentItem = InfrastructureItemEntity(id = parentId, propertyId = propId, name = "Parent", category = "T", status = "Active")
+        
+        every { infraRepo.observeActiveItem(propId, itemId) } returns MutableStateFlow(item)
+        coEvery { infraRepo.getActiveItemForProperty(propId, parentId) } returns parentItem
+        every { propertyRepo.getAllProperties() } returns MutableStateFlow(emptyList<PropertyEntity>())
+        every { mapRepo.getFeaturesForItem(any()) } returns MutableStateFlow(emptyList())
+        every { attachmentRepo.getAttachmentsForInfrastructureItem(any(), any()) } returns MutableStateFlow(emptyList())
+        every { maintenanceRepo.getRecordsForItem(any()) } returns MutableStateFlow(emptyList())
+        every { relationshipRepo.observeRelationshipsForItem(any(), any()) } returns MutableStateFlow(emptyList())
+        every { relationshipRepo.getChildrenForItem(any(), any()) } returns MutableStateFlow(emptyList())
+
+        backgroundScope.launch { viewModel.uiState.collect {} }
+        viewModel.init(propId, itemId)
+        
+        val state = viewModel.uiState.value as InfrastructureItemDetailUiState.Ready
+        assertEquals("Parent", state.parentItem?.name)
+        coVerify { infraRepo.getActiveItemForProperty(propId, parentId) }
+    }
+
+    @Test
+    fun `delete failure shows error and stops deleting state`() = runTest(testDispatcher) {
+        val propId = UUID.randomUUID()
+        val itemId = UUID.randomUUID()
+        val item = InfrastructureItemEntity(id = itemId, propertyId = propId, name = "Item", category = "T", status = "Active")
+        
+        every { infraRepo.observeActiveItem(propId, itemId) } returns MutableStateFlow(item)
+        coEvery { infraRepo.softDeleteItemForProperty(propId, itemId) } returns InfrastructureWriteResult.NotFound
+        every { propertyRepo.getAllProperties() } returns MutableStateFlow(emptyList<PropertyEntity>())
+        every { mapRepo.getFeaturesForItem(any()) } returns MutableStateFlow(emptyList())
+        every { attachmentRepo.getAttachmentsForInfrastructureItem(any(), any()) } returns MutableStateFlow(emptyList())
+        every { maintenanceRepo.getRecordsForItem(any()) } returns MutableStateFlow(emptyList())
+        every { relationshipRepo.observeRelationshipsForItem(any(), any()) } returns MutableStateFlow(emptyList())
+        every { relationshipRepo.getChildrenForItem(any(), any()) } returns MutableStateFlow(emptyList())
+
+        backgroundScope.launch { viewModel.uiState.collect {} }
+        viewModel.init(propId, itemId)
+        viewModel.deleteItem(onSuccess = {})
+        
+        val state = viewModel.uiState.value as InfrastructureItemDetailUiState.Ready
+        assertFalse(state.isDeleting)
+        assertNotNull(state.deleteErrorRes)
     }
 }

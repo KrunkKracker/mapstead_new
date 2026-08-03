@@ -7,6 +7,7 @@ import com.jumastappworks.mapstead.data.db.entities.InfrastructureItemEntity
 import com.jumastappworks.mapstead.data.db.entities.MapFeatureEntity
 import com.jumastappworks.mapstead.data.relationships.ItemRelationshipUiModel
 import com.jumastappworks.mapstead.data.repository.*
+import com.jumastappworks.mapstead.ui.attachments.AttachmentListItemUiModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
@@ -21,17 +22,17 @@ sealed interface InfrastructureItemDetailUiState {
         val item: InfrastructureItemEntity,
         val propertyName: String?,
         val mapLocations: List<MapFeatureEntity>,
-        val attachmentCount: Int,
-        val coverThumbnailUri: android.net.Uri?,
+        val attachments: List<AttachmentListItemUiModel>,
         val maintenanceCount: Int,
         val nextDueDate: LocalDate?,
         val parentItem: InfrastructureItemEntity?,
         val childrenItems: List<InfrastructureItemEntity>,
-        val relationshipSummary: List<ItemRelationshipUiModel>
+        val relationshipSummary: List<ItemRelationshipUiModel>,
+        val isDeleting: Boolean = false,
+        val deleteErrorRes: Int? = null
     ) : InfrastructureItemDetailUiState
     data object NotFound : InfrastructureItemDetailUiState
     data class Error(val message: String) : InfrastructureItemDetailUiState
-    data object Deleting : InfrastructureItemDetailUiState
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -47,10 +48,10 @@ class InfrastructureItemDetailViewModel @Inject constructor(
 
     private val _itemId = MutableStateFlow<UUID?>(null)
     private val _propertyId = MutableStateFlow<UUID?>(null)
-    private val _deleteState = MutableStateFlow(false)
+    private val _isDeleting = MutableStateFlow(false)
+    private val _deleteErrorRes = MutableStateFlow<Int?>(null)
 
-    val uiState: StateFlow<InfrastructureItemDetailUiState> = combine(_propertyId, _itemId, _deleteState) { pid, iid, deleting ->
-        if (deleting) return@combine flowOf(InfrastructureItemDetailUiState.Deleting)
+    val uiState: StateFlow<InfrastructureItemDetailUiState> = combine(_propertyId, _itemId, _isDeleting, _deleteErrorRes) { pid, iid, deleting, deleteError ->
         if (pid == null || iid == null) return@combine flowOf(InfrastructureItemDetailUiState.Loading)
         
         val itemFlow = infrastructureRepository.observeActiveItem(pid, iid)
@@ -60,12 +61,15 @@ class InfrastructureItemDetailViewModel @Inject constructor(
         
         val attachmentsFlow = attachmentRepository.getAttachmentsForInfrastructureItem(pid, iid)
             .map { list ->
-                val cover = list.find { it.isCover } ?: list.firstOrNull { it.attachmentType == "Photo" }
-                val coverUri = cover?.let {
-                    val state = attachmentRepository.resolveAttachmentFile(pid, it.id, verifyHash = false)
-                    (state as? AttachmentFileState.Available)?.uri
+                list.map { entity ->
+                    val fileState = attachmentRepository.resolveAttachmentFile(pid, entity.id, verifyHash = false)
+                    AttachmentListItemUiModel(
+                        attachment = entity,
+                        previewUri = (fileState as? AttachmentFileState.Available)?.uri,
+                        isMissing = fileState is AttachmentFileState.Missing,
+                        isDamaged = fileState is AttachmentFileState.Damaged
+                    )
                 }
-                list.size to coverUri
             }
         
         val maintenanceFlow = maintenanceRepository.getRecordsForItem(iid)
@@ -88,7 +92,7 @@ class InfrastructureItemDetailViewModel @Inject constructor(
             @Suppress("UNCHECKED_CAST")
             val features = array[2] as List<MapFeatureEntity>
             @Suppress("UNCHECKED_CAST")
-            val attachments = array[3] as Pair<Int, android.net.Uri?>
+            val attachments = array[3] as List<AttachmentListItemUiModel>
             @Suppress("UNCHECKED_CAST")
             val maint = array[4] as Pair<Int, LocalDate?>
             @Suppress("UNCHECKED_CAST")
@@ -99,19 +103,20 @@ class InfrastructureItemDetailViewModel @Inject constructor(
             if (item == null || item.propertyId != pid) {
                 InfrastructureItemDetailUiState.NotFound
             } else {
-                val parentItem = item.parentItemId?.let { infrastructureRepository.getItemById(it) }
+                val parentItem = item.parentItemId?.let { infrastructureRepository.getActiveItemForProperty(pid, it) }
                 
                 InfrastructureItemDetailUiState.Ready(
                     item = item,
                     propertyName = propName,
                     mapLocations = features,
-                    attachmentCount = attachments.first,
-                    coverThumbnailUri = attachments.second,
+                    attachments = attachments,
                     maintenanceCount = maint.first,
                     nextDueDate = maint.second,
                     parentItem = parentItem,
                     childrenItems = children,
-                    relationshipSummary = rels
+                    relationshipSummary = rels,
+                    isDeleting = deleting,
+                    deleteErrorRes = deleteError
                 )
             }
         }
@@ -124,22 +129,29 @@ class InfrastructureItemDetailViewModel @Inject constructor(
         _itemId.value = itemId
     }
 
-    fun deleteItem(onSuccess: () -> Unit, onError: (String) -> Unit) {
+    fun deleteItem(onSuccess: () -> Unit) {
         val pid = _propertyId.value ?: return
         val iid = _itemId.value ?: return
         
         viewModelScope.launch {
+            _isDeleting.value = true
+            _deleteErrorRes.value = null
             try {
                 val result = infrastructureRepository.softDeleteItemForProperty(pid, iid)
                 if (result is InfrastructureWriteResult.Success) {
-                    _deleteState.value = true
                     onSuccess()
                 } else {
-                    onError("Failed to delete item")
+                    _isDeleting.value = false
+                    _deleteErrorRes.value = com.jumastappworks.mapstead.R.string.error_delete_failed_generic
                 }
             } catch (e: Exception) {
-                onError(e.message ?: "Deletion failed")
+                _isDeleting.value = false
+                _deleteErrorRes.value = com.jumastappworks.mapstead.R.string.error_delete_failed
             }
         }
+    }
+
+    fun clearDeleteError() {
+        _deleteErrorRes.value = null
     }
 }
