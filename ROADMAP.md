@@ -45,6 +45,7 @@
 - [/] Beginner-First UX Foundation — IN PROGRESS
 - [x] Stage 3 — Map Presentation and Guided Mapping (COMPLETE)
 - [/] Stage 4 — Guidance, Help, and Final Beginner Review (IN PROGRESS)
+- [/] Beginner-First UX 2.0 — [Master Plan](BEGINNER_FIRST_UX_MASTER_PLAN.md) (IN PROGRESS)
 - [ ] Phase 5E — Property Inventory (BLOCKED)
 
 ---
@@ -79,6 +80,17 @@ Purpose: Provide in-context assistance and finalize the onboarding experience.
 
 **UPCOMING PHASE**:
 - **Phase 3A — Unified Item Details**: Implementing a singular, high-integrity detail surface for all mapped infrastructure items. (NOT STARTED)
+
+---
+
+## Beginner-First UX 2.0
+Status:
+- Master planning: IN PROGRESS
+- Production redesign: NOT STARTED
+- Prototype creation: NOT STARTED
+- Property Inventory: BLOCKED
+
+Authoritative Document: [BEGINNER_FIRST_UX_MASTER_PLAN.md](BEGINNER_FIRST_UX_MASTER_PLAN.md)
 
 ---
 
