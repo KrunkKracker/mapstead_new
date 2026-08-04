@@ -180,6 +180,31 @@ class NavigationLogicTest {
     }
 
     @Test
+    fun testLinkedRecordFromMapNavigation() {
+        val propId = UUID.randomUUID()
+        val planId = UUID.randomUUID()
+        val itemId = UUID.randomUUID()
+        val backStack = mutableListOf<Route>()
+
+        // Initial state: On Map
+        backStack.add(Route.MapEditor(propId, planId, "feat-1"))
+        
+        // Open linked record from feature details
+        addInfrastructureDetailsUnlessTop(backStack, propId, itemId)
+        
+        // Expected: Map is below details
+        assertEquals(2, backStack.size)
+        assertTrue(backStack[0] is Route.MapEditor)
+        assertTrue(backStack[1] is Route.InfrastructureItemDetails)
+        
+        // Back from details
+        backStack.removeAt(backStack.size - 1)
+        assertEquals(1, backStack.size)
+        assertTrue(backStack[0] is Route.MapEditor)
+        assertEquals("feat-1", (backStack[0] as Route.MapEditor).featureId)
+    }
+
+    @Test
     fun testOpenOrReturnToInfrastructureOwner() {
         val propId = UUID.randomUUID()
         val itemA = UUID.randomUUID()
