@@ -67,6 +67,9 @@ Mapstead is designed for property owners who may not be GIS experts or heavy mob
 
 ## Navigation & Outcomes
 *   **Authoritative Navigation**: ViewModels should emit high-level outcome states. Screens are the sole owners of navigation calls, triggered by observing these outcomes.
+*   **Map Reuse**: Always reuse an existing map context (property + plan) from the backstack instead of adding duplicate map screens. Remove intervening detail screens when returning to the map.
+*   **Detail Singularity**: Never allow two identical item detail screens to be stacked consecutively.
+*   **Selection Preservation**: Navigation to linked documentation records must never clear the active map feature selection. Returning from details should restore the map state exactly.
 
 ## Unified Item Details
 *   **Read-Only First**: Existing items (Infrastructure and Map Features) must open into a clean, read-only detail screen/sheet. Editing is a secondary action triggered by an explicit "Edit" button.

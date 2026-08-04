@@ -3,6 +3,15 @@
 ## [0.03] - Unreleased
 
 ### Added
+- **Beginner-First UX Redesign Phase 3A3 — Detail Navigation & Consistency**:
+    - **Maintenance Context Hub**: Corrected the Maintenance filter to be the true source of context for adding new records. Clearing the filter now correctly resets the preselected item for new tasks.
+    - **Owner-Return Navigation**: Implemented a specialized `openOrReturnToInfrastructureOwner` routing helper. Returning to an item from its attachments or maintenance records now pops back to the existing detail screen instead of stacking duplicate copies.
+    - **Hardened Attachment Loading**: Rebuilt the infrastructure attachment loader with explicit job management, cancellation safety, and truthful Error/Retry states.
+    - **Item-Specific Attachments**: Replaced broad property-wide file lists with context-aware "Photos & Files" screens that preserve the owner item and type.
+    - **Consistent Action Labels**: Normalized customer-facing labels (Edit, Show on Map, View Maintenance, etc.) across all unified detail surfaces.
+    - **Accessibility Refinement**: Integrated heading semantics and improved TalkBack labels for complex linked-record and map-location components.
+    - **Show on Map Reuse**: Implemented authoritative "Show on Map" routing that reuses existing map context from the backstack and removes intervening details, preventing duplicate map screens.
+
 - **Beginner-First UX Redesign Phase 3A2 — Unified Map Feature Details**:
     - **Map Feature View/Edit Separation**: Saved map features now open in a read-only `UnifiedFeatureDetailSheet` by default, requiring an explicit "Edit" action to modify.
     - **Beginner-Friendly Terminology**: Replaced technical geometry terms (Point, LineString, Polygon) with "Marked Location", "Drawn Route", and "Outlined Area".

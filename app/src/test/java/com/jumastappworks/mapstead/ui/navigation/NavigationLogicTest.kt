@@ -116,4 +116,127 @@ class NavigationLogicTest {
         assertTrue(backStack[1] is Route.InfrastructureItemDetails)
         assertEquals(itemId, (backStack[1] as Route.InfrastructureItemDetails).itemId)
     }
+
+    @Test
+    fun testOpenOrReturnToMapFeature() {
+        val propId = UUID.randomUUID()
+        val planId = UUID.randomUUID()
+        val featureA = "feat-a"
+        val featureB = "feat-b"
+        val backStack = mutableListOf<Route>()
+
+        // 1. No existing map creates a new MapEditor
+        openOrReturnToMapFeature(backStack, propId, planId, featureA)
+        assertEquals(1, backStack.size)
+        assertTrue(backStack[0] is Route.MapEditor)
+        assertEquals(featureA, (backStack[0] as Route.MapEditor).featureId)
+
+        // 2. Already on matching map updates featureId without duplication
+        openOrReturnToMapFeature(backStack, propId, planId, featureB)
+        assertEquals(1, backStack.size)
+        assertEquals(featureB, (backStack[0] as Route.MapEditor).featureId)
+
+        // 3. Matching map already exists below other screens
+        backStack.add(Route.InfrastructureItemDetails(propId, UUID.randomUUID()))
+        backStack.add(Route.InfrastructureItemDetails(propId, UUID.randomUUID()))
+        assertEquals(3, backStack.size)
+        
+        openOrReturnToMapFeature(backStack, propId, planId, featureA)
+        assertEquals(1, backStack.size)
+        assertEquals(featureA, (backStack[0] as Route.MapEditor).featureId)
+
+        // 4. Different plan creates a new MapEditor
+        val planId2 = UUID.randomUUID()
+        openOrReturnToMapFeature(backStack, propId, planId2, featureB)
+        assertEquals(2, backStack.size)
+        assertEquals(planId2, (backStack[1] as Route.MapEditor).planId)
+    }
+
+    @Test
+    fun testAddInfrastructureDetailsUnlessTop() {
+        val propId = UUID.randomUUID()
+        val itemA = UUID.randomUUID()
+        val itemB = UUID.randomUUID()
+        val backStack = mutableListOf<Route>()
+
+        // 1. Initial add
+        addInfrastructureDetailsUnlessTop(backStack, propId, itemA)
+        assertEquals(1, backStack.size)
+        assertEquals(itemA, (backStack[0] as Route.InfrastructureItemDetails).itemId)
+
+        // 2. Exact same detail route at top is not duplicated
+        addInfrastructureDetailsUnlessTop(backStack, propId, itemA)
+        assertEquals(1, backStack.size)
+
+        // 3. Different item detail is added
+        addInfrastructureDetailsUnlessTop(backStack, propId, itemB)
+        assertEquals(2, backStack.size)
+        assertEquals(itemB, (backStack[1] as Route.InfrastructureItemDetails).itemId)
+
+        // 4. History between different items remains intact (A -> B -> A)
+        addInfrastructureDetailsUnlessTop(backStack, propId, itemA)
+        assertEquals(3, backStack.size)
+        assertEquals(itemA, (backStack[2] as Route.InfrastructureItemDetails).itemId)
+    }
+
+    @Test
+    fun testLinkedRecordFromMapNavigation() {
+        val propId = UUID.randomUUID()
+        val planId = UUID.randomUUID()
+        val itemId = UUID.randomUUID()
+        val backStack = mutableListOf<Route>()
+
+        // Initial state: On Map
+        backStack.add(Route.MapEditor(propId, planId, "feat-1"))
+        
+        // Open linked record from feature details
+        addInfrastructureDetailsUnlessTop(backStack, propId, itemId)
+        
+        // Expected: Map is below details
+        assertEquals(2, backStack.size)
+        assertTrue(backStack[0] is Route.MapEditor)
+        assertTrue(backStack[1] is Route.InfrastructureItemDetails)
+        
+        // Back from details
+        backStack.removeAt(backStack.size - 1)
+        assertEquals(1, backStack.size)
+        assertTrue(backStack[0] is Route.MapEditor)
+        assertEquals("feat-1", (backStack[0] as Route.MapEditor).featureId)
+    }
+
+    @Test
+    fun testOpenOrReturnToInfrastructureOwner() {
+        val propId = UUID.randomUUID()
+        val itemA = UUID.randomUUID()
+        val itemB = UUID.randomUUID()
+        val backStack = mutableListOf<Route>()
+
+        // 1. No matching route adds new
+        openOrReturnToInfrastructureOwner(backStack, propId, itemA)
+        assertEquals(1, backStack.size)
+        assertTrue(backStack[0] is Route.InfrastructureItemDetails)
+        assertEquals(itemA, (backStack[0] as Route.InfrastructureItemDetails).itemId)
+
+        // 2. Matching route already on top does nothing
+        openOrReturnToInfrastructureOwner(backStack, propId, itemA)
+        assertEquals(1, backStack.size)
+
+        // 3. Matching route exists below other screens: Pops back to it
+        // [Details A, Maintenance list, Record details]
+        backStack.add(Route.Maintenance(propId, itemA))
+        backStack.add(Route.MaintenanceRecordDetails(propId, UUID.randomUUID()))
+        assertEquals(3, backStack.size)
+        
+        openOrReturnToInfrastructureOwner(backStack, propId, itemA)
+        assertEquals(1, backStack.size)
+        assertEquals(itemA, (backStack[0] as Route.InfrastructureItemDetails).itemId)
+
+        // 4. Different item details exist: Preserve history and open new
+        openOrReturnToInfrastructureOwner(backStack, propId, itemB)
+        assertEquals(2, backStack.size)
+        assertEquals(itemB, (backStack[1] as Route.InfrastructureItemDetails).itemId)
+        
+        openOrReturnToInfrastructureOwner(backStack, propId, itemA)
+        assertEquals(1, backStack.size) // Popped back to first A
+    }
 }

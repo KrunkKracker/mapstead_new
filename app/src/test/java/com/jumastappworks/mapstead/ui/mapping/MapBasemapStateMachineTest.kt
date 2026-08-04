@@ -580,7 +580,7 @@ class MapBasemapStateMachineTest {
     fun `Preference Authority - Stale repo emission ignored during override`() = runTest(testDispatcher) {
         val job = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
         
-        // 1. Initial State: TOPO. (Generation 1)
+        // 1. Establish Topo (Generation 1)
         userPrefsFlow.value = userPrefsFlow.value.copy(selectedBasemapId = BasemapId.TOPO)
         val session = UUID.randomUUID()
         viewModel.onMapReady(session)
@@ -803,21 +803,20 @@ class MapBasemapStateMachineTest {
         val gen1 = viewModel.uiState.value.basemapGeneration
         
         // 2. Queue a STALE pending request (Gen 1) while current is Gen 1.
-        // Then advance generation to Gen 2.
         val pending = PendingBasemapRequest(BasemapId.BASE, gen1, BasemapSourceId.MAPTILER_BASE, BasemapRole.PRIMARY, BasemapLoadAttemptReason.INITIAL)
         viewModel.setPendingBasemapRequest(pending)
         
-        // Increment generation to 2 by requesting something else while MapView is gone
+        // 3. Increment generation to 2 by requesting something else while MapView is gone
         viewModel.onRenderSessionDisposed(session)
         viewModel.requestBasemap(BasemapId.STREETS)
         advanceUntilIdle()
         val gen2 = viewModel.uiState.value.basemapGeneration
         assertTrue(gen2 > gen1)
         
-        // Overwrite the auto-set pending with our test-stale one
+        // Manually re-set the stale pending record (simulating it being there from before)
         viewModel.setPendingBasemapRequest(pending)
         
-        // 3. Register session. onMapReady re-evaluates.
+        // 4. Register session. onMapReady re-evaluates.
         val sessionB = UUID.randomUUID()
         viewModel.onMapReady(sessionB)
         advanceUntilIdle()
@@ -829,13 +828,13 @@ class MapBasemapStateMachineTest {
         assertEquals(sessionB, attempt.renderSessionId)
         assertNull("Stale pending record must be retired", viewModel.getPendingBasemapRequest())
         
-        // 4. Verify idempotency
+        // 5. Verify idempotency
         val attemptId = attempt.attemptId
         viewModel.onMapReady(sessionB)
         advanceUntilIdle()
         assertEquals("Repeated application creates no duplicate", attemptId, viewModel.uiState.value.currentAttempt?.attemptId)
         
-        // 5. Verify failed reissue enters FAILED
+        // 6. Verify failed reissue enters FAILED
         viewModel.onRenderSessionDisposed(sessionB)
         val sessionC = UUID.randomUUID()
         every { basemapProvider.getDefinition(BasemapSourceId.MAPTILER_STREETS) } returns null

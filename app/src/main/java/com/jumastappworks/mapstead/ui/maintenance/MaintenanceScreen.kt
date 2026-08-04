@@ -30,7 +30,7 @@ import java.util.UUID
 fun MaintenanceScreen(
     viewModel: MaintenanceViewModel,
     onBack: () -> Unit,
-    onAddRecord: (UUID) -> Unit,
+    onAddRecord: (UUID?) -> Unit,
     onOpenRecord: (UUID, UUID) -> Unit,
     onHelpClick: (HelpTopicId) -> Unit
 ) {
@@ -53,8 +53,8 @@ fun MaintenanceScreen(
                 },
                 actions = {
                     if (uiState is MaintenanceUiState.Ready) {
-                        val propertyId = (uiState as MaintenanceUiState.Ready).property.id
-                        IconButton(onClick = { onAddRecord(propertyId) }) {
+                        val readyState = uiState as MaintenanceUiState.Ready
+                        IconButton(onClick = { onAddRecord(readyState.filteredInfrastructureItemId) }) {
                             Icon(Icons.Default.Add, contentDescription = stringResource(R.string.add))
                         }
                     }
@@ -84,8 +84,9 @@ fun MaintenanceScreen(
                     state = state,
                     onFilterSelect = { viewModel.setFilter(it) },
                     onRecordClick = { onOpenRecord(state.property.id, it) },
-                    onAddRecord = { onAddRecord(state.property.id) },
-                    onHelpClick = onHelpClick
+                    onAddRecord = { onAddRecord(state.filteredInfrastructureItemId) },
+                    onHelpClick = onHelpClick,
+                    onClearInfrastructureFilter = { viewModel.setInfrastructureFilter(null) }
                 )
             }
         }
@@ -98,8 +99,9 @@ fun MaintenanceHubContent(
     state: MaintenanceUiState.Ready,
     onFilterSelect: (MaintenanceFilter) -> Unit,
     onRecordClick: (UUID) -> Unit,
-    onAddRecord: () -> Unit,
-    onHelpClick: (HelpTopicId) -> Unit
+    onAddRecord: (UUID?) -> Unit,
+    onHelpClick: (HelpTopicId) -> Unit,
+    onClearInfrastructureFilter: () -> Unit = {}
 ) {
     LazyColumn(
         modifier = modifier.fillMaxSize().padding(horizontal = 16.dp),
@@ -111,7 +113,18 @@ fun MaintenanceHubContent(
         }
 
         item {
-            FilterTabs(state.selectedFilter, onFilterSelect)
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilterTabs(state.selectedFilter, onFilterSelect)
+                
+                if (state.filteredInfrastructureItemId != null) {
+                    val itemName = state.infrastructureItems.find { it.id == state.filteredInfrastructureItemId }?.name ?: "Selected Item"
+                    AssistChip(
+                        onClick = onClearInfrastructureFilter,
+                        label = { Text("Filtered to: $itemName") },
+                        trailingIcon = { Icon(Icons.Default.Close, contentDescription = "Clear Filter", modifier = Modifier.size(18.dp)) }
+                    )
+                }
+            }
         }
 
         if (state.filteredRecords.isEmpty()) {
@@ -121,7 +134,7 @@ fun MaintenanceHubContent(
                     description = stringResource(R.string.empty_maint_desc),
                     icon = Icons.Default.Build,
                     primaryActionLabel = stringResource(R.string.add_maintenance_title),
-                    onPrimaryAction = onAddRecord,
+                    onPrimaryAction = { onAddRecord(state.filteredInfrastructureItemId) },
                     helpTopicId = HelpTopicId.MAINTENANCE,
                     onHelpClick = onHelpClick
                 )

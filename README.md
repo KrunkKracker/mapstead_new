@@ -7,7 +7,8 @@ Mapstead is a local-first, private property management tool designed for homeown
 > [!WARNING]
 > This is unreleased development software (v0.03 (3)). It is currently in a finalization pass (Phase 3A2).
 
-- **Phase 3A2 (Unified Map Feature Details)**: IMPLEMENTED / EXTERNAL REVIEW PENDING.
+- **Phase 3A3 (Detail Navigation & Consistency)**: IMPLEMENTED / EXTERNAL REVIEW PENDING.
+- **Phase 3A2 (Unified Map Feature Details)**: COMPLETE.
 - **Phase 3A1 (Unified Infrastructure Details Foundation)**: COMPLETE.
 - **Phase 3A (Unified Item Details)**: IN PROGRESS.
 - **Phase 2.2g (Deferred Reactive State Closure)**: COMPLETE.

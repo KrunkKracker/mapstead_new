@@ -116,6 +116,80 @@ class MaintenanceViewModelTest {
     }
 
     @Test
+    fun testInfrastructureFilteringAndCounts() = runTest {
+        backgroundScope.launch { viewModel.uiState.collect() }
+        
+        val today = LocalDate.now()
+        val itemA = UUID.randomUUID()
+        val itemB = UUID.randomUUID()
+        
+        val recordA = MaintenanceRecordEntity(propertyId = propertyId, infrastructureItemId = itemA, title = "Item A Task", category = "A", status = "Scheduled", serviceDate = today, nextDueDate = today.minusDays(1))
+        val recordB = MaintenanceRecordEntity(propertyId = propertyId, infrastructureItemId = itemB, title = "Item B Task", category = "B", status = "Completed", serviceDate = today, nextDueDate = null)
+        
+        recordsFlow.value = listOf(recordA, recordB)
+        viewModel.setPropertyId(propertyId)
+        advanceUntilIdle()
+
+        // 1. Initially all records visible, overdue count = 1, filteredId = null
+        var state = viewModel.uiState.value as MaintenanceUiState.Ready
+        assertEquals(2, state.filteredRecords.size)
+        assertEquals(1, state.counts.overdue)
+        assertNull(state.filteredInfrastructureItemId)
+
+        // 2. Filter by Item A
+        viewModel.setInfrastructureFilter(itemA)
+        advanceUntilIdle()
+        
+        state = viewModel.uiState.value as MaintenanceUiState.Ready
+        assertEquals(1, state.filteredRecords.size)
+        assertEquals("Item A Task", state.filteredRecords[0].title)
+        assertEquals(1, state.counts.overdue)
+        assertEquals(itemA, state.filteredInfrastructureItemId)
+
+        // 3. Filter by Item B
+        viewModel.setInfrastructureFilter(itemB)
+        advanceUntilIdle()
+        
+        state = viewModel.uiState.value as MaintenanceUiState.Ready
+        assertEquals(1, state.filteredRecords.size)
+        assertEquals("Item B Task", state.filteredRecords[0].title)
+        assertEquals(0, state.counts.overdue) 
+        assertEquals(itemB, state.filteredInfrastructureItemId)
+
+        // 4. Clear filter
+        viewModel.setInfrastructureFilter(null)
+        advanceUntilIdle()
+        state = viewModel.uiState.value as MaintenanceUiState.Ready
+        assertEquals(2, state.filteredRecords.size)
+        assertEquals(1, state.counts.overdue)
+        assertNull(state.filteredInfrastructureItemId)
+    }
+
+    @Test
+    fun testStartEditingValidatesInfrastructureItemId() = runTest {
+        val validItemId = UUID.randomUUID()
+        val invalidItemId = UUID.randomUUID()
+        
+        itemsFlow.value = listOf(
+            com.jumastappworks.mapstead.data.db.entities.InfrastructureItemEntity(id = validItemId, propertyId = propertyId, name = "Valid", category = "C", status = "Active")
+        )
+        
+        // 1. Valid preselection
+        viewModel.startEditing(propertyId, null, validItemId)
+        advanceUntilIdle()
+        var editorState = viewModel.editorState.value as MaintenanceRecordEditorUiState.Ready
+        assertEquals(validItemId, editorState.selectedInfrastructureItemId)
+        assertEquals(validItemId, editorState.initialSnapshot?.selectedInfrastructureItemId)
+
+        // 2. Invalid preselection (missing from items list)
+        viewModel.startEditing(propertyId, null, invalidItemId)
+        advanceUntilIdle()
+        editorState = viewModel.editorState.value as MaintenanceRecordEditorUiState.Ready
+        assertNull("Invalid preselection must be cleared", editorState.selectedInfrastructureItemId)
+        assertNull(editorState.initialSnapshot?.selectedInfrastructureItemId)
+    }
+
+    @Test
     fun `deleteRecord emits NavigateBackAfterDelete on success`() = runTest {
         val recordId = UUID.randomUUID()
         viewModel.setPropertyId(propertyId)
