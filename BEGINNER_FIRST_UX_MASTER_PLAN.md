@@ -2,6 +2,25 @@
 
 This document is the authoritative plan for redesigning Mapstead to support customers with very limited smartphone and technical experience.
 
+## Purpose
+
+Mapstead must be usable by customers who:
+- Rarely use complex smartphone applications.
+- Do not understand GIS terminology.
+- Do not understand Mapstead’s internal records.
+- Need clear, forgiving, and predictable workflows.
+- May need critical property information quickly.
+
+This redesign is larger than visual polish. It includes:
+- Information architecture
+- Navigation
+- Terminology
+- Workflow structure
+- Error recovery
+- Accessibility
+- Progressive disclosure
+- Emergency readiness
+
 ## Core Customer Mental Model
 
 > Mapstead helps me remember what is on my property, where it is, what needs attention, and what someone needs during an emergency.
@@ -48,10 +67,12 @@ The **Emergency Guide** is a prominent destination reachable from Home and relev
 
 ## Customer-Facing Terminology
 
+The primary rule is: **Use the actual item name whenever possible** (e.g., Well, Pool Pump, Fence, Pond, Main Water Shutoff). When a generic category-level term is required, use **Property Item**.
+
 | Technical Term | Beginner-First Term |
 | :--- | :--- |
 | Infrastructure Item | Property Item |
-| Map Feature | Property Item, Map Item, or the actual name (e.g., "Well") |
+| Map Feature | Property Item (or actual name) |
 | Attachment | Photo or File |
 | Add Attachment | Add Photo or File |
 | Maintenance Record | Task or Maintenance Entry |
@@ -60,7 +81,7 @@ The **Emergency Guide** is a prominent destination reachable from Home and relev
 | Open Record | View Details |
 | Return to Property | Recenter on Property (for map camera action) |
 
-*All terminology is subject to prototype review.*
+*All terminology is subject to prototype review. "Map Item" is deprecated as a generic concept.*
 
 ## Priority Customer Journeys
 
@@ -82,19 +103,24 @@ Each journey specification must define: Entry points, Main goal, Required screen
 
 **Scenario:** The customer is standing beside a pool pump in the backyard and wants to document it.
 
-**Default Path:**
-Home → Add Something → Pool Equipment → "I’m Standing Next to It" → Confirm or adjust suggested location → Take Photo → Confirm name and optional note → Save Item → Pool Pump details.
+**Path:**
+Home → Add Something → Pool Equipment → I’m Standing Next to It → Confirm or adjust location → Take Photo → Review → Save → Pool Pump details.
+
+**The Review step includes:**
+- Suggested item name
+- Optional note
+- Location summary
+- Photo
+- Edit actions
+- Save Item
 
 **Location Choices:**
 1.  **I’m Standing Next to It**: Uses phone GPS as a suggested position; allows confirmation/adjustment.
 2.  **Place It on the Map**: Allows manual location selection.
 3.  **Add the Location Later**: Allows saving the item without a location blocking the workflow.
 
-**Shortcut Hypothesis (for review):**
-"Add It From Here" (Use current location, then take a photo).
-
 > [!IMPORTANT]
-> A photo must not independently define the exact map location. Reasons include missing/stripped metadata, stale location, or the customer standing away from the object. Mapstead may capture a location candidate at photo time, but the customer must be able to confirm or adjust it.
+> A photo must not independently define the authoritative map location. Reasons include missing/stripped metadata, stale location, or the customer standing away from the object. Mapstead may capture a location candidate at photo time, but the customer must be able to confirm or adjust it.
 
 Customers must **never** be asked to choose between Point, Line, Polygon, Map Feature, or Infrastructure Record during a normal preset workflow.
 
@@ -102,11 +128,11 @@ Customers must **never** be asked to choose between Point, Line, Polygon, Map Fe
 
 1.  **SLICE 1: App Shell and Property Home** - Navigation, property switching, primary entries.
 2.  **SLICE 2: Find and Understand a Property Item** - Property items list, search, unified details, return behavior.
-3.  **SLICE 3: Add Something** - Real-world presets, location/photo optionality, minimal form.
+3.  **SLICE 3: Add Something** - Real-world presets, location/photo optionality, explicit Review screen.
 4.  **SLICE 4: Emergency Guide** - Critical item elevation, instructions, contacts, offline access.
 5.  **SLICE 5: Photos and Files** - Unified acquisition (Take/Choose), ownership management.
-6.  **SLICE 6: Tasks** - Calendar/List views, association with items, history.
-7.  **SLICE 7: Advanced Features** - Reports, backup, sharing, advanced mapping.
+6.  **SLICE 6: Tasks** - Overdue, Due Soon, Upcoming, and Completed views; association with items; history.
+7.  **SLICE 7: Advanced Features** - Related Items, Reports, Backup and Restore, Property Handoff, Data Transfer, Advanced map controls, technical metadata, and settings.
 
 ## Prototype Phase
 
@@ -152,24 +178,52 @@ A vertical slice is not complete until it meets these requirements:
 - Clear empty/loading/error states.
 - Safe cancellation.
 - No whole-world map resets.
+- Actionable errors.
+- No duplicate destinations.
+- No requirement to understand internal records.
+
+### Practical Beginner Checks
+- A new customer can immediately identify the current property.
+- A new customer can find the main water shutoff without instruction.
+- A new customer can add a photo without understanding attachments.
+- A new customer can explain what Emergency Guide does.
+- A new customer can return Home without repeatedly pressing Back.
+- A customer never has to choose a database, record, or geometry concept during a normal preset workflow.
+
+> [!NOTE]
+> Documentation completion is not customer acceptance. Physical-device journey testing remains required.
 
 ## Scope Protection
 
 - No major new features until the core is cohesive.
 - Do not remove working repositories to simplify presentation.
 - Do not expose advanced controls on primary screens.
-- Use progressive disclosure instead of "Simple/Advanced" modes.
+- Use progressive disclosure instead of separate "Simple/Advanced" modes.
+- Do not treat documentation completion as customer acceptance.
+- Require physical-device journey testing before a slice is accepted.
 - Property Inventory remains **BLOCKED** until the foundation is coherent.
+
+## Document Roles
+
+- **BEGINNER_FIRST_UX_MASTER_PLAN.md**: Authoritative redesign strategy, sequence, migration plan, acceptance gates, progress tracker, and open decisions.
+- **UX_GUIDELINES.md**: Permanent design, accessibility, interaction, and usability standards.
+- **UX_REDESIGN_RESOURCES.md**: Supporting presets, examples, wireframes, and prototype resources.
+- **ROADMAP.md**: Concise source of current progress and links to the authoritative master plan.
 
 ## Open Decisions (Requires Visual Prototype Review)
 
+Marked: OPEN — REQUIRES VISUAL PROTOTYPE REVIEW
+
 - Final bottom-navigation destinations.
-- Home content priority.
+- Exact Home content priority.
 - Property switching interaction.
 - Search location.
-- Final term for "Property Item".
+- Final customer term for Property Item.
 - Emergency Guide placement.
-- Advanced map control exposure.
+- Whether Tasks remains a primary tab.
+- How advanced map controls are exposed.
+- How legacy navigation remains internally available during migration.
+- What constitutes minimum viable cutover.
 
 ## Progress Tracker
 
@@ -191,4 +245,8 @@ A vertical slice is not complete until it meets these requirements:
 
 ## Current Boundary
 
-Planning and prototype work may begin while final Phase 3A physical retesting is completed. Production navigation replacement must not begin until the master plan is approved and prototypes are reviewed.
+Planning and prototype work may proceed while final Phase 3A physical acceptance remains separate. Production navigation replacement must not begin until all of the following are true:
+- The stable pre-redesign baseline is recorded.
+- The master plan is approved.
+- Terminology and information architecture decisions are approved.
+- The first complete prototype journeys are visually reviewed.

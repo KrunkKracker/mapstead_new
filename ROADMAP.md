@@ -21,10 +21,10 @@
 
 ## Phase 3 — Collaborative and Reporting Tools
 - [x] Local property documentation reports (PDF) (Implemented in Phase 5D1).
-- [/] Phase 3A — Unified Item Details: Implementing a singular, high-integrity detail surface for all mapped infrastructure items. (IN PROGRESS)
+- [/] Phase 3A — Unified Item Details: Implementing a singular, high-integrity detail surface for all mapped infrastructure items. (IN PROGRESS / PHYSICAL-DEVICE ACCEPTANCE PENDING)
     - [x] Phase 3A1 — Unified Infrastructure Details Foundation (COMPLETE)
     - [x] Phase 3A2 — Unified Map Feature Details (COMPLETE)
-    - [/] Phase 3A3 — Detail Navigation & Consistency (IMPLEMENTED)
+    - [/] Phase 3A3 — Detail Navigation & Consistency (IMPLEMENTED / PHYSICAL-DEVICE ACCEPTANCE PENDING)
 - [ ] Multi-device sync and property sharing (NOT STARTED).
 - [ ] QR-code based access sharing for contractors (NOT STARTED).
 - [ ] Automated property health reports (Advanced analysis/PDF) (NOT STARTED).
@@ -56,6 +56,7 @@
 Purpose: Provide in-context assistance and finalize the onboarding experience.
 
 **ACTIVE PHASE**:
+- **Phase 3A — Unified Item Details**: Finalization of consistency across infrastructure and map surfaces. (IN PROGRESS / PHYSICAL-DEVICE ACCEPTANCE PENDING)
 - **Phase 2.2g — Deferred Reactive State Closure**: Hardening reactive compositions in ViewModels and protecting user edits from late repository results. (IMPLEMENTED / EXTERNAL REVIEW PENDING)
 - **Phase 2.2h — Basemap Implementation**: Resilient MapTiler v4 integration with bundled branding and automated style repair. (COMPLETE)
 
@@ -78,14 +79,12 @@ Purpose: Provide in-context assistance and finalize the onboarding experience.
 - Tasks: Task-oriented "Add Something" and operational record policies.
 - Location: GPS permission recovery and request-state independence.
 
-**UPCOMING PHASE**:
-- **Phase 3A — Unified Item Details**: Implementing a singular, high-integrity detail surface for all mapped infrastructure items. (NOT STARTED)
-
 ---
 
 ## Beginner-First UX 2.0
 Status:
 - Master planning: IN PROGRESS
+- Master-plan document: CREATED / EXTERNAL APPROVAL PENDING
 - Production redesign: NOT STARTED
 - Prototype creation: NOT STARTED
 - Property Inventory: BLOCKED
