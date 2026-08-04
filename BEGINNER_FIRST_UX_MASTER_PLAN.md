@@ -55,12 +55,15 @@ A screen is not considered complete until its entry path, exit path, back behavi
 
 ## Working Information Architecture (Initial Hypothesis)
 
-The initial navigation hypothesis (subject to visual prototype review) consists of:
+The initial navigation hypothesis consists of:
 
 - **Home**: Clearly show current property, property switching, "Add Something," "Find Something," "Needs Attention" (upcoming tasks), Emergency Guide entry, and recently viewed items.
 - **Map**: Persistent property map, search, "Add Something," Recenter on Property, My Location, and secondary controls for layers and basemaps.
 - **Property Items**: Searchable list of everything documented on the property using beginner-friendly categories, with clear map-location, task, and Emergency Guide status.
 - **Tasks**: Filtered views for Overdue, Due Soon, Upcoming, and Completed tasks, with clear association back to Property Items.
+
+> [!NOTE]
+> Specific navigation and architecture recommendations are being evaluated in the [Terminology and Information Architecture Decision Pack](BEGINNER_FIRST_UX_TERMINOLOGY_IA_DECISION_PACK.md).
 
 ### Emergency Guide
 The **Emergency Guide** is a prominent destination reachable from Home and relevant Property Item details. It is not necessarily a bottom-navigation tab.
@@ -81,7 +84,7 @@ The primary rule is: **Use the actual item name whenever possible** (e.g., Well,
 | Open Record | View Details |
 | Return to Property | Recenter on Property (for map camera action) |
 
-*All terminology is subject to prototype review. "Map Item" is deprecated as a generic concept.*
+*Specific terminology recommendations are detailed in the [Decision Pack](BEGINNER_FIRST_UX_TERMINOLOGY_IA_DECISION_PACK.md).*
 
 ## Priority Customer Journeys
 
@@ -228,7 +231,7 @@ Marked: OPEN — REQUIRES VISUAL PROTOTYPE REVIEW
 ## Progress Tracker
 
 - [x] Master-plan document created
-- [ ] Master plan approved
+- [x] Master plan approved
 - [ ] Terminology approved
 - [ ] Information architecture approved
 - [ ] Prototype journeys created

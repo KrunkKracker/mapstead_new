@@ -27,3 +27,20 @@ manifest-sha256.txt
 run_gradle.bat
 test_file.txt
 test_transcript.txt
+# Android Studio local project state
+/.idea/
+
+# Android build packages
+*.apk
+*.aab
+/apks/
+/app/release/
+
+# Generated reports and temporary evidence
+/reports/
+/transcripts/
+/qa-results/archive/
+/test-provenance.txt
+
+# Local Android and API configuration
+local.properties

@@ -83,10 +83,13 @@ Purpose: Provide in-context assistance and finalize the onboarding experience.
 
 ## Beginner-First UX 2.0
 Status:
-- Master planning: IN PROGRESS
-- Master-plan document: CREATED / EXTERNAL APPROVAL PENDING
-- Production redesign: NOT STARTED
+- Master planning: COMPLETE
+- Master-plan document: APPROVED
+- Terminology decision: IN PROGRESS / EXTERNAL APPROVAL PENDING
+- Information architecture decision: IN PROGRESS / EXTERNAL APPROVAL PENDING
+- Decision pack: IN PROGRESS
 - Prototype creation: NOT STARTED
+- Production redesign: NOT STARTED
 - Property Inventory: BLOCKED
 
 Authoritative Document: [BEGINNER_FIRST_UX_MASTER_PLAN.md](BEGINNER_FIRST_UX_MASTER_PLAN.md)
