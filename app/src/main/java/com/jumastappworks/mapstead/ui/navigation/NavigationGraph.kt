@@ -20,6 +20,7 @@ import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.ui.NavDisplay
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
@@ -311,7 +312,7 @@ fun MapsteadNavGraph(
                     }
                     entry<Route.MapEditor> { key ->
                         val vm: MapViewModel = viewModel()
-                        val openingToken = remember(key.propertyId, key.planId) { UUID.randomUUID().toString() }
+                        val openingToken = rememberSaveable(key.propertyId, key.planId) { UUID.randomUUID().toString() }
                         LaunchedEffect(key.propertyId, key.planId, openingToken) { 
                             vm.openMapContext(key.propertyId, key.planId, openingToken) 
                         }
