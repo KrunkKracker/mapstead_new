@@ -46,6 +46,9 @@
 - [x] Stage 3 — Map Presentation and Guided Mapping (COMPLETE)
 - [/] Stage 4 — Guidance, Help, and Final Beginner Review (IN PROGRESS)
 - [/] Beginner-First UX 2.0 — [Master Plan](BEGINNER_FIRST_UX_MASTER_PLAN.md) (IN PROGRESS)
+    - [x] Master planning (COMPLETE)
+    - [x] Master-plan document (APPROVED)
+    - [/] Prototype 1 — App Shell and Pool Pump Journey (SOURCE IMPLEMENTED / VISUAL REVIEW PENDING)
 - [ ] Phase 5E — Property Inventory (BLOCKED)
 
 ---
