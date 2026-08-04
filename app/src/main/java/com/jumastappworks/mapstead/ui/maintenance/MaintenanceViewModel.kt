@@ -355,10 +355,15 @@ class MaintenanceViewModel @Inject constructor(
                     _editorState.value = MaintenanceRecordEditorUiState.NotFound
                 }
             } else {
+                val validInfrastructureItemId =
+                    infrastructureItemId?.takeIf { requestedId ->
+                        items.any { item -> item.id == requestedId }
+                    }
+
                 val ready = MaintenanceRecordEditorUiState.Ready(
                     propertyId = propertyId,
                     infrastructureItems = items,
-                    selectedInfrastructureItemId = infrastructureItemId
+                    selectedInfrastructureItemId = validInfrastructureItemId
                 )
                 _editorState.value = ready.copy(
                     initialSnapshot = MaintenanceRecordSnapshot(

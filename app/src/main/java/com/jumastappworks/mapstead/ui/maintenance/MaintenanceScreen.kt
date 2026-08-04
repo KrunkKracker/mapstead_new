@@ -30,7 +30,7 @@ import java.util.UUID
 fun MaintenanceScreen(
     viewModel: MaintenanceViewModel,
     onBack: () -> Unit,
-    onAddRecord: (UUID) -> Unit,
+    onAddRecord: (UUID?) -> Unit,
     onOpenRecord: (UUID, UUID) -> Unit,
     onHelpClick: (HelpTopicId) -> Unit
 ) {
@@ -53,8 +53,8 @@ fun MaintenanceScreen(
                 },
                 actions = {
                     if (uiState is MaintenanceUiState.Ready) {
-                        val propertyId = (uiState as MaintenanceUiState.Ready).property.id
-                        IconButton(onClick = { onAddRecord(propertyId) }) {
+                        val readyState = uiState as MaintenanceUiState.Ready
+                        IconButton(onClick = { onAddRecord(readyState.filteredInfrastructureItemId) }) {
                             Icon(Icons.Default.Add, contentDescription = stringResource(R.string.add))
                         }
                     }
@@ -84,7 +84,7 @@ fun MaintenanceScreen(
                     state = state,
                     onFilterSelect = { viewModel.setFilter(it) },
                     onRecordClick = { onOpenRecord(state.property.id, it) },
-                    onAddRecord = { onAddRecord(state.property.id) },
+                    onAddRecord = { onAddRecord(state.filteredInfrastructureItemId) },
                     onHelpClick = onHelpClick,
                     onClearInfrastructureFilter = { viewModel.setInfrastructureFilter(null) }
                 )
@@ -99,7 +99,7 @@ fun MaintenanceHubContent(
     state: MaintenanceUiState.Ready,
     onFilterSelect: (MaintenanceFilter) -> Unit,
     onRecordClick: (UUID) -> Unit,
-    onAddRecord: () -> Unit,
+    onAddRecord: (UUID?) -> Unit,
     onHelpClick: (HelpTopicId) -> Unit,
     onClearInfrastructureFilter: () -> Unit = {}
 ) {
@@ -134,7 +134,7 @@ fun MaintenanceHubContent(
                     description = stringResource(R.string.empty_maint_desc),
                     icon = Icons.Default.Build,
                     primaryActionLabel = stringResource(R.string.add_maintenance_title),
-                    onPrimaryAction = onAddRecord,
+                    onPrimaryAction = { onAddRecord(state.filteredInfrastructureItemId) },
                     helpTopicId = HelpTopicId.MAINTENANCE,
                     onHelpClick = onHelpClick
                 )

@@ -450,7 +450,9 @@ fun MapsteadNavGraph(
                         MaintenanceScreen(
                             viewModel = maintenanceVm,
                             onBack = { if (backStack.isNotEmpty()) backStack.removeAt(backStack.size - 1) },
-                            onAddRecord = { infraId -> backStack.add(Route.MaintenanceRecordEditor(key.propertyId, null, infraId)) },
+                            onAddRecord = { activeInfrastructureItemId -> 
+                                backStack.add(Route.MaintenanceRecordEditor(key.propertyId, null, activeInfrastructureItemId)) 
+                            },
                             onOpenRecord = { propId, recordId -> backStack.add(Route.MaintenanceRecordDetails(propId, recordId)) },
                             onHelpClick = { topicId -> backStack.add(Route.HelpTopic(topicId)) }
                         )
