@@ -343,7 +343,9 @@ fun MapsteadNavGraph(
                             coverThumbnailUri = (attachmentsState as? MapFeatureAttachmentsUiState.Ready)?.coverAttachment?.previewUri,
                             onViewAttachments = { fid -> backStack.add(Route.FeatureAttachments(key.propertyId, key.planId, fid)) },
                             navigateToAttachmentDetails = { pid, aid -> backStack.add(Route.AttachmentDetails(pid, aid, AttachmentNavigationOrigin.MAP_FEATURE)) },
-                            navigateToInfrastructureDetails = { pid, iid -> backStack.add(Route.InfrastructureItemDetails(pid, iid)) },
+                            navigateToInfrastructureDetails = { pid, iid -> 
+                                addInfrastructureDetailsUnlessTop(backStack, pid, iid)
+                            },
                             onNavigateToEditor = { pid, ot, oid, u, t, origin ->
                                 backStack.add(Route.AttachmentEditor(pid, ot, oid, null, u, t, origin))
                             },
@@ -384,15 +386,31 @@ fun MapsteadNavGraph(
                             viewModel = vm,
                             onNavigateBack = { if (backStack.isNotEmpty()) backStack.removeAt(backStack.size - 1) },
                             onEditClick = { pid, iid -> backStack.add(Route.InfrastructureItemEditor(pid, iid)) },
-                            onShowOnMap = { pid: UUID, mid: UUID, fid: String -> backStack.add(Route.MapEditor(pid, mid, fid)) },
+                            onShowOnMap = { pid: UUID, mid: UUID, fid: String -> 
+                                openOrReturnToMapFeature(backStack, pid, mid, fid)
+                            },
                             onAddMaintenance = { pid, iid -> backStack.add(Route.MaintenanceRecordEditor(pid, null, iid)) },
-                            onViewMaintenance = { iid -> backStack.add(Route.Maintenance(key.propertyId)) }, // Simplified for now
+                            onViewMaintenance = { iid -> backStack.add(Route.Maintenance(key.propertyId, iid)) },
                             onAddPhoto = { pid, iid -> backStack.add(Route.AttachmentEditor(pid, "INFRASTRUCTURE", iid, null, null, null, AttachmentNavigationOrigin.INFRASTRUCTURE)) },
                             onAddFile = { pid, iid -> backStack.add(Route.AttachmentEditor(pid, "INFRASTRUCTURE", iid, null, null, null, AttachmentNavigationOrigin.INFRASTRUCTURE)) },
-                            onViewAllAttachments = { pid -> backStack.add(Route.PropertyFiles(pid)) },
+                            onViewAllAttachments = { pid -> backStack.add(Route.InfrastructureAttachments(pid, key.itemId)) },
                             onAttachmentClick = { pid, aid -> backStack.add(Route.AttachmentDetails(pid, aid, AttachmentNavigationOrigin.INFRASTRUCTURE)) },
                             onManageRelationships = { pid -> backStack.add(Route.InfrastructureRelationships(pid)) },
-                            onOpenRelatedItem = { pid, iid -> backStack.add(Route.InfrastructureItemDetails(pid, iid)) }
+                            onOpenRelatedItem = { pid, iid -> 
+                                addInfrastructureDetailsUnlessTop(backStack, pid, iid)
+                            }
+                        )
+                    }
+                    entry<Route.InfrastructureAttachments> { key ->
+                        val vm: com.jumastappworks.mapstead.ui.infrastructure.InfrastructureAttachmentsViewModel = viewModel()
+                        com.jumastappworks.mapstead.ui.infrastructure.InfrastructureAttachmentsScreen(
+                            propertyId = key.propertyId,
+                            itemId = key.itemId,
+                            viewModel = vm,
+                            onBack = { if (backStack.isNotEmpty()) backStack.removeAt(backStack.size - 1) },
+                            onAttachmentClick = { aid -> backStack.add(Route.AttachmentDetails(key.propertyId, aid, AttachmentNavigationOrigin.INFRASTRUCTURE)) },
+                            onNavigateToEditor = { pid, ot, oid, u, t, origin -> backStack.add(Route.AttachmentEditor(pid, ot, oid, null, u, t, origin)) },
+                            onHelpClick = { topicId -> backStack.add(Route.HelpTopic(topicId)) }
                         )
                     }
                     entry<Route.InfrastructureItemEditor> { key ->
@@ -424,11 +442,15 @@ fun MapsteadNavGraph(
                         )
                     }
                     entry<Route.Maintenance> { key ->
-                        val maintenanceVm: MaintenanceViewModel = viewModel(); LaunchedEffect(key.propertyId) { maintenanceVm.setPropertyId(key.propertyId) }
+                        val maintenanceVm: MaintenanceViewModel = viewModel()
+                        LaunchedEffect(key.propertyId, key.infrastructureItemId) { 
+                            maintenanceVm.setPropertyId(key.propertyId)
+                            maintenanceVm.setInfrastructureFilter(key.infrastructureItemId)
+                        }
                         MaintenanceScreen(
                             viewModel = maintenanceVm,
                             onBack = { if (backStack.isNotEmpty()) backStack.removeAt(backStack.size - 1) },
-                            onAddRecord = { backStack.add(Route.MaintenanceRecordEditor(key.propertyId)) },
+                            onAddRecord = { backStack.add(Route.MaintenanceRecordEditor(key.propertyId, null, key.infrastructureItemId)) },
                             onOpenRecord = { propId, recordId -> backStack.add(Route.MaintenanceRecordDetails(propId, recordId)) },
                             onHelpClick = { topicId -> backStack.add(Route.HelpTopic(topicId)) }
                         )
@@ -441,10 +463,14 @@ fun MapsteadNavGraph(
                             viewModel = vm,
                             onBack = { if (backStack.isNotEmpty()) backStack.removeAt(backStack.size - 1) },
                             onEdit = { propId, recordId -> backStack.add(Route.MaintenanceRecordEditor(propId, recordId)) },
-                            onOpenInfrastructure = { propId, itemId -> backStack.add(Route.InfrastructureItemDetails(propId, itemId)) },
+                            onOpenInfrastructure = { propId, itemId -> 
+                                addInfrastructureDetailsUnlessTop(backStack, propId, itemId)
+                            },
                             onAddReminder = { propId, recordId, itemId -> backStack.add(Route.ReminderEditor(propId, null, recordId, itemId)) },
                             onEditReminder = { propId, rid, recordId, iid -> backStack.add(Route.ReminderEditor(propId, rid, recordId, iid)) },
-                            onOpenOnMap = { propId, planId, featId -> backStack.add(Route.MapEditor(propId, planId, featId)) },
+                            onOpenOnMap = { propId, planId, featId -> 
+                                openOrReturnToMapFeature(backStack, propId, planId, featId)
+                            },
                             onOpenRecord = { propId, recordId -> backStack.add(Route.MaintenanceRecordDetails(propId, recordId)) },
                             onAttachmentClick = { pid, aid -> backStack.add(Route.AttachmentDetails(pid, aid, AttachmentNavigationOrigin.MAINTENANCE)) },
                             onViewAllAttachments = { pid, _ -> backStack.add(Route.PropertyFiles(pid)) },
@@ -510,9 +536,13 @@ fun MapsteadNavGraph(
                                 if (state is AttachmentDetailsUiState.Ready) {
                                     when (val dest = state.ownerDestination) {
                                         is AttachmentOwnerDestination.Property -> backStack.add(Route.PropertyDashboard(dest.propertyId))
-                                        is AttachmentOwnerDestination.InfrastructureItem -> backStack.add(Route.InfrastructureItemDetails(dest.propertyId, dest.itemId))
+                                        is AttachmentOwnerDestination.InfrastructureItem -> {
+                                            addInfrastructureDetailsUnlessTop(backStack, dest.propertyId, dest.itemId)
+                                        }
                                         is AttachmentOwnerDestination.MaintenanceRecord -> backStack.add(Route.MaintenanceRecordDetails(dest.propertyId, dest.recordId))
-                                        is AttachmentOwnerDestination.MapFeature -> backStack.add(Route.MapEditor(dest.propertyId, dest.planId, dest.featureId.toString()))
+                                        is AttachmentOwnerDestination.MapFeature -> {
+                                            openOrReturnToMapFeature(backStack, dest.propertyId, dest.planId, dest.featureId.toString())
+                                        }
                                     }
                                 }
                             },
@@ -525,7 +555,9 @@ fun MapsteadNavGraph(
                             propertyId = key.propertyId,
                             viewModel = vm,
                             onNavigateBack = { if (backStack.isNotEmpty()) backStack.removeAt(backStack.size - 1) },
-                            onOpenItem = { iid -> backStack.add(Route.InfrastructureItemDetails(key.propertyId, iid)) },
+                            onOpenItem = { iid -> 
+                                addInfrastructureDetailsUnlessTop(backStack, key.propertyId, iid)
+                            },
                             onAddRelationship = { iid -> backStack.add(Route.InfrastructureRelationshipEditor(key.propertyId, iid, null)) },
                             onSetParent = { iid -> backStack.add(Route.InfrastructureParentEditor(key.propertyId, iid)) },
                             onHelpClick = { topicId -> backStack.add(Route.HelpTopic(topicId)) }
@@ -722,7 +754,8 @@ fun MapsteadNavigationRail(
 fun Route.topLevelDestination(): MainDestination = when (this) {
     Route.Properties, Route.AddProperty, is Route.EditProperty, is Route.AddPropertyLocation,
     is Route.PropertyDashboard,
-    is Route.InfrastructureList, is Route.InfrastructureItemDetails, is Route.InfrastructureItemEditor, is Route.InfrastructureRelationships,
+    is Route.InfrastructureList, is Route.InfrastructureItemDetails, is Route.InfrastructureItemEditor, 
+    is Route.InfrastructureRelationships, is Route.InfrastructureAttachments,
     is Route.InfrastructureRelationshipEditor, is Route.InfrastructureParentEditor, is Route.PropertyReports -> MainDestination.Properties
     is Route.Plans, is Route.CreatePlan, is Route.MapEditor, is Route.FeatureAttachments -> MainDestination.Map
     is Route.Maintenance, is Route.MaintenanceRecordDetails, is Route.MaintenanceRecordEditor, is Route.ReminderEditor -> MainDestination.Maintenance
@@ -749,7 +782,7 @@ fun Route.topLevelDestination(): MainDestination = when (this) {
 fun Route.matchesTopLevelRoot(destination: MainDestination, selectedPropertyId: UUID?): Boolean {
     return when (destination) {
         MainDestination.Properties -> {
-            this == Route.Properties || (this is Route.PropertyDashboard && this.propertyId == selectedPropertyId) || (this is Route.AddPropertyLocation && this.propertyId == selectedPropertyId) || (this is Route.InfrastructureList && this.propertyId == selectedPropertyId) || (this is Route.InfrastructureRelationships && this.propertyId == selectedPropertyId) || (this is Route.InfrastructureItemDetails && this.propertyId == selectedPropertyId) || (this is Route.InfrastructureItemEditor && this.propertyId == selectedPropertyId) || (this is Route.InfrastructureParentEditor && this.propertyId == selectedPropertyId) || (this is Route.InfrastructureRelationshipEditor && this.propertyId == selectedPropertyId)
+            this == Route.Properties || (this is Route.PropertyDashboard && this.propertyId == selectedPropertyId) || (this is Route.AddPropertyLocation && this.propertyId == selectedPropertyId) || (this is Route.InfrastructureList && this.propertyId == selectedPropertyId) || (this is Route.InfrastructureRelationships && this.propertyId == selectedPropertyId) || (this is Route.InfrastructureItemDetails && this.propertyId == selectedPropertyId) || (this is Route.InfrastructureItemEditor && this.propertyId == selectedPropertyId) || (this is Route.InfrastructureParentEditor && this.propertyId == selectedPropertyId) || (this is Route.InfrastructureRelationshipEditor && this.propertyId == selectedPropertyId) || (this is Route.InfrastructureAttachments && this.propertyId == selectedPropertyId)
         }
         MainDestination.Map -> (this is Route.Plans && this.propertyId == selectedPropertyId) || (this is Route.MapEditor && this.propertyId == selectedPropertyId) || (this is Route.FeatureAttachments && this.propertyId == selectedPropertyId)
         MainDestination.Maintenance -> (this is Route.Maintenance || this is Route.MaintenanceRecordDetails || this is Route.MaintenanceRecordEditor || this is Route.ReminderEditor) && ((this as? Route.Maintenance)?.propertyId == selectedPropertyId || (this as? Route.MaintenanceRecordDetails)?.propertyId == selectedPropertyId || (this as? Route.MaintenanceRecordEditor)?.propertyId == selectedPropertyId || (this as? Route.ReminderEditor)?.propertyId == selectedPropertyId)
@@ -791,4 +824,42 @@ internal fun handleInfrastructureSave(
         if (backStack.isNotEmpty()) backStack.removeAt(backStack.size - 1)
         backStack.add(Route.InfrastructureItemDetails(propertyId, savedItemId))
     }
+}
+
+internal fun openOrReturnToMapFeature(
+    backStack: MutableList<Route>,
+    propertyId: UUID,
+    planId: UUID,
+    featureId: String?
+) {
+    val existingIndex = backStack.indexOfLast { 
+        it is Route.MapEditor && it.propertyId == propertyId && it.planId == planId 
+    }
+    
+    if (existingIndex != -1) {
+        // Return to existing MapEditor and remove everything above it
+        while (backStack.size > existingIndex + 1) {
+            backStack.removeAt(backStack.size - 1)
+        }
+        // Update the top route with the requested featureId if it differs
+        val existing = backStack[existingIndex] as Route.MapEditor
+        if (existing.featureId != featureId) {
+            backStack[existingIndex] = existing.copy(featureId = featureId)
+        }
+    } else {
+        // Add new MapEditor
+        backStack.add(Route.MapEditor(propertyId, planId, featureId))
+    }
+}
+
+internal fun addInfrastructureDetailsUnlessTop(
+    backStack: MutableList<Route>,
+    propertyId: UUID,
+    itemId: UUID
+) {
+    val top = backStack.lastOrNull()
+    if (top is Route.InfrastructureItemDetails && top.propertyId == propertyId && top.itemId == itemId) {
+        return
+    }
+    backStack.add(Route.InfrastructureItemDetails(propertyId, itemId))
 }

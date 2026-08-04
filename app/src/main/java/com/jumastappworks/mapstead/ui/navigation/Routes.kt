@@ -64,7 +64,8 @@ sealed interface Route : NavKey {
 
     @Serializable
     data class Maintenance(
-        @Serializable(with = UuidSerializer::class) val propertyId: UUID
+        @Serializable(with = UuidSerializer::class) val propertyId: UUID,
+        @Serializable(with = UuidSerializer::class) val infrastructureItemId: UUID? = null
     ) : Route
 
     @Serializable
@@ -93,6 +94,12 @@ sealed interface Route : NavKey {
         @Serializable(with = UuidSerializer::class) val propertyId: UUID,
         @Serializable(with = UuidSerializer::class) val planId: UUID,
         @Serializable(with = UuidSerializer::class) val featureId: UUID
+    ) : Route
+
+    @Serializable
+    data class InfrastructureAttachments(
+        @Serializable(with = UuidSerializer::class) val propertyId: UUID,
+        @Serializable(with = UuidSerializer::class) val itemId: UUID
     ) : Route
 
     @Serializable

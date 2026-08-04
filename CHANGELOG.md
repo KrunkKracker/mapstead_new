@@ -3,6 +3,15 @@
 ## [0.03] - Unreleased
 
 ### Added
+- **Beginner-First UX Redesign Phase 3A3 — Detail Navigation & Consistency**:
+    - **Show on Map Reuse**: Implemented authoritative "Show on Map" routing that reuses existing map context from the backstack and removes intervening details, preventing duplicate map screens.
+    - **Duplicate Detail Prevention**: Added strict backstack protection to ensure the same infrastructure item detail screen is never stacked consecutively.
+    - **Selection Preservation**: Ensured map feature selection remains active when opening linked records, allowing a seamless "Back to Map" experience.
+    - **Item-Specific Attachments**: Replaced broad property-wide file lists with item-specific "Photos & Files" screens for infrastructure records.
+    - **Maintenance Filtering**: Extended the Maintenance screen to support filtering by infrastructure item, providing clear context-aware history.
+    - **Accessibility Pass**: Enhanced unified detail screens with heading semantics, merged accessibility nodes for complex cards, and explicit content descriptions.
+    - **Navigation Behavioral Truth**: Added JVM tests verifying backstack mutation, owner resolution, and edit-flow integrity.
+
 - **Beginner-First UX Redesign Phase 3A2 — Unified Map Feature Details**:
     - **Map Feature View/Edit Separation**: Saved map features now open in a read-only `UnifiedFeatureDetailSheet` by default, requiring an explicit "Edit" action to modify.
     - **Beginner-Friendly Terminology**: Replaced technical geometry terms (Point, LineString, Polygon) with "Marked Location", "Drawn Route", and "Outlined Area".

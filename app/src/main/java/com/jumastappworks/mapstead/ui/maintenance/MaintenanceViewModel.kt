@@ -33,7 +33,8 @@ sealed interface MaintenanceUiState {
         val infrastructureItems: List<InfrastructureItemEntity>,
         val reminders: List<ReminderEntity>,
         val selectedFilter: MaintenanceFilter,
-        val counts: MaintenanceCounts
+        val counts: MaintenanceCounts,
+        val filteredInfrastructureItemId: UUID? = null
     ) : MaintenanceUiState
     data class Error(val message: String) : MaintenanceUiState
 }
@@ -166,12 +167,14 @@ class MaintenanceViewModel @Inject constructor(
 
     private val _propertyId = MutableStateFlow<UUID?>(null)
     private val _selectedFilter = MutableStateFlow(MaintenanceFilter.All)
+    private val _filteredInfrastructureItemId = MutableStateFlow<UUID?>(null)
 
     // Hub UI State
     val uiState: StateFlow<MaintenanceUiState> = combine(
         _propertyId,
-        _selectedFilter
-    ) { id, filter -> id to filter }.flatMapLatest { (id, filter) ->
+        _selectedFilter,
+        _filteredInfrastructureItemId
+    ) { id, filter, infraId -> Triple(id, filter, infraId) }.flatMapLatest { (id, filter, infraId) ->
         if (id == null) flowOf(MaintenanceUiState.Loading)
         else {
             val propertyFlow = flow { emit(propertyRepository.getPropertyById(id)) }
@@ -183,7 +186,7 @@ class MaintenanceViewModel @Inject constructor(
                 if (property == null) MaintenanceUiState.NotFound
                 else {
                     val today = LocalDate.now()
-                    val filtered = when (filter) {
+                    var filtered = when (filter) {
                         MaintenanceFilter.All -> records
                         MaintenanceFilter.Due -> records.filter { 
                             val state = getDueState(it, today)
@@ -195,6 +198,10 @@ class MaintenanceViewModel @Inject constructor(
                         MaintenanceFilter.Completed -> records.filter {
                             getDueState(it, today) == MaintenanceDueState.COMPLETED
                         }
+                    }
+
+                    if (infraId != null) {
+                        filtered = filtered.filter { it.infrastructureItemId == infraId }
                     }
 
                     val counts = MaintenanceCounts(
@@ -212,7 +219,8 @@ class MaintenanceViewModel @Inject constructor(
                         infrastructureItems = items,
                         reminders = reminders,
                         selectedFilter = filter,
-                        counts = counts
+                        counts = counts,
+                        filteredInfrastructureItemId = infraId
                     )
                 }
             }.catch { e -> emit(MaintenanceUiState.Error(e.message ?: "Unknown error")) }
@@ -297,6 +305,10 @@ class MaintenanceViewModel @Inject constructor(
 
     fun setFilter(filter: MaintenanceFilter) {
         _selectedFilter.value = filter
+    }
+
+    fun setInfrastructureFilter(itemId: UUID?) {
+        _filteredInfrastructureItemId.value = itemId
     }
 
     fun openRecordDetails(recordId: UUID) {

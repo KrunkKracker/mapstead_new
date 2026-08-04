@@ -85,7 +85,8 @@ fun MaintenanceScreen(
                     onFilterSelect = { viewModel.setFilter(it) },
                     onRecordClick = { onOpenRecord(state.property.id, it) },
                     onAddRecord = { onAddRecord(state.property.id) },
-                    onHelpClick = onHelpClick
+                    onHelpClick = onHelpClick,
+                    onClearInfrastructureFilter = { viewModel.setInfrastructureFilter(null) }
                 )
             }
         }
@@ -99,7 +100,8 @@ fun MaintenanceHubContent(
     onFilterSelect: (MaintenanceFilter) -> Unit,
     onRecordClick: (UUID) -> Unit,
     onAddRecord: () -> Unit,
-    onHelpClick: (HelpTopicId) -> Unit
+    onHelpClick: (HelpTopicId) -> Unit,
+    onClearInfrastructureFilter: () -> Unit = {}
 ) {
     LazyColumn(
         modifier = modifier.fillMaxSize().padding(horizontal = 16.dp),
@@ -111,7 +113,18 @@ fun MaintenanceHubContent(
         }
 
         item {
-            FilterTabs(state.selectedFilter, onFilterSelect)
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilterTabs(state.selectedFilter, onFilterSelect)
+                
+                if (state.filteredInfrastructureItemId != null) {
+                    val itemName = state.infrastructureItems.find { it.id == state.filteredInfrastructureItemId }?.name ?: "Selected Item"
+                    AssistChip(
+                        onClick = onClearInfrastructureFilter,
+                        label = { Text("Filtered to: $itemName") },
+                        trailingIcon = { Icon(Icons.Default.Close, contentDescription = "Clear Filter", modifier = Modifier.size(18.dp)) }
+                    )
+                }
+            }
         }
 
         if (state.filteredRecords.isEmpty()) {
