@@ -15,6 +15,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.jumastappworks.mapstead.R
 import com.jumastappworks.mapstead.data.attachments.AttachmentNavigationOrigin
@@ -76,15 +79,23 @@ fun InfrastructureAttachmentsScreen(
                 title = {
                     Column {
                         val readyState = uiState as? InfrastructureAttachmentsUiState.Ready
-                        Text(readyState?.item?.name ?: "Photos & Files", style = MaterialTheme.typography.titleMedium)
-                        readyState?.let { 
+                        val title = when (uiState) {
+                            is InfrastructureAttachmentsUiState.Ready -> (uiState as InfrastructureAttachmentsUiState.Ready).item.name
+                            else -> "Photos & Files"
+                        }
+                        Text(
+                            text = title,
+                            style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.semantics { heading() }
+                        )
+                        if (uiState is InfrastructureAttachmentsUiState.Ready) { 
                             Text("Infrastructure Item", style = MaterialTheme.typography.bodySmall) 
                         }
                     }
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 }
             )
@@ -185,8 +196,16 @@ fun InfrastructureAttachmentsScreen(
                 }
             }
             is InfrastructureAttachmentsUiState.Error -> {
-                Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                    Text(stringResource(s.messageRes), color = MaterialTheme.colorScheme.error)
+                Column(
+                    modifier = Modifier.fillMaxSize().padding(padding).padding(32.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically)
+                ) {
+                    Icon(Icons.Default.ErrorOutline, contentDescription = null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(48.dp))
+                    Text(stringResource(s.messageRes), textAlign = TextAlign.Center)
+                    Button(onClick = { viewModel.retryAttachments() }) {
+                        Text(stringResource(R.string.retry))
+                    }
                 }
             }
         }

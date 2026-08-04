@@ -204,12 +204,13 @@ class MaintenanceViewModel @Inject constructor(
                         filtered = filtered.filter { it.infrastructureItemId == infraId }
                     }
 
+                    val scopeRecords = if (infraId != null) records.filter { it.infrastructureItemId == infraId } else records
                     val counts = MaintenanceCounts(
-                        overdue = records.count { getDueState(it, today) == MaintenanceDueState.OVERDUE },
-                        dueToday = records.count { getDueState(it, today) == MaintenanceDueState.DUE_TODAY },
-                        dueSoon = records.count { getDueState(it, today) == MaintenanceDueState.DUE_SOON },
-                        scheduled = records.count { getDueState(it, today) == MaintenanceDueState.SCHEDULED },
-                        unscheduled = records.count { getDueState(it, today) == MaintenanceDueState.UNSCHEDULED }
+                        overdue = scopeRecords.count { getDueState(it, today) == MaintenanceDueState.OVERDUE },
+                        dueToday = scopeRecords.count { getDueState(it, today) == MaintenanceDueState.DUE_TODAY },
+                        dueSoon = scopeRecords.count { getDueState(it, today) == MaintenanceDueState.DUE_SOON },
+                        scheduled = scopeRecords.count { getDueState(it, today) == MaintenanceDueState.SCHEDULED },
+                        unscheduled = scopeRecords.count { getDueState(it, today) == MaintenanceDueState.UNSCHEDULED }
                     )
 
                     MaintenanceUiState.Ready(

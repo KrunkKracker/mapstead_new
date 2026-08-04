@@ -9,6 +9,8 @@ import com.jumastappworks.mapstead.data.repository.AttachmentRepository
 import com.jumastappworks.mapstead.data.repository.InfrastructureRepository
 import com.jumastappworks.mapstead.ui.attachments.AttachmentListItemUiModel
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.util.UUID
@@ -33,28 +35,48 @@ class InfrastructureAttachmentsViewModel @Inject constructor(
     private val _uiState = MutableStateFlow<InfrastructureAttachmentsUiState>(InfrastructureAttachmentsUiState.Loading)
     val uiState: StateFlow<InfrastructureAttachmentsUiState> = _uiState.asStateFlow()
 
-    fun loadAttachments(propertyId: UUID, itemId: UUID) {
-        viewModelScope.launch {
-            _uiState.value = InfrastructureAttachmentsUiState.Loading
-            val item = infrastructureRepository.getActiveItemForProperty(propertyId, itemId)
-            if (item == null) {
-                _uiState.value = InfrastructureAttachmentsUiState.NotFound
-                return@launch
-            }
+    private var currentLoadingJob: Job? = null
+    private var lastPropertyId: UUID? = null
+    private var lastItemId: UUID? = null
 
-            attachmentRepository.getAttachmentsForInfrastructureItem(propertyId, itemId).collect { list ->
-                val models = list.map { entity ->
-                    val fileState = attachmentRepository.resolveAttachmentFile(propertyId, entity.id, verifyHash = false)
-                    AttachmentListItemUiModel(
-                        attachment = entity,
-                        previewUri = (fileState as? AttachmentFileState.Available)?.uri,
-                        isMissing = fileState is AttachmentFileState.Missing,
-                        isDamaged = fileState is AttachmentFileState.Damaged
-                    )
+    fun loadAttachments(propertyId: UUID, itemId: UUID) {
+        lastPropertyId = propertyId
+        lastItemId = itemId
+        
+        currentLoadingJob?.let { it.cancel() }
+        currentLoadingJob = viewModelScope.launch {
+            try {
+                _uiState.value = InfrastructureAttachmentsUiState.Loading
+                val item = infrastructureRepository.getActiveItemForProperty(propertyId, itemId)
+                if (item == null) {
+                    _uiState.value = InfrastructureAttachmentsUiState.NotFound
+                    return@launch
                 }
-                _uiState.value = InfrastructureAttachmentsUiState.Ready(item, models)
+
+                attachmentRepository.getAttachmentsForInfrastructureItem(propertyId, itemId).collect { list ->
+                    val models = list.map { entity ->
+                        val fileState = attachmentRepository.resolveAttachmentFile(propertyId, entity.id, verifyHash = false)
+                        AttachmentListItemUiModel(
+                            attachment = entity,
+                            previewUri = (fileState as? AttachmentFileState.Available)?.uri,
+                            isMissing = fileState is AttachmentFileState.Missing,
+                            isDamaged = fileState is AttachmentFileState.Damaged
+                        )
+                    }
+                    _uiState.value = InfrastructureAttachmentsUiState.Ready(item, models)
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _uiState.value = InfrastructureAttachmentsUiState.Error(com.jumastappworks.mapstead.R.string.error_loading_attachments)
             }
         }
+    }
+
+    fun retryAttachments() {
+        val pid = lastPropertyId ?: return
+        val iid = lastItemId ?: return
+        loadAttachments(pid, iid)
     }
 
     fun createCameraCapture(): TemporaryCameraCapture? {

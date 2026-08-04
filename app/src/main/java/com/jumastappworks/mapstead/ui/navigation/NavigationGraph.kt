@@ -450,7 +450,7 @@ fun MapsteadNavGraph(
                         MaintenanceScreen(
                             viewModel = maintenanceVm,
                             onBack = { if (backStack.isNotEmpty()) backStack.removeAt(backStack.size - 1) },
-                            onAddRecord = { backStack.add(Route.MaintenanceRecordEditor(key.propertyId, null, key.infrastructureItemId)) },
+                            onAddRecord = { infraId -> backStack.add(Route.MaintenanceRecordEditor(key.propertyId, null, infraId)) },
                             onOpenRecord = { propId, recordId -> backStack.add(Route.MaintenanceRecordDetails(propId, recordId)) },
                             onHelpClick = { topicId -> backStack.add(Route.HelpTopic(topicId)) }
                         )
@@ -464,7 +464,7 @@ fun MapsteadNavGraph(
                             onBack = { if (backStack.isNotEmpty()) backStack.removeAt(backStack.size - 1) },
                             onEdit = { propId, recordId -> backStack.add(Route.MaintenanceRecordEditor(propId, recordId)) },
                             onOpenInfrastructure = { propId, itemId -> 
-                                addInfrastructureDetailsUnlessTop(backStack, propId, itemId)
+                                openOrReturnToInfrastructureOwner(backStack, propId, itemId)
                             },
                             onAddReminder = { propId, recordId, itemId -> backStack.add(Route.ReminderEditor(propId, null, recordId, itemId)) },
                             onEditReminder = { propId, rid, recordId, iid -> backStack.add(Route.ReminderEditor(propId, rid, recordId, iid)) },
@@ -537,7 +537,7 @@ fun MapsteadNavGraph(
                                     when (val dest = state.ownerDestination) {
                                         is AttachmentOwnerDestination.Property -> backStack.add(Route.PropertyDashboard(dest.propertyId))
                                         is AttachmentOwnerDestination.InfrastructureItem -> {
-                                            addInfrastructureDetailsUnlessTop(backStack, dest.propertyId, dest.itemId)
+                                            openOrReturnToInfrastructureOwner(backStack, dest.propertyId, dest.itemId)
                                         }
                                         is AttachmentOwnerDestination.MaintenanceRecord -> backStack.add(Route.MaintenanceRecordDetails(dest.propertyId, dest.recordId))
                                         is AttachmentOwnerDestination.MapFeature -> {
@@ -862,4 +862,24 @@ internal fun addInfrastructureDetailsUnlessTop(
         return
     }
     backStack.add(Route.InfrastructureItemDetails(propertyId, itemId))
+}
+
+internal fun openOrReturnToInfrastructureOwner(
+    backStack: MutableList<Route>,
+    propertyId: UUID,
+    itemId: UUID
+) {
+    val existingIndex = backStack.indexOfLast { 
+        it is Route.InfrastructureItemDetails && it.propertyId == propertyId && it.itemId == itemId 
+    }
+    
+    if (existingIndex != -1) {
+        // Return to existing InfrastructureItemDetails and remove everything above it
+        while (backStack.size > existingIndex + 1) {
+            backStack.removeAt(backStack.size - 1)
+        }
+    } else {
+        // Add new InfrastructureItemDetails
+        backStack.add(Route.InfrastructureItemDetails(propertyId, itemId))
+    }
 }

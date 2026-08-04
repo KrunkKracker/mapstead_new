@@ -178,4 +178,40 @@ class NavigationLogicTest {
         assertEquals(3, backStack.size)
         assertEquals(itemA, (backStack[2] as Route.InfrastructureItemDetails).itemId)
     }
+
+    @Test
+    fun testOpenOrReturnToInfrastructureOwner() {
+        val propId = UUID.randomUUID()
+        val itemA = UUID.randomUUID()
+        val itemB = UUID.randomUUID()
+        val backStack = mutableListOf<Route>()
+
+        // 1. No matching route adds new
+        openOrReturnToInfrastructureOwner(backStack, propId, itemA)
+        assertEquals(1, backStack.size)
+        assertTrue(backStack[0] is Route.InfrastructureItemDetails)
+        assertEquals(itemA, (backStack[0] as Route.InfrastructureItemDetails).itemId)
+
+        // 2. Matching route already on top does nothing
+        openOrReturnToInfrastructureOwner(backStack, propId, itemA)
+        assertEquals(1, backStack.size)
+
+        // 3. Matching route exists below other screens: Pops back to it
+        // [Details A, Maintenance list, Record details]
+        backStack.add(Route.Maintenance(propId, itemA))
+        backStack.add(Route.MaintenanceRecordDetails(propId, UUID.randomUUID()))
+        assertEquals(3, backStack.size)
+        
+        openOrReturnToInfrastructureOwner(backStack, propId, itemA)
+        assertEquals(1, backStack.size)
+        assertEquals(itemA, (backStack[0] as Route.InfrastructureItemDetails).itemId)
+
+        // 4. Different item details exist: Preserve history and open new
+        openOrReturnToInfrastructureOwner(backStack, propId, itemB)
+        assertEquals(2, backStack.size)
+        assertEquals(itemB, (backStack[1] as Route.InfrastructureItemDetails).itemId)
+        
+        openOrReturnToInfrastructureOwner(backStack, propId, itemA)
+        assertEquals(1, backStack.size) // Popped back to first A
+    }
 }
