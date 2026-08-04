@@ -107,6 +107,7 @@ class AccuracyPanelRegressionTest {
                 onToggleLayerLock = { _ -> }, onAddLayer = { _, _ -> }, onRenameLayer = { _, _ -> },
                 onChangeLayerOpacity = { _, _ -> }, onMoveLayerUp = { _ -> }, onMoveLayerDown = { _ -> }, onDeleteLayer = { _ -> },
                 onSaveFeature = { _ -> }, onDeleteFeature = { _ -> }, onSaveNewSystemItem = { _ -> UUID.randomUUID() },
+                onNavigateToEditor = { _, _, _, _, _, _ -> },
                 onEditShapeClick = { _ -> }, onUndoEditClick = {}, onDeleteVertexClick = {}, onSaveEditClick = {}, onCancelEditClick = {},
                 onConfirmDiscardEdit = {}, onDismissDiscardDialog = {},
                 onUndoPolygonVertexClick = {}, onFinishPolygonClick = {}, onCancelPolygonClick = {}, onDismissFeatureEditor = {},
