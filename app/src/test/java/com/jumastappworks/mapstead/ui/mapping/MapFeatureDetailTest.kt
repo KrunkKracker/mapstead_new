@@ -7,6 +7,8 @@ import com.jumastappworks.mapstead.data.db.entities.*
 import com.jumastappworks.mapstead.data.mapping.*
 import com.jumastappworks.mapstead.data.prefs.*
 import com.jumastappworks.mapstead.data.repository.*
+import com.jumastappworks.mapstead.data.backup.TemporaryCameraCapture
+import com.jumastappworks.mapstead.ui.infrastructure.*
 import io.mockk.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
@@ -36,6 +38,7 @@ class MapFeatureDetailTest {
     private val userPrefsFlow = MutableStateFlow(UserPreferences(measurementSystem = MeasurementSystem.IMPERIAL))
 
     private lateinit var viewModel: MapViewModel
+    private lateinit var infraViewModel: InfrastructureItemDetailViewModel
 
     @Before
     fun setup() {
@@ -52,6 +55,7 @@ class MapFeatureDetailTest {
         every { infraRepo.getItemsForProperty(any()) } returns flowOf(emptyList())
         
         viewModel = MapViewModel(mapRepo, attachmentRepo, infraRepo, propRepo, resolver, locationProvider, basemapProvider, userPrefsRepo, namingService, context, savedState)
+        infraViewModel = InfrastructureItemDetailViewModel(infraRepo, propRepo, mapRepo, attachmentRepo, mockk(relaxed = true), mockk(relaxed = true))
     }
 
     @After
@@ -62,7 +66,7 @@ class MapFeatureDetailTest {
 
     @Test
     fun `selecting existing feature lands on details with beginner labels`() = runTest {
-        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.featureDetailState.collect {} }
+        backgroundScope.launch { viewModel.featureDetailState.collect {} }
         
         val propId = UUID.randomUUID()
         val featureId = UUID.randomUUID()
@@ -84,7 +88,7 @@ class MapFeatureDetailTest {
     @Test
     fun `explicit retry trigger forces pipeline restart and recovers to Ready`() = runTest {
         val states = mutableListOf<FeatureDetailUiState?>()
-        val job = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { 
+        val job = backgroundScope.launch { 
             viewModel.featureDetailState.collect { states.add(it) } 
         }
         
@@ -100,28 +104,29 @@ class MapFeatureDetailTest {
         viewModel.selectPersistedFeature(feature, requestCameraFocus = false)
         advanceUntilIdle()
         
-        assertTrue("Baseline Ready state missing", states.any { it is FeatureDetailUiState.Ready })
+        assertTrue("Baseline Ready state missing. States: $states", states.any { it is FeatureDetailUiState.Ready })
 
+        // 2. Change mock and retry
         states.clear()
-        val failFlow = flow<InfrastructureItemEntity?> { throw RuntimeException("Fail") }
-        every { infraRepo.observeActiveItem(any(), any()) } returns failFlow
+        every { infraRepo.observeActiveItem(any(), any()) } returns flow { throw RuntimeException("Fail") }
         viewModel.retryFeatureDetails()
         advanceUntilIdle()
         
         assertTrue("Error state missing after retry. States recorded: $states", states.any { it is FeatureDetailUiState.Error })
         
+        // 3. Fix dependency and Retry to recover
         states.clear()
         every { infraRepo.observeActiveItem(any(), any()) } returns flowOf(null)
         viewModel.retryFeatureDetails()
         advanceUntilIdle()
         
-        assertTrue("Ready state missing after recovery", states.any { it is FeatureDetailUiState.Ready })
+        assertTrue("Ready state missing after recovery. States recorded: $states", states.any { it is FeatureDetailUiState.Ready })
         job.cancel()
     }
 
     @Test
     fun `viewport is restored after MapView recreation`() = runTest {
-        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
+        backgroundScope.launch { viewModel.uiState.collect {} }
         val propId = UUID.randomUUID()
         val planId = UUID.randomUUID()
         val token = "token"
@@ -132,30 +137,34 @@ class MapFeatureDetailTest {
         every { mapRepo.getPlansForProperty(propId) } returns flowOf(listOf(plan))
         coEvery { propRepo.getPropertyById(propId) } returns PropertyEntity(id = propId, name = "P", propertyType = "H")
         
+        // IMPORTANT: Set restoration in handle before triggering the load
         savedState["viewport_restoration"] = kotlinx.serialization.json.Json.encodeToString(CameraRestorationRequest.serializer(), restoration)
-        runCurrent()
-
+        
+        // Initial load
         viewModel.openMapContext(propId, planId, token)
         advanceUntilIdle()
         
-        val initialFocus = viewModel.uiState.value.cameraFocus as MapCameraFocus.Point
-        assertEquals(45.0, initialFocus.latitude, 0.001)
+        val initialFocus = viewModel.uiState.value.cameraFocus as? MapCameraFocus.Point
+        assertNotNull("Camera focus should be set from restoration", initialFocus)
+        assertEquals(45.0, initialFocus?.latitude ?: 0.0, 0.001)
         
-        viewModel.acknowledgeCameraFocusApplied(propId, planId, token, initialFocus)
-        runCurrent()
-        assertNull("Focus should be null after acknowledgement", viewModel.uiState.value.cameraFocus)
+        viewModel.acknowledgeCameraFocusApplied(propId, planId, token, initialFocus!!)
+        advanceUntilIdle()
+        assertNull(viewModel.uiState.value.cameraFocus)
         
+        // MapView recreation (onMapReady with new session)
         viewModel.onMapReady(UUID.randomUUID())
-        runCurrent()
+        advanceUntilIdle()
         
-        val restoredFocus = viewModel.uiState.value.cameraFocus as MapCameraFocus.Point
-        assertEquals(45.0, restoredFocus.latitude, 0.001)
+        val restoredFocus = viewModel.uiState.value.cameraFocus as? MapCameraFocus.Point
+        assertNotNull("Camera focus should be restored on MapReady", restoredFocus)
+        assertEquals(45.0, restoredFocus?.latitude ?: 0.0, 0.001)
     }
 
     @Test
     fun `saved map-feature camera attachment triggers navigation event`() = runTest {
         val events = mutableListOf<MapEvent>()
-        val job = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.events.toList(events) }
+        val job = backgroundScope.launch { viewModel.events.collect { events.add(it) } }
         
         val propId = UUID.randomUUID()
         val featureId = UUID.randomUUID()
@@ -173,5 +182,164 @@ class MapFeatureDetailTest {
         assertNotNull("Expected NavigateToAttachmentEditor event in $events", event)
         assertEquals(featureId, event?.ownerId)
         job.cancel()
+    }
+
+    @Test
+    fun `same property, plan, and token does not reset map state`() = runTest {
+        backgroundScope.launch { viewModel.uiState.collect {} }
+        val propId = UUID.randomUUID()
+        val planId = UUID.randomUUID()
+        val token = "token123"
+        val plan = PlanEntity(id = planId, propertyId = propId, name = "P", planType = "M", backgroundType = "M")
+        
+        coEvery { mapRepo.getPlanById(planId) } returns plan
+        every { mapRepo.getPlansForProperty(propId) } returns flowOf(listOf(plan))
+        
+        viewModel.openMapContext(propId, planId, token)
+        advanceUntilIdle()
+        
+        val initialSessionId = viewModel.uiState.value.renderSessionId
+        
+        // Call again with SAME params
+        viewModel.openMapContext(propId, planId, token)
+        advanceUntilIdle()
+        
+        assertEquals("Session should not have changed", initialSessionId, viewModel.uiState.value.renderSessionId)
+    }
+
+    @Test
+    fun `different plan initializes normally`() = runTest {
+        backgroundScope.launch { viewModel.uiState.collect {} }
+        val propId = UUID.randomUUID()
+        val planId1 = UUID.randomUUID()
+        val planId2 = UUID.randomUUID()
+        
+        val plan1 = PlanEntity(id = planId1, propertyId = propId, name = "P1", planType = "M", backgroundType = "M")
+        val plan2 = PlanEntity(id = planId2, propertyId = propId, name = "P2", planType = "M", backgroundType = "M")
+        
+        coEvery { mapRepo.getPlanById(planId1) } returns plan1
+        coEvery { mapRepo.getPlanById(planId2) } returns plan2
+        every { mapRepo.getPlansForProperty(propId) } returns flowOf(listOf(plan1, plan2))
+        
+        viewModel.openMapContext(propId, planId1, "token1")
+        advanceUntilIdle()
+        assertEquals(planId1, viewModel.uiState.value.plan?.id)
+        
+        viewModel.openMapContext(propId, planId2, "token2")
+        advanceUntilIdle()
+        assertEquals(planId2, viewModel.uiState.value.plan?.id)
+    }
+
+    @Test
+    fun `default-world viewport is rejected for restoration`() = runTest {
+        val planId = UUID.randomUUID()
+        viewModel.selectPlan(planId)
+        
+        // Attempt to move to default world view
+        viewModel.onCameraMoved(0.0, 0.0, 0.5, 0.0) 
+        
+        val stored = savedState.get<String>("viewport_restoration")
+        assertNull("Default world view should not be stored for restoration", stored)
+    }
+
+    @Test
+    fun `recenter uses valid property coordinates`() = runTest {
+        backgroundScope.launch { viewModel.uiState.collect {} }
+        val propId = UUID.randomUUID()
+        val property = PropertyEntity(id = propId, name = "Prop", propertyType = "Home", latitude = 40.0, longitude = -80.0)
+        
+        every { propRepo.getAllProperties() } returns flowOf(listOf(property))
+        viewModel.setProperty(propId)
+        advanceUntilIdle()
+        
+        viewModel.onReturnToProperty()
+        advanceUntilIdle()
+        
+        val focus = viewModel.uiState.value.cameraFocus as? MapCameraFocus.Point
+        assertNotNull("Expected Point focus for recenter", focus)
+        assertEquals(40.0, focus?.latitude ?: 0.0, 0.001)
+        assertEquals(-80.0, focus?.longitude ?: 0.0, 0.001)
+    }
+
+    @Test
+    fun `recenter does not use 0,0`() = runTest {
+        backgroundScope.launch { viewModel.uiState.collect {} }
+        val propId = UUID.randomUUID()
+        val property = PropertyEntity(id = propId, name = "Prop", propertyType = "Home", latitude = null, longitude = null)
+        
+        every { propRepo.getAllProperties() } returns flowOf(listOf(property))
+        viewModel.setProperty(propId)
+        advanceUntilIdle()
+        
+        viewModel.onReturnToProperty()
+        advanceUntilIdle()
+        
+        val focus = viewModel.uiState.value.cameraFocus as? MapCameraFocus.Point
+        assertNotNull(focus)
+        assertNotEquals(0.0, focus?.latitude ?: 0.0, 0.001)
+        assertNotEquals(0.0, focus?.longitude ?: 0.0, 0.001)
+    }
+
+    @Test
+    fun `guided feature creation still stages its photo`() = runTest {
+        backgroundScope.launch { viewModel.uiState.collect {} }
+        viewModel.setPendingPhotoPurpose(PendingPhotoPurpose.GuidedFeatureCreation(UUID.randomUUID()))
+        viewModel.setInFlightCapture("content://test", "token")
+        
+        coEvery { attachmentRepo.inspectTempCameraCapture(any(), any()) } returns TempCameraCaptureInspectionResult.Ready
+        
+        viewModel.handleCameraResult(true)
+        advanceUntilIdle()
+        
+        assertTrue(viewModel.uiState.value.stagedPhoto is StagedCreationPhotoState.Ready)
+        assertEquals("content://test", (viewModel.uiState.value.stagedPhoto as StagedCreationPhotoState.Ready).uri)
+    }
+
+    @Test
+    fun `camera cancellation clears pending and temporary state`() = runTest {
+        viewModel.setPendingPhotoPurpose(PendingPhotoPurpose.SavedFeatureAttachment(UUID.randomUUID()))
+        viewModel.setInFlightCapture("content://temp", "token")
+        
+        viewModel.handleCameraResult(false)
+        advanceUntilIdle()
+        
+        assertNull(viewModel.getInFlightUri())
+        assertNull(savedState.get<String>("pending_photo_purpose"))
+        verify { attachmentRepo.deleteTempCameraCapture("token") }
+    }
+
+    @Test
+    fun `recenter preserves selected feature`() = runTest {
+        backgroundScope.launch { viewModel.uiState.collect {} }
+        val propId = UUID.randomUUID()
+        val feature = MapFeatureEntity(
+            id = UUID.randomUUID(), propertyId = propId, planId = UUID.randomUUID(), layerId = UUID.randomUUID(),
+            geometryType = "POINT", geometryJson = "{}", coordinateSpace = "G", styleJson = "{}", accuracySource = "M", label = "F"
+        )
+        
+        viewModel.setProperty(propId)
+        viewModel.selectPersistedFeature(feature, requestCameraFocus = false)
+        advanceUntilIdle()
+        assertEquals(feature.id, viewModel.uiState.value.selectedFeature?.id)
+        
+        viewModel.onReturnToProperty()
+        advanceUntilIdle()
+        
+        assertEquals("Feature selection should be preserved after recenter", feature.id, viewModel.uiState.value.selectedFeature?.id)
+    }
+
+    @Test
+    fun `infrastructure camera capture delegate produces result`() = runTest {
+        val capture = TemporaryCameraCapture(mockk(), "token")
+        coEvery { attachmentRepo.createTempCameraUri() } returns Result.success(capture)
+        
+        val result = infraViewModel.createCameraCapture()
+        assertEquals(capture, result)
+    }
+
+    @Test
+    fun `infrastructure camera capture deletion delegate calls repository`() = runTest {
+        infraViewModel.deleteCameraCapture("token")
+        verify { attachmentRepo.deleteTempCameraCapture("token") }
     }
 }

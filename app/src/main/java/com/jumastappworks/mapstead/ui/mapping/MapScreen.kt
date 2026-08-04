@@ -98,6 +98,7 @@ fun MapScreen(
     onHelpRequest: (HelpTopicId) -> Unit = {}
 ) {
     val context = LocalContext.current
+    val resources = context.resources
     val lifecycleOwner = LocalLifecycleOwner.current
     val layoutInfo = rememberAdaptiveLayoutInfo()
     val state by viewModel.uiState.collectAsState()
@@ -121,7 +122,7 @@ fun MapScreen(
                     onNavigateToEditor(event.propertyId, event.ownerType, event.ownerId, event.uri, event.token, event.origin)
                 }
                 is MapEvent.Error -> {
-                    snackbarHostState.showSnackbar(context.getString(event.messageRes))
+                    snackbarHostState.showSnackbar(resources.getString(event.messageRes))
                 }
             }
         }
