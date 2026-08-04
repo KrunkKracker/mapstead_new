@@ -1,17 +1,22 @@
-# Implementation Plan — Beginner-First UX 2.0: Master Plan Review Corrections
+# Implementation Plan — Beginner-First UX 2.0: Terminology and Information Architecture Decision Pack
 
-This is a documentation-only pass to correct the strategic master plan and roadmap based on the initial review. This pass ensures all core concepts, reference journeys, and acceptance standards are accurate before visual prototype work begins.
+This documentation-only pass turns the approved Beginner-First UX 2.0 strategy into specific terminology and information-architecture recommendations. It establishes the vocabulary and structural rules required for visual prototype creation.
 
 ## User Review Required
 
 > [!IMPORTANT]
-> **Property Item Singularity**: We have standardized on **Property Item** as the singular working generic term. "Map Item" and other internal record terms are removed from the beginner-facing planning layer.
-> **Reference Journey**: Restored the explicit **Review** step in the "Add Something" journey to ensure customers have a clear moment of confirmation before saving data to their property.
-> **Production Boundary**: Explicitly stated that production navigation redesign remains **NOT STARTED**. Current work is restricted to authoritative strategy and static prototypes.
+> **Decision Pack Creation**: We have created [BEGINNER_FIRST_UX_TERMINOLOGY_IA_DECISION_PACK.md](BEGINNER_FIRST_UX_TERMINOLOGY_IA_DECISION_PACK.md). This document contains the definitive list of recommended terms and navigation structures for external approval.
+> **Navigation Recommendation**: We are recommending a four-tab bottom navigation (**Home, Map, Items, Tasks**) as the primary hypothesis for initial prototypes.
+> **Terminology Standard**: Standardized on **Property Item** as the singular generic term, with a strict rule to prefer specific names (e.g., "Well") wherever possible.
 
 ## Proposed Changes
 
-- Documentation-only correction pass.
+- Documentation-only planning pass.
+- Master Plan: APPROVED.
+- Terminology: EXTERNAL APPROVAL PENDING.
+- Information architecture: EXTERNAL APPROVAL PENDING.
+- Prototype creation: NOT STARTED.
+- Production redesign: NOT STARTED.
 - Production Kotlin changes: NONE.
 - Test changes: NONE.
 - Database changes: NONE.
@@ -19,31 +24,32 @@ This is a documentation-only pass to correct the strategic master plan and roadm
 - Version changes: NONE.
 - Gradle execution: NOT REQUIRED.
 - Emulator execution: NOT REQUIRED.
-- Prototype creation: NOT STARTED.
-- Production redesign: NOT STARTED.
 - Property Inventory: BLOCKED.
 
-### Redesign Strategy
+### Redesign Decision Pack
 
-#### [MODIFY] [BEGINNER_FIRST_UX_MASTER_PLAN.md](file:///C:/Users/Justin/AndroidStudioProjects/Mapstead-master/BEGINNER_FIRST_UX_MASTER_PLAN.md)
-- Added **Purpose** section explaining the target customer profile and breadth of the redesign.
-- Corrected terminology to use **Property Item** (or actual name) exclusively.
-- Restored exact **Pool Pump** reference journey with explicit Review step.
-- Completed **Beginner Acceptance Standards** with "Practical Beginner Checks".
-- Added **Scope Protection** rules regarding Simple/Advanced modes and documentation vs. acceptance.
-- Corrected **Vertical Slice** definitions for Tasks and Advanced Features.
-- Added **Document Roles** section.
-- Completed **Open Decisions** list (marked for prototype review).
+#### [NEW] [BEGINNER_FIRST_UX_TERMINOLOGY_IA_DECISION_PACK.md](BEGINNER_FIRST_UX_TERMINOLOGY_IA_DECISION_PACK.md)
+- Contains detailed decision matrices for terminology and information architecture.
+- Defines Home content priority and property-switching interactions.
+- Specifies the progressive disclosure strategy for advanced map controls.
+- Lists critical prototype validation questions.
 
-### Roadmap and Project Status
+### Documentation Housekeeping
 
-#### [MODIFY] [ROADMAP.md](file:///C:/Users/Justin/AndroidStudioProjects/Mapstead-master/ROADMAP.md)
-- Reconciled Phase 3A status to consistently state **IN PROGRESS / PHYSICAL-DEVICE ACCEPTANCE PENDING**.
-- Updated Beginner-First UX 2.0 status to **CREATED / EXTERNAL APPROVAL PENDING**.
+#### [MODIFY] [README.md](README.md)
+- Accurate Phase 3A status: **IN PROGRESS / PHYSICAL-DEVICE ACCEPTANCE PENDING**.
+- Recorded **APPROVED** status for the UX 2.0 Master Plan.
 
-#### [MODIFY] [README.md](file:///C:/Users/Justin/AndroidStudioProjects/Mapstead-master/README.md)
-- Added concise **Beginner-First UX 2.0** status block.
-- Reconciled Phase 3A status block.
+#### [MODIFY] [ROADMAP.md](ROADMAP.md)
+- Updated UX 2.0 status with terminology and information architecture decision tracking.
+- Master-plan document: **APPROVED**.
+
+#### [MODIFY] [BEGINNER_FIRST_UX_MASTER_PLAN.md](BEGINNER_FIRST_UX_MASTER_PLAN.md)
+- Recorded Master Plan approval in the progress tracker.
+- Added link to the new Decision Pack companion document.
+
+#### [MODIFY] [CHANGELOG.md](CHANGELOG.md)
+- Added entry for Master Plan approval and Decision Pack creation.
 
 ## Verification Plan
 
@@ -52,5 +58,5 @@ This is a documentation-only pass to correct the strategic master plan and roadm
 
 ### Manual Verification
 - Verify all internal Markdown links in the root documents resolve correctly.
-- Verify consistency of Phase 3A status across README, ROADMAP, and the Master Plan.
-- Verify Beginner-First UX 2.0 production redesign remains marked NOT STARTED.
+- Verify consistency of status across all updated files.
+- Verify Beginner-First UX 2.0 production redesign remains marked **NOT STARTED**.

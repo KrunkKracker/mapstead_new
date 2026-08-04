@@ -3,6 +3,10 @@
 ## [0.03] - Unreleased
 
 ### Added
+- **Beginner-First UX 2.0 Strategic Redesign**:
+    - **Master Plan Approval**: Recorded external approval of the authoritative redesign strategy in `BEGINNER_FIRST_UX_MASTER_PLAN.md`.
+    - **Decision Pack Creation**: Created `BEGINNER_FIRST_UX_TERMINOLOGY_IA_DECISION_PACK.md` providing specific recommendations for customer-facing terminology and information architecture.
+    - **Navigation Strategy**: Proposed a Home/Map/Items/Tasks primary navigation structure for visual prototype evaluation.
 - **Beginner-First UX Redesign Phase 3A3 — Detail Navigation & Consistency**:
     - **Maintenance Context Hub**: Corrected the Maintenance filter to be the true source of context for adding new records. Clearing the filter now correctly resets the preselected item for new tasks.
     - **Owner-Return Navigation**: Implemented a specialized `openOrReturnToInfrastructureOwner` routing helper. Returning to an item from its attachments or maintenance records now pops back to the existing detail screen instead of stacking duplicate copies.
