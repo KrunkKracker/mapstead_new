@@ -153,6 +153,7 @@ fun MapActionButtons(
     onAddClick: () -> Unit = {},
     onBasemapClick: () -> Unit = {},
     onMyLocationClick: () -> Unit = {},
+    onRecenterClick: () -> Unit = {},
     onHelpClick: () -> Unit = {},
     isAddEnabled: Boolean = true
 ) {
@@ -175,6 +176,7 @@ fun MapActionButtons(
                 modifier = Modifier.testTag("AddMenuButton")
             )
 
+            ActionButton(Icons.Default.CenterFocusStrong, stringResource(R.string.recenter_on_property), false, true, onRecenterClick, Modifier.testTag("RecenterPropertyButton"))
             ActionButton(Icons.Default.MyLocation, stringResource(R.string.my_location), isPhoneLocationVisible, true, onMyLocationClick, Modifier.testTag("MyLocationButton"))
         }
     } else {
@@ -184,6 +186,7 @@ fun MapActionButtons(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             ActionButton(Icons.Default.MyLocation, stringResource(R.string.my_location), isPhoneLocationVisible, true, onMyLocationClick, Modifier.testTag("MyLocationButton"))
+            ActionButton(Icons.Default.CenterFocusStrong, stringResource(R.string.recenter_on_property), false, true, onRecenterClick, Modifier.testTag("RecenterPropertyButton"))
             
             AddActionButton(
                 isEnabled = isAddEnabled,

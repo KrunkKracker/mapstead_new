@@ -114,6 +114,19 @@ fun MapScreen(
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
 
+    LaunchedEffect(Unit) {
+        viewModel.events.collect { event ->
+            when (event) {
+                is MapEvent.NavigateToAttachmentEditor -> {
+                    onNavigateToEditor(event.propertyId, event.ownerType, event.ownerId, event.uri, event.token, event.origin)
+                }
+                is MapEvent.Error -> {
+                    snackbarHostState.showSnackbar(context.getString(event.messageRes))
+                }
+            }
+        }
+    }
+
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
     ) { uri ->
@@ -1375,6 +1388,7 @@ fun MapScreenContent(
                 isLayerPanelOpen = state.layerPanelOpen, onEmergencyClick = onEmergencyClick, 
                 onLayersClick = onLayersClick, onAddClick = onAddClick, 
                 onBasemapClick = onBasemapClick, onMyLocationClick = onMyLocationClick, 
+                onRecenterClick = onReturnToProperty,
                 onHelpClick = { onShowMapHelp(true) },
                 isAddEnabled = state.addToMapAvailability.isAvailable
             )

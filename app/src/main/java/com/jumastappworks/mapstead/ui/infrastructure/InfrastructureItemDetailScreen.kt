@@ -16,7 +16,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.jumastappworks.mapstead.R
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import com.jumastappworks.mapstead.data.attachments.AttachmentNavigationOrigin
+import com.jumastappworks.mapstead.data.backup.TemporaryCameraCapture
+import kotlinx.coroutines.launch
 import com.jumastappworks.mapstead.data.db.entities.InfrastructureItemEntity
 import com.jumastappworks.mapstead.data.db.entities.MapFeatureEntity
 import com.jumastappworks.mapstead.ui.components.AttachmentsSection
@@ -34,8 +39,7 @@ fun InfrastructureItemDetailScreen(
     onShowOnMap: (UUID, UUID, String) -> Unit,
     onAddMaintenance: (UUID, UUID) -> Unit,
     onViewMaintenance: (UUID) -> Unit,
-    onAddPhoto: (UUID, UUID) -> Unit,
-    onAddFile: (UUID, UUID) -> Unit,
+    onNavigateToEditor: (UUID, String, UUID, String, String?, AttachmentNavigationOrigin) -> Unit,
     onViewAllAttachments: (UUID) -> Unit,
     onAttachmentClick: (UUID, UUID) -> Unit,
     onManageRelationships: (UUID) -> Unit,
@@ -43,6 +47,32 @@ fun InfrastructureItemDetailScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     var showDeleteConfirm by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+
+    val photoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        uri?.let { onNavigateToEditor(propertyId, "INFRASTRUCTURE", itemId, it.toString(), null, AttachmentNavigationOrigin.INFRASTRUCTURE) }
+    }
+
+    val documentPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        uri?.let { onNavigateToEditor(propertyId, "INFRASTRUCTURE", itemId, it.toString(), null, AttachmentNavigationOrigin.INFRASTRUCTURE) }
+    }
+
+    var tempCapture by remember { mutableStateOf<TemporaryCameraCapture?>(null) }
+    val cameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { success ->
+        val capture = tempCapture
+        if (success && capture != null) {
+            onNavigateToEditor(propertyId, "INFRASTRUCTURE", itemId, capture.uri.toString(), capture.token, AttachmentNavigationOrigin.INFRASTRUCTURE)
+        } else {
+            capture?.token?.let { viewModel.deleteCameraCapture(it) }
+        }
+        tempCapture = null
+    }
 
     LaunchedEffect(propertyId, itemId) {
         viewModel.init(propertyId, itemId)
@@ -119,8 +149,20 @@ fun InfrastructureItemDetailScreen(
                 onShowOnMap = { planId, fid -> onShowOnMap(propertyId, planId, fid) },
                 onAddMaintenance = { onAddMaintenance(propertyId, itemId) },
                 onViewMaintenance = { onViewMaintenance(itemId) },
-                onAddPhoto = { onAddPhoto(propertyId, itemId) },
-                onAddFile = { onAddFile(propertyId, itemId) },
+                onTakePhoto = {
+                    scope.launch {
+                        viewModel.createCameraCapture()?.let { capture ->
+                            tempCapture = capture
+                            cameraLauncher.launch(capture.uri)
+                        }
+                    }
+                },
+                onChoosePhoto = {
+                    photoPickerLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                },
+                onAddFile = {
+                    documentPickerLauncher.launch(arrayOf("application/pdf", "text/plain", "image/*"))
+                },
                 onViewAllAttachments = { onViewAllAttachments(propertyId) },
                 onAttachmentClick = { onAttachmentClick(propertyId, it) },
                 onManageRelationships = { onManageRelationships(propertyId) },
@@ -164,7 +206,8 @@ private fun InfrastructureItemDetailContent(
     onShowOnMap: (UUID, String) -> Unit,
     onAddMaintenance: () -> Unit,
     onViewMaintenance: () -> Unit,
-    onAddPhoto: () -> Unit,
+    onTakePhoto: () -> Unit,
+    onChoosePhoto: () -> Unit,
     onAddFile: () -> Unit,
     onViewAllAttachments: () -> Unit,
     onAttachmentClick: (UUID) -> Unit,
@@ -254,8 +297,8 @@ private fun InfrastructureItemDetailContent(
         DetailSection(title = stringResource(R.string.attachments_header)) {
             AttachmentsSection(
                 attachments = uiState.attachments,
-                onAddPhoto = onAddPhoto,
-                onTakeExtentPhoto = onAddPhoto,
+                onAddPhoto = onChoosePhoto,
+                onTakeExtentPhoto = onTakePhoto,
                 onAddDocument = onAddFile,
                 onViewAll = onViewAllAttachments,
                 onAttachmentClick = onAttachmentClick

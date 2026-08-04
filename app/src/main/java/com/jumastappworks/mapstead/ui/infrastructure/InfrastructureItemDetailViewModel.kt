@@ -46,6 +46,14 @@ class InfrastructureItemDetailViewModel @Inject constructor(
     private val relationshipRepository: InfrastructureRelationshipRepository
 ) : ViewModel() {
 
+    fun createCameraCapture(): com.jumastappworks.mapstead.data.backup.TemporaryCameraCapture? {
+        return attachmentRepository.createTempCameraUri().getOrNull()
+    }
+
+    fun deleteCameraCapture(token: String) {
+        attachmentRepository.deleteTempCameraCapture(token)
+    }
+
     private val _itemId = MutableStateFlow<UUID?>(null)
     private val _propertyId = MutableStateFlow<UUID?>(null)
     private val _isDeleting = MutableStateFlow(false)

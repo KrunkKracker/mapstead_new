@@ -56,7 +56,7 @@
 
     <!-- Forms & Actions -->
     <string name="add_label">Add</string>
-    <string name="add_attachment_title">Add Attachment</string>
+    <string name="add_attachment_title">Add Photo or File</string>
     <string name="edit_attachment_title">Edit Attachment</string>
     <string name="add_item_title">Add Item</string>
     <string name="edit_item_title">Edit Item</string>
@@ -189,6 +189,10 @@
     <string name="take_photo">Take Photo</string>
     <string name="choose_photo">Choose Photo</string>
     <string name="choose_document">Choose Document</string>
+    <string name="add_attachment">Add Photo or File</string>
+    <string name="add_photo_or_file">Add Photo or File</string>
+    <string name="recenter_on_property">Recenter on Property</string>
+    <string name="desc_recenter_on_property">Move the map back to the property center</string>
     <string name="cover_photo_checkbox">Set as Cover Photo</string>
 
     <!-- Map & Layers -->
@@ -563,7 +567,7 @@
     <string name="preset_gas_line">Gas Line</string>
     <string name="preset_gas_line_desc">Natural gas or propane line</string>
     <string name="label_gas_line">Gas Line</string>
-    <string name="preset_drainage">Drainage Route</string>
+    <string name="preset_drainage">Drawn Route</string>
     <string name="preset_drainage_desc">Culvert, ditch, or drain pipe</string>
     <string name="label_drainage">Drainage</string>
     <string name="preset_irrigation">Irrigation Line</string>
@@ -641,6 +645,8 @@
     <string name="help_basemap_desc">Changes the background map. Available detail varies by provider and location.</string>
     <string name="help_layers_title">Layers</string>
     <string name="help_layers_desc">Shows or hides groups of mapped property information.</string>
+    <string name="help_recenter_title">Recenter on Property</string>
+    <string name="help_recenter_desc">Move the map back to the center of your property.</string>
     <string name="help_emergency_title">Emergency Mode</string>
     <string name="help_emergency_desc">Quickly opens important property and safety information. It depends on information you have entered.</string>
 
@@ -807,7 +813,6 @@
 
     <!-- Legacy / Essential mapping strings (Keep for safety) -->
     <string name="app_version">Version %1$s</string>
-    <string name="add_attachment">Add Attachment</string>
     <string name="add_item">Add Item</string>
     <string name="edit_item">Edit Item</string>
     <string name="infrastructure">Systems &amp; Equipment</string>
@@ -978,54 +983,25 @@
     <string name="empty_reports_title">No Reports Generated</string>
     <string name="empty_reports_desc">Generate PDF reports for your own records or for property handoff.</string>
 
-    <!-- Settings Reorg -->
-    <string name="settings_appearance">APPEARANCE</string>
-    <string name="settings_measurements">MEASUREMENTS</string>
-    <string name="settings_map_location">MAP &amp; LOCATION</string>
-    <string name="settings_guidance_help">GUIDANCE &amp; HELP</string>
-    <string name="settings_data_backup">DATA &amp; BACKUP</string>
-    <string name="settings_about_safety">ABOUT &amp; SAFETY</string>
-    <string name="settings_guidance_desc">Manage help and onboarding guidance.</string>
-    <string name="reset_guidance">Reset Dismissed Guidance</string>
-    <string name="reset_guidance_confirm">Restore all dismissed onboarding and checklist guidance?</string>
-    <string name="measurement_explanation">Maps and measurements will be displayed in your preferred units. Canonical data remains unchanged.</string>
-    <string name="local_storage_info">Data and attachments are managed locally on this device. Regular backups are recommended.</string>
-    <string name="reset_guidance_label">Restore Onboarding</string>
-    <string name="reset_boundary_ack">Reset Boundary Disclaimer</string>
-    <string name="reset_boundary_ack_confirm">Are you sure? The reference-boundary notice will appear again the next time you create a property boundary.</string>
-    <string name="reset_welcome_label">Restore Welcome</string>
-    <string name="reset_welcome_desc">Show the welcome screen again for empty properties.</string>
-    <string name="reset_map_guidance_label">Restore Map Tips</string>
-    <string name="reset_map_guidance_desc">Show first-use map guidance again.</string>
-    <string name="reset_label">Reset</string>
-    <string name="reset_complete_gs">Getting Started is available again.</string>
-    <string name="reset_complete_map">Map guidance will appear again.</string>
-    <string name="reset_complete_boundary">The boundary notice will appear next time.</string>
-    <string name="what_is_this">What is this?</string>
-    <string name="app_info">App Info</string>
-    <string name="privacy_policy">Privacy Policy</string>
-    <string name="theme_system">System</string>
-    <string name="theme_light">Light</string>
-    <string name="theme_dark">Dark</string>
-    <string name="your_properties">Your Properties</string>
-    <string name="archived_properties">Archived Properties</string>
-    <string name="delete_property_confirm_perm">Are you sure you want to permanently delete \"%1$s\"? This cannot be undone.</string>
-    <string name="archive_property_desc">Archive Property</string>
-    <string name="systems_label">Systems</string>
-    <string name="connected_label">Connected</string>
-    <string name="basemap_limitations_title">Basemap Limitations</string>
-    <string name="basemap_limitations_text">Basemap detail varies by provider and location. Some maps may show buildings while others do not. User-created outlines remain approximate.</string>
-    <string name="critical_systems_warning">CRITICAL SYSTEMS - ACCESS ONLY IN EMERGENCY</string>
+    <!-- Settings Feedback -->
+    <string name="welcome_guidance_reset">Welcome guidance reset.</string>
 
-    <!-- Help Topics - Reminders (Add Missing) -->
-    <string name="help_topic_reminders">Reminders</string>
-    <string name="help_summary_reminders">Set up device notifications for recurring tasks.</string>
-    <string name="help_rem_section_1">Task Notifications</string>
-    <string name="help_rem_body_1">If you grant the necessary permission, Mapstead can send you a notification when a maintenance task is due. Reminders can be linked to specific systems like filters or pumps.</string>
-    <string name="help_rem_section_2">Saving Without Notifications</string>
-    <string name="help_rem_body_2">If you prefer not to receive alerts on your device, you can still save reminders. They will be highlighted in the maintenance hub when they are due or overdue.</string>
+    <!-- Removal Dialogs -->
+    <string name="remove_property_title">Remove property?</string>
+    <string name="remove_property_message">%1$s will be removed from normal use. Related records and app-managed files are not permanently erased by this action.</string>
+    <string name="remove_property_confirm">Remove Property</string>
 
-    <!-- Help Topics - Maintenance (Add Missing) -->
+    <!-- Archive Confirmation -->
+    <string name="archive_property_title">Archive Property?</string>
+    <string name="archive_property_message">Archive \"%1$s\"? It will be hidden from your active properties list. You can restore it later from Archived Properties.</string>
+    <string name="archive_label">Archive</string>
+
+    <!-- Map Recovery -->
+    <string name="map_recovery_title">Map Connection Issue</string>
+    <string name="map_recovery_message">The map was unable to load its visual layers. You can retry loading or return to the property center.</string>
+    <string name="retry_map">Retry Map</string>
+    <string name="return_to_property">Return to Property</string>
+
     <string name="help_topic_maintenance">Maintenance</string>
     <string name="help_summary_maintenance">Track service history and keep a log of all work performed.</string>
     <string name="help_maint_section_1">Service Records</string>
@@ -1033,7 +1009,30 @@
     <string name="help_maint_section_2">Next Due Dates</string>
     <string name="help_maint_body_2">When adding a record, you can set an optional next due date. This helps you track upcoming tasks without setting up formal notifications.</string>
 
-    <!-- Privacy Screen -->
+    <string name="help_topic_reminders">Reminders</string>
+    <string name="help_summary_reminders">Set up device notifications for recurring tasks.</string>
+    <string name="help_rem_section_1">Task Notifications</string>
+    <string name="help_rem_body_1">If you grant the necessary permission, Mapstead can send you a notification when a maintenance task is due. Reminders can be linked to specific systems like filters or pumps.</string>
+    <string name="help_rem_section_2">Saving Without Notifications</string>
+    <string name="help_rem_body_2">If you prefer not to receive alerts on your device, you can still save reminders. They will be highlighted in the maintenance hub when they are due or overdue.</string>
+
+    <string name="what_is_this">What is this?</string>
+    <string name="systems_label">Systems</string>
+    <string name="connected_label">Connected</string>
+    <string name="critical_systems_warning">CRITICAL SYSTEMS - ACCESS ONLY IN EMERGENCY</string>
+    <string name="app_info">App Info</string>
+    <string name="product_by_jumast">A Product of JuMaSt Appworks LLC</string>
+    <string name="about_purpose_body">Mapstead helps you organize and document your property equipment, systems, and maintenance records locally.</string>
+    <string name="about_storage_body">All data is stored locally on this device. Use the Export or Handoff features to create backups of your records.</string>
+    <string name="privacy_policy">Privacy Policy</string>
+    <string name="gs_select_property_hint">Select a property to track setup progress.</string>
+    <string name="select_property">Select Property</string>
+    <string name="help_category_basics">Basics</string>
+    <string name="help_category_mapping">Mapping</string>
+    <string name="help_category_property_records">Property Records</string>
+    <string name="help_category_maintenance_safety">Maintenance &amp; Safety</string>
+    <string name="help_category_data_app_info">Data &amp; App Information</string>
+
     <string name="privacy_section_storage_title">Local Data Storage</string>
     <string name="privacy_section_storage_body">Mapstead is designed as an offline-first application. All property details, equipment records, and maintenance logs are stored locally on your device\'s internal storage.</string>
     <string name="privacy_section_files_title">Attachments &amp; Files</string>
@@ -1054,63 +1053,56 @@
     <string name="privacy_section_removal_title">Data Removal</string>
     <string name="privacy_section_removal_body">Removing a property hides it from normal use by marking it deleted. Related records and app-managed files may remain until dedicated cleanup or permanent-deletion support is applied.</string>
 
-    <!-- About Screen -->
-    <string name="about_purpose_title">Our Purpose</string>
-    <string name="about_purpose_body">Mapstead helps you organize and document your property equipment, systems, and maintenance records locally.</string>
-    <string name="about_storage_body">All data is stored locally on this device. Use the Export or Handoff features to create backups of your records.</string>
-
-    <!-- Getting Started -->
-    <string name="gs_select_property_hint">Select a property to track setup progress.</string>
-    <string name="select_property">Select Property</string>
-    <string name="select_a_property">Select a Property</string>
-    <string name="property_location_title">Property Location</string>
-    <string name="map_center_location_title">Map Center Location</string>
-    <string name="use_my_location">Use My Location</string>
-    <string name="use_property_location">Use Property Location</string>
-    <string name="clear_location">Clear Location</string>
-    <string name="find_by_address">Find by Address</string>
-    <string name="find_from_address">Find from Address</string>
-    <string name="apply_coordinates">Apply Coordinates</string>
-    <string name="explore_example_property">Explore Example Property</string>
-    <string name="remove_example_property_action">Remove Example Property</string>
-    <string name="change_location">Change</string>
+    <string name="settings_appearance">APPEARANCE</string>
+    <string name="settings_measurements">MEASUREMENTS</string>
+    <string name="measurement_explanation">Maps and measurements will be displayed in your preferred units. Canonical data remains unchanged.</string>
+    <string name="settings_map_location">MAP &amp; LOCATION</string>
+    <string name="reset_map_guidance_label">Restore Map Tips</string>
+    <string name="reset_map_guidance_desc">Show first-use map guidance again.</string>
+    <string name="reset_label">Reset</string>
+    <string name="reset_complete_map">Map guidance will appear again.</string>
+    <string name="basemap_limitations_title">Basemap Limitations</string>
+    <string name="basemap_limitations_text">Basemap detail varies by provider and location. Some maps may show buildings while others do not. User-created outlines remain approximate.</string>
+    <string name="settings_guidance_help">GUIDANCE &amp; HELP</string>
+    <string name="reset_welcome_label">Restore Welcome</string>
+    <string name="reset_welcome_desc">Show the welcome screen again for empty properties.</string>
+    <string name="reset_guidance_label">Restore Onboarding</string>
+    <string name="settings_guidance_desc">Manage help and onboarding guidance.</string>
+    <string name="reset_complete_gs">Getting Started is available again.</string>
+    <string name="settings_data_backup">DATA &amp; BACKUP</string>
+    <string name="local_storage_info">Data and attachments are managed locally on this device. Regular backups are recommended.</string>
+    <string name="settings_about_safety">ABOUT &amp; SAFETY</string>
+    <string name="reset_boundary_ack">Reset Boundary Disclaimer</string>
+    <string name="reset_boundary_ack_confirm">Are you sure? The reference-boundary notice will appear again the next time you create a property boundary.</string>
+    <string name="reset_complete_boundary">The boundary notice will appear next time.</string>
+    <string name="theme_system">System</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
+    <string name="overwrite_coords_title">Overwrite coordinates?</string>
+    <string name="overwrite_coords_message">Using your location will replace the current coordinates. Continue?</string>
+    <string name="overwrite_label">Overwrite</string>
     <string name="source_property_location">Source: Property Location</string>
     <string name="source_address">Source: Address</string>
     <string name="source_phone_location">Source: Phone Location</string>
     <string name="source_entered_coordinates">Source: Entered Coordinates</string>
-    <string name="overwrite_coords_title">Overwrite coordinates?</string>
-    <string name="overwrite_coords_message">Using your location will replace the current coordinates. Continue?</string>
-    <string name="overwrite_coords_address_message">Applying these coordinates will replace the current ones. Continue?</string>
-    <string name="overwrite_label">Overwrite</string>
-    <string name="select_address">Select Address</string>
+    <string name="change_location">Change</string>
+    <string name="map_center_location_title">Map Center Location</string>
+    <string name="use_property_location">Use Property Location</string>
+    <string name="use_my_location">Use My Location</string>
     <string name="manual_coordinates">Coordinates</string>
+    <string name="apply_coordinates">Apply Coordinates</string>
+    <string name="find_by_address">Find by Address</string>
+    <string name="property_location_title">Property Location</string>
+    <string name="clear_location">Clear Location</string>
+    <string name="find_from_address">Find from Address</string>
+    <string name="select_address">Select Address</string>
+    <string name="overwrite_coords_address_message">Applying these coordinates will replace the current ones. Continue?</string>
+    <string name="your_properties">Your Properties</string>
+    <string name="archived_properties">Archived Properties</string>
+    <string name="remove_example_property_action">Remove Example Property</string>
+    <string name="explore_example_property">Explore Example Property</string>
+    <string name="archive_property_desc">Archive Property</string>
 
-    <!-- Help Categories -->
-    <string name="help_category_basics">Basics</string>
-    <string name="help_category_mapping">Mapping</string>
-    <string name="help_category_property_records">Property Records</string>
-    <string name="help_category_maintenance_safety">Maintenance &amp; Safety</string>
-    <string name="help_category_data_app_info">Data &amp; App Information</string>
-    <string name="product_by_jumast">A Product of JuMaSt Appworks LLC</string>
-
-    <!-- Settings Feedback -->
-    <string name="welcome_guidance_reset">Welcome guidance reset.</string>
-
-    <!-- Removal Dialogs -->
-    <string name="remove_property_title">Remove property?</string>
-    <string name="remove_property_message">%1$s will be removed from normal use. Related records and app-managed files are not permanently erased by this action.</string>
-    <string name="remove_property_confirm">Remove Property</string>
-
-    <!-- Archive Confirmation -->
-    <string name="archive_property_title">Archive Property?</string>
-    <string name="archive_property_message">Archive \"%1$s\"? It will be hidden from your active properties list. You can restore it later from Archived Properties.</string>
-    <string name="archive_label">Archive</string>
-
-    <!-- Map Recovery -->
-    <string name="map_recovery_title">Map Connection Issue</string>
-    <string name="map_recovery_message">The map was unable to load its visual layers. You can retry loading or return to the property center.</string>
-    <string name="retry_map">Retry Map</string>
-    <string name="return_to_property">Return to Property</string>
     <string name="error_basemap_load_failed">Failed to load background map.</string>
     <string name="label_default_polygon">Area</string>
     <string name="unfinished_item_not_saved">Your unfinished item was not saved. You can add it again.</string>

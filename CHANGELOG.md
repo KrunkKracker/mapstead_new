@@ -14,6 +14,15 @@
     - **Hardened Loading States**: Established strict UI routing to ensure saved features never fall back to the editable form while details are loading or if loading fails.
     - **Safe Geometry Derivation**: Moved geometry parsing and coordinate formatting into the ViewModel to prevent UI-level crashes on malformed data.
 
+- **Beginner-First UX Redesign Phase 3A2.1 — Map Restoration & Attachment Correction**:
+    - **Viewport Restoration**: Implemented automatic camera restoration after MapView recreation (e.g., when returning from a photo picker or sub-screen), preserving the last valid property/plan context.
+    - **Recenter on Property**: Introduced a dedicated map control and hardened camera resolver logic to move the map back to the property center using a prioritized context chain (Property Coords > Feature Bounds > Saved Plan Camera).
+    - **Infrastructure Attachment Acquisition**: Corrected a major defect where taking a photo from a system item detail screen failed to launch the camera or incorrectly staged the result.
+    - **Map Feature Photo Navigation**: Fixed a regression where map-feature photos were merely staged instead of triggering the correct `AttachmentEditor` flow.
+    - **Idempotent Context Opening**: Hardened `openMapContext` to ignore redundant opening requests with the same token, preventing unnecessary editor and camera resets.
+    - **Improved Labeling**: Renamed technical attachment actions to beginner-friendly "Add Photo or File" wording across all primary screens.
+    - **Behavioral JVM Truth**: Added comprehensive tests for camera restoration, idempotent opening, and cross-screen attachment navigation.
+
 - **Beginner-First UX Redesign Phase 3A1 — Unified Infrastructure Details Foundation**:
     - **Infrastructure View/Edit Separation**: Introduced a dedicated read-only `InfrastructureItemDetailScreen` as the primary entry point for existing items, moving editing to a focused `InfrastructureItemEditorScreen`.
     - **Unified Detail Architecture**: Established a consistent information hierarchy using new shared components (`UnifiedItemDetailScaffold`, `UnifiedItemHeader`, `KeyValueRow`).

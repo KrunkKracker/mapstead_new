@@ -8,6 +8,7 @@ import com.jumastappworks.mapstead.data.prefs.UserPreferences
 import com.jumastappworks.mapstead.data.attachments.StagedCreationPhotoState
 import com.jumastappworks.mapstead.util.PolygonValidationReason
 import com.jumastappworks.mapstead.util.PolygonValidationResult
+import kotlinx.serialization.Serializable
 import java.util.UUID
 
 enum class BasemapLoadStatus { IDLE, LOADING_PRIMARY, LOADING_BACKUP, LOADED, FAILED }
@@ -320,6 +321,16 @@ data class FeatureLinkEditorSession(
     val initialSelection: com.jumastappworks.mapstead.data.mapping.SystemItemLinkSelection,
     val currentSelection: com.jumastappworks.mapstead.data.mapping.SystemItemLinkSelection,
     val pendingDraft: com.jumastappworks.mapstead.data.mapping.PendingSystemItemDraft? = null
+)
+
+@Serializable
+data class CameraRestorationRequest(
+    @Serializable(with = com.jumastappworks.mapstead.util.UuidSerializer::class) val planId: UUID,
+    val latitude: Double,
+    val longitude: Double,
+    val zoom: Double,
+    val bearing: Double,
+    val timestamp: Long = System.currentTimeMillis()
 )
 
 data class MapUiState(

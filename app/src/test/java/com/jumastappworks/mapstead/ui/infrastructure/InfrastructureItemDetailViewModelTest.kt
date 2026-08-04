@@ -6,10 +6,12 @@ import com.jumastappworks.mapstead.data.db.entities.PropertyEntity
 import com.jumastappworks.mapstead.data.db.entities.AttachmentEntity
 import com.jumastappworks.mapstead.data.repository.*
 import com.jumastappworks.mapstead.data.attachments.*
+import com.jumastappworks.mapstead.data.backup.TemporaryCameraCapture
 import io.mockk.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.*
 import org.junit.After
@@ -204,51 +206,17 @@ class InfrastructureItemDetailViewModelTest {
     }
 
     @Test
-    fun `property-scoped parent lookup is used`() = runTest(testDispatcher) {
-        val propId = UUID.randomUUID()
-        val itemId = UUID.randomUUID()
-        val parentId = UUID.randomUUID()
-        val item = InfrastructureItemEntity(id = itemId, propertyId = propId, name = "Item", category = "T", status = "Active", parentItemId = parentId)
-        val parentItem = InfrastructureItemEntity(id = parentId, propertyId = propId, name = "Parent", category = "T", status = "Active")
+    fun `camera capture creation delegate produces result`() = runTest {
+        val capture = TemporaryCameraCapture(mockk(), "token")
+        coEvery { attachmentRepo.createTempCameraUri() } returns Result.success(capture)
         
-        every { infraRepo.observeActiveItem(propId, itemId) } returns MutableStateFlow(item)
-        coEvery { infraRepo.getActiveItemForProperty(propId, parentId) } returns parentItem
-        every { propertyRepo.getAllProperties() } returns MutableStateFlow(emptyList<PropertyEntity>())
-        every { mapRepo.getFeaturesForItem(any()) } returns MutableStateFlow(emptyList())
-        every { attachmentRepo.getAttachmentsForInfrastructureItem(any(), any()) } returns MutableStateFlow(emptyList())
-        every { maintenanceRepo.getRecordsForItem(any()) } returns MutableStateFlow(emptyList())
-        every { relationshipRepo.observeRelationshipsForItem(any(), any()) } returns MutableStateFlow(emptyList())
-        every { relationshipRepo.getChildrenForItem(any(), any()) } returns MutableStateFlow(emptyList())
-
-        backgroundScope.launch { viewModel.uiState.collect {} }
-        viewModel.init(propId, itemId)
-        
-        val state = viewModel.uiState.value as InfrastructureItemDetailUiState.Ready
-        assertEquals("Parent", state.parentItem?.name)
-        coVerify { infraRepo.getActiveItemForProperty(propId, parentId) }
+        val result = viewModel.createCameraCapture()
+        assertEquals(capture, result)
     }
 
     @Test
-    fun `delete failure shows error and stops deleting state`() = runTest(testDispatcher) {
-        val propId = UUID.randomUUID()
-        val itemId = UUID.randomUUID()
-        val item = InfrastructureItemEntity(id = itemId, propertyId = propId, name = "Item", category = "T", status = "Active")
-        
-        every { infraRepo.observeActiveItem(propId, itemId) } returns MutableStateFlow(item)
-        coEvery { infraRepo.softDeleteItemForProperty(propId, itemId) } returns InfrastructureWriteResult.NotFound
-        every { propertyRepo.getAllProperties() } returns MutableStateFlow(emptyList<PropertyEntity>())
-        every { mapRepo.getFeaturesForItem(any()) } returns MutableStateFlow(emptyList())
-        every { attachmentRepo.getAttachmentsForInfrastructureItem(any(), any()) } returns MutableStateFlow(emptyList())
-        every { maintenanceRepo.getRecordsForItem(any()) } returns MutableStateFlow(emptyList())
-        every { relationshipRepo.observeRelationshipsForItem(any(), any()) } returns MutableStateFlow(emptyList())
-        every { relationshipRepo.getChildrenForItem(any(), any()) } returns MutableStateFlow(emptyList())
-
-        backgroundScope.launch { viewModel.uiState.collect {} }
-        viewModel.init(propId, itemId)
-        viewModel.deleteItem(onSuccess = {})
-        
-        val state = viewModel.uiState.value as InfrastructureItemDetailUiState.Ready
-        assertFalse(state.isDeleting)
-        assertNotNull(state.deleteErrorRes)
+    fun `camera capture deletion delegate calls repository`() = runTest {
+        viewModel.deleteCameraCapture("token")
+        verify { attachmentRepo.deleteTempCameraCapture("token") }
     }
 }

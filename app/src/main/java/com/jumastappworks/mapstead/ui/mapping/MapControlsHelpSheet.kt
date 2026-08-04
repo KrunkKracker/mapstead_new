@@ -63,6 +63,12 @@ fun MapControlsHelpSheet(
         )
 
         HelpItem(
+            title = stringResource(R.string.help_recenter_title),
+            description = stringResource(R.string.help_recenter_desc),
+            icon = Icons.Default.CenterFocusStrong
+        )
+
+        HelpItem(
             title = stringResource(R.string.help_emergency_title),
             description = stringResource(R.string.help_emergency_desc),
             icon = Icons.Default.Warning,

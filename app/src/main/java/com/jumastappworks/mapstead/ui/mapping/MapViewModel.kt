@@ -288,6 +288,18 @@ private fun evaluateAddToMapAvailability(
     return AddToMapAvailability(true)
 }
 
+sealed interface MapEvent {
+    data class NavigateToAttachmentEditor(
+        val propertyId: UUID,
+        val ownerType: String,
+        val ownerId: UUID,
+        val uri: String,
+        val token: String,
+        val origin: AttachmentNavigationOrigin
+    ) : MapEvent
+    data class Error(val messageRes: Int) : MapEvent
+}
+
 @OptIn(ExperimentalCoroutinesApi::class, ExperimentalMaterial3Api::class)
 @HiltViewModel
 class MapViewModel @Inject constructor(
@@ -322,6 +334,7 @@ class MapViewModel @Inject constructor(
         private const val KEY_PENDING_PHOTO_FEATURE_ID = "pending_photo_feature_id"
         private const val KEY_IN_FLIGHT_URI = "in_flight_photo_uri"
         private const val KEY_IN_FLIGHT_TOKEN = "in_flight_photo_token"
+        private const val KEY_VIEWPORT_RESTORATION = "viewport_restoration"
         
         fun resolveSuggestions(session: GuidedMappingSession?, target: FeatureEditorTarget?, propertyId: UUID?, planId: UUID?): GuidedMapPreset? {
             if (session == null || target == null || propertyId == null || planId == null) return null
@@ -438,7 +451,14 @@ class MapViewModel @Inject constructor(
     private val _deleteFeatureErrorRes = MutableStateFlow<Int?>(null)
     private val _featureDetailRetryGeneration = MutableStateFlow(0L)
     private val _isLineEditDirty = MutableStateFlow(false)
+
+    private val _events = MutableSharedFlow<MapEvent>()
+    val events = _events.asSharedFlow()
+
     private val _saveOutcome = MutableStateFlow<GuidedSaveOutcome?>(null)
+    private val _viewportRestorationStr = savedStateHandle.getStateFlow<String?>(KEY_VIEWPORT_RESTORATION, null)
+    private val _viewportRestoration = _viewportRestorationStr.map { it?.let { try { Json.decodeFromString<CameraRestorationRequest>(it) } catch(e: Exception) { null } } }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     private val _pendingPhotoPurposeStr = savedStateHandle.getStateFlow<String?>(KEY_PENDING_PHOTO_PURPOSE, null)
     private val _pendingPhotoFeatureIdStr = savedStateHandle.getStateFlow<String?>(KEY_PENDING_PHOTO_FEATURE_ID, null)
@@ -481,7 +501,7 @@ class MapViewModel @Inject constructor(
 
     private val _guidedSession = MutableStateFlow<GuidedMappingSession?>(null)
 
-    val featureDetailState: StateFlow<FeatureDetailUiState?> = combine(
+    private val _detailInputBatch = combine(
         _propertyId,
         _selectedPersistedFeature,
         _isEditingFeature,
@@ -489,15 +509,17 @@ class MapViewModel @Inject constructor(
         _deleteFeatureErrorRes,
         _measurementSystem,
         _featureDetailRetryGeneration
-    ) { array ->
+    ) { array -> array }
+
+    val featureDetailState: StateFlow<FeatureDetailUiState?> = _detailInputBatch.flatMapLatest { array ->
         val pid = array[0] as UUID?
         val feature = array[1] as MapFeatureEntity?
         val isEditing = array[2] as Boolean
         val isDeleting = array[3] as Boolean
         val deleteErrorRes = array[4] as Int?
         val units = array[5] as com.jumastappworks.mapstead.data.prefs.MeasurementSystem
-        
-        if (feature == null || isEditing || pid == null) return@combine flowOf(null)
+
+        if (feature == null || isEditing || pid == null) return@flatMapLatest flowOf(null)
         
         val linkedRecordFlow = feature.infrastructureItemId?.let { itemId ->
             infrastructureRepository.observeActiveItem(pid, itemId).map { item ->
@@ -559,8 +581,7 @@ class MapViewModel @Inject constructor(
             readyState
         }.onStart { emit(FeatureDetailUiState.Loading) }
         .catch { emit(FeatureDetailUiState.Error(R.string.error_loading_feature_details)) }
-    }.flatMapLatest { it }
-    .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     private fun derivePointCoordinates(feature: MapFeatureEntity): String? {
         if (feature.geometryType != "POINT") return null
@@ -1104,6 +1125,9 @@ class MapViewModel @Inject constructor(
     }.stateIn(viewModelScope, SharingStarted.Eagerly, MapUiState())
 
     fun openMapContext(propertyId: UUID, planId: UUID, openingToken: String) {
+        if (_openingToken.value == openingToken && _planId.value == planId && _propertyId.value == propertyId) {
+            return
+        }
         setProperty(propertyId)
         selectPlan(planId, openingToken = openingToken)
     }
@@ -1125,7 +1149,9 @@ class MapViewModel @Inject constructor(
 
     fun selectPlan(id: UUID, force: Boolean = false, openingToken: String? = null) {
         val sameId = _planId.value == id
+        if (!force && sameId && openingToken != null && _openingToken.value == openingToken) return
         if (sameId && openingToken == null) return
+        
         if (!force && _discardAction.value == null && isActualEditorDirty()) {
             _discardAction.value = PendingEditDiscardAction.ChangePlan(id)
             _showDiscardEditDialog.value = true
@@ -1154,10 +1180,17 @@ class MapViewModel @Inject constructor(
 
             if (openingToken != null && _openingToken.value != openingToken) return@launch
             
-            val resolution = MapCameraResolver.resolveInitialCamera(plan, prop, allFeatures)
-            _lastResolutionSource = resolution.source
-            _cameraFocus.value = resolution.focus
-            _cameraPersistenceState.value = CameraPersistenceState.INITIAL_FOCUS_APPLYING
+            // Priority: restoration > initial camera
+            val restoration = _viewportRestoration.value
+            if (restoration != null && restoration.planId == id) {
+                _cameraFocus.value = MapCameraFocus.Point(restoration.latitude, restoration.longitude, restoration.zoom.toFloat(), restoration.bearing)
+                _cameraPersistenceState.value = CameraPersistenceState.INITIAL_FOCUS_APPLYING
+            } else {
+                val resolution = MapCameraResolver.resolveInitialCamera(plan, prop, allFeatures)
+                _lastResolutionSource = resolution.source
+                _cameraFocus.value = resolution.focus
+                _cameraPersistenceState.value = CameraPersistenceState.INITIAL_FOCUS_APPLYING
+            }
         }
     }
 
@@ -1321,6 +1354,11 @@ class MapViewModel @Inject constructor(
         val currentPlanId = _planId.value ?: return; val normalizedBearing = CameraValidation.normalizeBearing(bearing)
         if (CameraValidation.isDefaultWorldView(latitude, longitude, zoom)) return
 
+        if (CameraValidation.isValid(latitude, longitude, zoom, normalizedBearing)) {
+            val req = CameraRestorationRequest(currentPlanId, latitude, longitude, zoom, normalizedBearing)
+            savedStateHandle[KEY_VIEWPORT_RESTORATION] = kotlinx.serialization.json.Json.encodeToString(CameraRestorationRequest.serializer(), req)
+        }
+
         when (_cameraPersistenceState.value) {
             CameraPersistenceState.WAITING_FOR_INITIAL_FOCUS -> { }
             CameraPersistenceState.INITIAL_FOCUS_APPLYING -> { 
@@ -1341,6 +1379,12 @@ class MapViewModel @Inject constructor(
     fun onMapReady(sessionId: UUID) {
         _renderSessionId.value = sessionId
         isRenderSessionReady = true
+
+        val currentPlanId = _planId.value
+        val restoration = _viewportRestoration.value
+        if (_cameraFocus.value == null && restoration != null && restoration.planId == currentPlanId) {
+            _cameraFocus.value = MapCameraFocus.Point(restoration.latitude, restoration.longitude, restoration.zoom.toFloat(), restoration.bearing)
+        }
         
         val pending = _pendingBasemapRequest.value
         if (pending != null) {
@@ -1846,8 +1890,13 @@ class MapViewModel @Inject constructor(
     }
     fun setShowMapHelp(show: Boolean) { _showHelpSheet.value = show }
     fun onReturnToProperty() { 
-        _propertyData.value?.let { p ->
-            _cameraFocus.value = MapCameraFocus.Point(p.latitude ?: 0.0, p.longitude ?: 0.0, 17f)
+        viewModelScope.launch {
+            val plan = _plan.value
+            val prop = _propertyData.value
+            val allFeatures = _features.value
+            
+            val resolution = MapCameraResolver.resolveRecenterCamera(prop, allFeatures, plan)
+            _cameraFocus.value = resolution.focus
             _mapRecoveryActive.value = false
         }
     }
@@ -1949,31 +1998,46 @@ class MapViewModel @Inject constructor(
     fun handleCameraResult(success: Boolean) {
         val uriStr = getInFlightUri()
         val token = getInFlightToken()
-        if (uriStr == null || token == null) return
+        if (uriStr == null || token == null) {
+            clearPendingPhotoPurpose()
+            return
+        }
 
-        _stagedPhoto.value = StagedCreationPhotoState.Loading
+        val purposeStr = savedStateHandle.get<String>(KEY_PENDING_PHOTO_PURPOSE)
+        val featureIdStr = savedStateHandle.get<String>(KEY_PENDING_PHOTO_FEATURE_ID)
+        val propertyId = _propertyId.value
+
         viewModelScope.launch {
             val uri = android.net.Uri.parse(uriStr)
             val inspection = attachmentRepository.inspectTempCameraCapture(token, uri)
             
-            if (com.jumastappworks.mapstead.BuildConfig.DEBUG) {
-                android.util.Log.d("MapViewModel", "Camera result DIAGNOSTIC: success=$success, token=$token, inspection=$inspection")
-            }
-            
             if (inspection is TempCameraCaptureInspectionResult.Ready) {
-                setStagedPhoto(uriStr, token)
-            } else {
-                if (com.jumastappworks.mapstead.BuildConfig.DEBUG) {
-                    android.util.Log.w("MapViewModel", "Camera capture validation failed: $inspection for URI: $uriStr")
-                }
-                if (success || inspection !is TempCameraCaptureInspectionResult.Missing) {
-                    _stagedPhoto.value = StagedCreationPhotoState.Failed(R.string.error_file_copy_failed)
+                if (purposeStr == "SAVED" && featureIdStr != null && propertyId != null) {
+                    val featureId = UUID.fromString(featureIdStr)
+                    _events.emit(MapEvent.NavigateToAttachmentEditor(
+                        propertyId = propertyId,
+                        ownerType = "MAP_FEATURE",
+                        ownerId = featureId,
+                        uri = uriStr,
+                        token = token,
+                        origin = AttachmentNavigationOrigin.MAP_FEATURE
+                    ))
                 } else {
-                    _stagedPhoto.value = StagedCreationPhotoState.None
+                    // Default to staged photo for GUIDED purpose or when null (regression safety)
+                    setStagedPhoto(uriStr, token)
+                }
+            } else {
+                if (success || inspection !is TempCameraCaptureInspectionResult.Missing) {
+                    if (purposeStr == "GUIDED") {
+                        _stagedPhoto.value = StagedCreationPhotoState.Failed(R.string.error_file_copy_failed)
+                    } else {
+                        _events.emit(MapEvent.Error(R.string.error_file_copy_failed))
+                    }
                 }
                 attachmentRepository.deleteTempCameraCapture(token)
             }
             clearInFlightCapture()
+            clearPendingPhotoPurpose()
         }
     }
 

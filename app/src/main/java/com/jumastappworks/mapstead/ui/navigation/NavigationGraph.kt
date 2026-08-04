@@ -387,8 +387,9 @@ fun MapsteadNavGraph(
                             onShowOnMap = { pid: UUID, mid: UUID, fid: String -> backStack.add(Route.MapEditor(pid, mid, fid)) },
                             onAddMaintenance = { pid, iid -> backStack.add(Route.MaintenanceRecordEditor(pid, null, iid)) },
                             onViewMaintenance = { iid -> backStack.add(Route.Maintenance(key.propertyId)) }, // Simplified for now
-                            onAddPhoto = { pid, iid -> backStack.add(Route.AttachmentEditor(pid, "INFRASTRUCTURE", iid, null, null, null, AttachmentNavigationOrigin.INFRASTRUCTURE)) },
-                            onAddFile = { pid, iid -> backStack.add(Route.AttachmentEditor(pid, "INFRASTRUCTURE", iid, null, null, null, AttachmentNavigationOrigin.INFRASTRUCTURE)) },
+                            onNavigateToEditor = { pid, ot, oid, u, t, origin ->
+                                backStack.add(Route.AttachmentEditor(pid, ot, oid, null, u, t, origin))
+                            },
                             onViewAllAttachments = { pid -> backStack.add(Route.PropertyFiles(pid)) },
                             onAttachmentClick = { pid, aid -> backStack.add(Route.AttachmentDetails(pid, aid, AttachmentNavigationOrigin.INFRASTRUCTURE)) },
                             onManageRelationships = { pid -> backStack.add(Route.InfrastructureRelationships(pid)) },
