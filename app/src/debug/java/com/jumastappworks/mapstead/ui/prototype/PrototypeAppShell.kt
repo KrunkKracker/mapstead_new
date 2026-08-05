@@ -3,9 +3,9 @@ package com.jumastappworks.mapstead.ui.prototype
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -19,7 +19,11 @@ fun PrototypeAppShell() {
 
     Scaffold(
         bottomBar = {
-            if (currentDest !is PrototypeDestination.AddJourney && currentDest !is PrototypeDestination.EmergencyGuide) {
+            if (appState.properties.isNotEmpty() &&
+                currentDest !is PrototypeDestination.AddJourney && 
+                currentDest !is PrototypeDestination.EmergencyGuide &&
+                currentDest !is PrototypeDestination.PropertySetup &&
+                currentDest !is PrototypeDestination.Welcome) {
                 NavigationBar {
                     NavigationBarItem(
                         selected = currentDest is PrototypeDestination.Home,
@@ -36,7 +40,7 @@ fun PrototypeAppShell() {
                     NavigationBarItem(
                         selected = currentDest is PrototypeDestination.Items,
                         onClick = { appState.navigateTo(PrototypeDestination.Items) },
-                        icon = { Icon(Icons.Default.List, contentDescription = null) },
+                        icon = { Icon(Icons.AutoMirrored.Filled.List, contentDescription = null) },
                         label = { Text("Items") }
                     )
                     NavigationBarItem(
@@ -51,6 +55,8 @@ fun PrototypeAppShell() {
     ) { innerPadding ->
         Box(modifier = Modifier.padding(innerPadding)) {
             when (val dest = currentDest) {
+                PrototypeDestination.Welcome -> PrototypeWelcomeScreen(appState)
+                is PrototypeDestination.PropertySetup -> PrototypePropertySetupJourney(appState, dest.step)
                 PrototypeDestination.Home -> PrototypeHomeScreen(appState)
                 is PrototypeDestination.Map -> PrototypeMapScreen(appState, dest.highlightItemId, dest.returnToDetails)
                 PrototypeDestination.Items -> PrototypeItemsScreen(appState)

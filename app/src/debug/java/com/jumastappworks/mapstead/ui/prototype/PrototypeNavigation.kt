@@ -4,6 +4,8 @@ import androidx.compose.runtime.*
 import java.util.UUID
 
 sealed interface PrototypeDestination {
+    data object Welcome : PrototypeDestination
+    data class PropertySetup(val step: SetupStep) : PrototypeDestination
     data object Home : PrototypeDestination
     data class Map(val highlightItemId: UUID? = null, val returnToDetails: Boolean = false) : PrototypeDestination
     data object Items : PrototypeDestination
@@ -13,47 +15,83 @@ sealed interface PrototypeDestination {
     data class AddJourney(val step: AddStep) : PrototypeDestination
 }
 
+sealed interface SetupStep {
+    data object Basics : SetupStep
+    data object Location : SetupStep
+    data object Confirm : SetupStep
+    data object Success : SetupStep
+}
+
 sealed interface AddStep {
-    data object Category : AddStep
-    data class Preset(val category: String) : AddStep
-    data class LocationChoice(val name: String, val category: String) : AddStep
-    data class LocationConfirm(val name: String, val category: String) : AddStep
-    data class LocationManual(val name: String, val category: String) : AddStep
-    data class Photo(val name: String, val category: String) : AddStep
+    data object Entry : AddStep
+    data class BrowsePresets(val category: String? = null) : AddStep
+    data class LocationForm(val name: String, val isPreset: Boolean) : AddStep
+    data class LocationMethod(val name: String, val form: ItemLocationForm) : AddStep
+    data class LocationConfirm(val name: String, val method: String) : AddStep
+    data class MapDrawing(val name: String, val form: ItemLocationForm) : AddStep
+    data class Grouping(val name: String) : AddStep
+    data class Photo(val name: String) : AddStep
     data object Review : AddStep
 }
 
-class PrototypeAppState {
-    var currentDestination by mutableStateOf<PrototypeDestination>(PrototypeDestination.Home)
-    val backStack = mutableStateListOf<PrototypeDestination>(PrototypeDestination.Home)
+enum class ItemLocationForm {
+    MARK_ONE, DRAW_RUNS, OUTLINE_AREA, LATER
+}
 
-    // Data State
+class PrototypeAppState {
+    var currentDestination by mutableStateOf<PrototypeDestination>(PrototypeDestination.Welcome)
+    val backStack = mutableStateListOf<PrototypeDestination>(PrototypeDestination.Welcome)
+
+    // Properties State
+    val properties = mutableStateListOf<PrototypeProperty>()
+    var selectedPropertyId by mutableStateOf<UUID?>(null)
+    
+    // Data State (Scoped to current property)
     val items = mutableStateListOf<PrototypePropertyItem>()
     val tasks = mutableStateListOf<PrototypeTask>()
     
-    // Journey State
+    // Drafts
+    var setupDraft by mutableStateOf<PrototypeProperty?>(null)
     var addDraft by mutableStateOf<PrototypePropertyItem?>(null)
     
     // UI State
     var searchQuery by mutableStateOf("")
     var selectedCategory by mutableStateOf("All")
     var mapOptionsOpen by mutableStateOf(false)
+
+    val currentProperty get() = properties.find { it.id == selectedPropertyId }
     
     init {
-        reset()
+        // Initially empty properties to trigger Welcome screen
     }
 
     fun reset() {
-        items.clear()
-        items.addAll(initialFakeItems)
-        tasks.clear()
-        tasks.addAll(initialFakeTasks)
+        properties.clear()
+        properties.add(SampleProperty)
+        selectedPropertyId = SampleProperty.id
+        refreshScopedData()
         searchQuery = ""
         selectedCategory = "All"
-        currentDestination = PrototypeDestination.Home
-        backStack.clear()
-        backStack.add(PrototypeDestination.Home)
-        addDraft = null
+        navigateTo(PrototypeDestination.Home)
+    }
+
+    fun selectProperty(id: UUID) {
+        selectedPropertyId = id
+        refreshScopedData()
+        navigateTo(PrototypeDestination.Home)
+    }
+
+    private fun refreshScopedData() {
+        val pid = selectedPropertyId ?: return
+        items.clear()
+        tasks.clear()
+        
+        if (pid == SampleProperty.id) {
+            items.addAll(initialSampleItems)
+            tasks.addAll(initialSampleTasks)
+        } else {
+            // New properties start empty
+        }
     }
 
     fun navigateTo(destination: PrototypeDestination) {
@@ -66,6 +104,14 @@ class PrototypeAppState {
         currentDestination = destination
     }
 
+    fun replaceTop(destination: PrototypeDestination) {
+        if (backStack.isNotEmpty()) {
+            backStack.removeAt(backStack.size - 1)
+        }
+        backStack.add(destination)
+        currentDestination = destination
+    }
+
     fun goBack() {
         if (backStack.size > 1) {
             backStack.removeAt(backStack.size - 1)
@@ -73,16 +119,32 @@ class PrototypeAppState {
         }
     }
 
+    // --- Property Setup Journey ---
+
+    fun startPropertySetup() {
+        setupDraft = PrototypeProperty(name = "", type = "Home")
+        navigateTo(PrototypeDestination.PropertySetup(SetupStep.Basics))
+    }
+
+    fun finalizePropertyCreation() {
+        val newProp = setupDraft ?: return
+        properties.add(newProp)
+        selectedPropertyId = newProp.id
+        setupDraft = null
+        refreshScopedData()
+        replaceTop(PrototypeDestination.PropertySetup(SetupStep.Success))
+    }
+
+    // --- Add Something Journey ---
+
     fun startAddJourney() {
-        addDraft = PrototypePropertyItem(name = "", category = "", locationDescription = "")
-        navigateTo(PrototypeDestination.AddJourney(AddStep.Category))
+        val pid = selectedPropertyId ?: return
+        addDraft = PrototypePropertyItem(propertyId = pid, name = "", category = "", locationDescription = "")
+        navigateTo(PrototypeDestination.AddJourney(AddStep.Entry))
     }
 
     fun completeAddJourney(savedItem: PrototypePropertyItem) {
-        // 1. Identify where the journey started
         val journeyStartIndex = backStack.indexOfFirst { it is PrototypeDestination.AddJourney }
-        
-        // 2. Remove all AddJourney steps from backstack
         if (journeyStartIndex != -1) {
             while (backStack.size > journeyStartIndex) {
                 backStack.removeAt(backStack.size - 1)
@@ -91,8 +153,6 @@ class PrototypeAppState {
 
         saveItem(savedItem)
         addDraft = null
-        
-        // 3. Push details (Now the top is the origin, e.g. Home or Items)
         navigateTo(PrototypeDestination.ItemDetails(savedItem.id))
     }
 
@@ -102,7 +162,6 @@ class PrototypeAppState {
             items[index] = item
         } else {
             items.add(item)
-            // Update tasks referencing this name (e.g., "pool-pump" vs "Pool Pump")
             val searchToken = item.name.replace(" ", "-")
             tasks.forEachIndexed { i, task ->
                 if (task.title.contains(searchToken, ignoreCase = true) && task.relatedItemId == null) {
@@ -113,21 +172,27 @@ class PrototypeAppState {
     }
 }
 
-private val initialFakeItems = listOf(
-    PrototypePropertyItem(name = "Main Water Shutoff", category = "Water & Plumbing", locationDescription = "Front of house, near driveway", isEmergency = true, latitude = 34.1235, longitude = -118.5670),
-    // Pool Pump removed for Add Journey demonstration
-    PrototypePropertyItem(name = "Well", category = "Water & Plumbing", locationDescription = "North pasture, marked by well house", latitude = 34.1240, longitude = -118.5680),
-    PrototypePropertyItem(name = "Septic Tank", category = "Water & Plumbing", locationDescription = "South lawn, access near oak tree", latitude = 34.1220, longitude = -118.5672),
-    PrototypePropertyItem(name = "Electrical Panel", category = "Power & Electrical", locationDescription = "Garage, west wall", isEmergency = true, latitude = 34.1233, longitude = -118.5668),
-    PrototypePropertyItem(name = "Propane Tank", category = "Power & Electrical", locationDescription = "Side of house, near generator", isEmergency = true, latitude = 34.1231, longitude = -118.5665),
-    PrototypePropertyItem(name = "North Fence", category = "Boundaries & Access", locationDescription = "Along County Road 4", latitude = 34.1250, longitude = -118.5670),
-    PrototypePropertyItem(name = "Equipment Shed", category = "Buildings & Structures", locationDescription = "Adjacent to garden area", latitude = 34.1228, longitude = -118.5678),
-    PrototypePropertyItem(name = "Pond", category = "Outdoor & Land", locationDescription = "Center of property", latitude = 34.1232, longitude = -118.5673)
+private val SampleProperty = PrototypeProperty(
+    name = "Oak Ridge Homestead",
+    type = "Farm or Homestead",
+    address = "1234 Oak Ridge Lane",
+    isSample = true
 )
 
-private val initialFakeTasks = listOf(
-    PrototypeTask(title = "Replace pool-pump filter", status = PrototypeTaskStatus.OVERDUE, relatedItemId = null),
-    PrototypeTask(title = "Inspect well pressure tank", status = PrototypeTaskStatus.DUE_SOON, relatedItemId = initialFakeItems[1].id),
-    PrototypeTask(title = "Service generator", status = PrototypeTaskStatus.UPCOMING),
-    PrototypeTask(title = "Septic inspection", status = PrototypeTaskStatus.COMPLETED, relatedItemId = initialFakeItems[2].id)
+private val initialSampleItems = listOf(
+    PrototypePropertyItem(propertyId = SampleProperty.id, name = "Main Water Shutoff", category = "Water & Plumbing", locationDescription = "Front of house, near driveway", isEmergency = true, latitude = 34.1235, longitude = -118.5670),
+    PrototypePropertyItem(propertyId = SampleProperty.id, name = "Well", category = "Water & Plumbing", locationDescription = "North pasture, marked by well house", latitude = 34.1240, longitude = -118.5680),
+    PrototypePropertyItem(propertyId = SampleProperty.id, name = "Septic Tank", category = "Water & Plumbing", locationDescription = "South lawn, access near oak tree", latitude = 34.1220, longitude = -118.5672),
+    PrototypePropertyItem(propertyId = SampleProperty.id, name = "Electrical Panel", category = "Power & Electrical", locationDescription = "Garage, west wall", isEmergency = true, latitude = 34.1233, longitude = -118.5668),
+    PrototypePropertyItem(propertyId = SampleProperty.id, name = "Propane Tank", category = "Power & Electrical", locationDescription = "Side of house, near generator", isEmergency = true, latitude = 34.1231, longitude = -118.5665),
+    PrototypePropertyItem(propertyId = SampleProperty.id, name = "North Fence", category = "Boundaries & Access", locationDescription = "Along County Road 4", latitude = 34.1250, longitude = -118.5670),
+    PrototypePropertyItem(propertyId = SampleProperty.id, name = "Equipment Shed", category = "Buildings & Structures", locationDescription = "Adjacent to garden area", latitude = 34.1228, longitude = -118.5678),
+    PrototypePropertyItem(propertyId = SampleProperty.id, name = "Pond", category = "Outdoor & Land", locationDescription = "Center of property", latitude = 34.1232, longitude = -118.5673)
+)
+
+private val initialSampleTasks = listOf(
+    PrototypeTask(propertyId = SampleProperty.id, title = "Replace pool-pump filter", status = PrototypeTaskStatus.OVERDUE, relatedItemId = null),
+    PrototypeTask(propertyId = SampleProperty.id, title = "Inspect well pressure tank", status = PrototypeTaskStatus.DUE_SOON, relatedItemId = initialSampleItems[1].id),
+    PrototypeTask(propertyId = SampleProperty.id, title = "Service generator", status = PrototypeTaskStatus.UPCOMING),
+    PrototypeTask(propertyId = SampleProperty.id, title = "Septic inspection", status = PrototypeTaskStatus.COMPLETED, relatedItemId = initialSampleItems[2].id)
 )
