@@ -4,14 +4,14 @@ This document is the authoritative plan for redesigning Mapstead for customers w
 
 ## Purpose
 
-Mapstead must be usable by customers who:
+Mapstead must work for customers who:
 - Rarely use complex smartphone applications.
 - Do not understand GIS terminology (Point, Line, Polygon).
-- Do not understand Mapstead’s internal records (Infrastructure vs. Map Feature).
+- Do not understand Mapstead’s internal record structure (Infrastructure vs. Map Feature).
 - Need clear, forgiving, and predictable workflows.
 - May need critical property information quickly.
 
-This redesign is larger than visual polish. It includes:
+Beginner-First UX 2.0 is larger than visual polish and includes:
 - Information architecture
 - Navigation
 - Terminology
@@ -91,9 +91,11 @@ The primary rule is: **Use the actual item name whenever possible** (e.g., Well,
 | Relationships | Related Items |
 | Map Locations | Where It Is |
 | Open Record | View Details |
-| Return to Property | Recenter on Property (for map camera action) |
+| Return to Property | Recenter on Property (only for map camera action) |
 
 *Status: OPEN — REQUIRES VISUAL PROTOTYPE REVIEW*
+
+Customers must not normally see: Map Feature, Infrastructure Record, geometry type, attachment ownership, repository structure, or database relationships.
 
 ## Priority Customer Journeys
 
@@ -118,7 +120,7 @@ Each journey specification must define: Entry points, Main goal, Required screen
 **Default Path:**
 Home → Add Something → Pool Equipment → I’m Standing Next to It → Confirm or adjust location → Take Photo → Review → Save → Pool Pump details.
 
-**The Review step includes:**
+**The Review screen may show:**
 - Suggested item name
 - Optional note
 - Location summary
@@ -143,7 +145,7 @@ Customers must **never** be asked to choose between Point, Line, Polygon, Map Fe
 3.  **SLICE 3: Add Something** - Real-world presets, location/photo optionality, explicit Review screen.
 4.  **SLICE 4: Emergency Guide** - Critical item elevation, instructions, contacts, offline access.
 5.  **SLICE 5: Photos and Files** - Unified acquisition (Take/Choose), ownership management.
-6.  **SLICE 6: Tasks** - Overdue, Due Soon, Upcoming, and Completed views; Related Property Item; "What needs to be done"; Mark complete; History under progressive disclosure.
+6.  **SLICE 6: Tasks** - Overdue, Due Soon, Upcoming, and Completed views; Related Property Item; "What needs to be done"; Mark complete; Maintenance history under progressive disclosure.
 7.  **SLICE 7: Advanced Features** - Related Items, Reports, Backup and Restore, Property Handoff, Data Transfer, Advanced map controls, Technical coordinates and metadata, and less-common settings.
 
 ## Prototype Phase
@@ -188,13 +190,13 @@ A vertical slice is not complete until it meets these requirements:
 - Usability at Android font scale 2.0.
 - TalkBack compatibility.
 - Clear empty/loading states.
-- Actionable errors.
+- Actionable errors (explain what happened and what to do next).
 - Safe cancellation.
 - No whole-world map resets.
 - No duplicate destinations.
-- No requirement to understand internal records.
+- No requirement to understand Mapstead's internal records.
 
-### Practical Beginner Checks
+## Practical Beginner Checks
 - A new customer can immediately identify the current property.
 - A new customer can find the main water shutoff without instruction.
 - A new customer can add a photo without understanding attachments.
@@ -207,10 +209,10 @@ A vertical slice is not complete until it meets these requirements:
 
 ## Scope Protection
 
+- Do not introduce separate Simple and Advanced application modes. Use progressive disclosure instead.
 - Do not add major new features while the beginner-first core remains fragmented.
 - Do not remove working repositories to simplify presentation.
 - Do not expose advanced controls on primary screens.
-- Do not introduce separate Simple and Advanced application modes. Use progressive disclosure instead.
 - Do not treat documentation completion as customer acceptance.
 - Require physical-device journey testing before a slice is accepted.
 - Property Inventory remains **BLOCKED** until the foundation is coherent.
@@ -261,5 +263,8 @@ Planning and prototype work may proceed while final Phase 3A physical acceptance
 Production navigation replacement must not begin until all of the following are true:
 - The stable pre-redesign baseline is recorded.
 - The master plan is approved.
-- Terminology and information architecture decisions are approved.
+- Terminology is approved.
+- Information architecture is approved.
 - The first complete prototype journeys are visually reviewed.
+
+*Production Redesign Status: NOT STARTED*

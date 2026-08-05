@@ -1,22 +1,8 @@
-# Implementation Plan — Beginner-First UX 2.0: Terminology and Information Architecture Decision Pack
+# Beginner-First UX 2.0 — Master Plan Review Corrections and Approval Preparation
 
-This documentation-only pass turns the approved Beginner-First UX 2.0 strategy into specific terminology and information-architecture recommendations. It establishes the vocabulary and structural rules required for visual prototype creation.
+Documentation-only correction pass to finalize the strategic redesign plan for external approval.
 
-## User Review Required
-
-> [!IMPORTANT]
-> **Decision Pack Creation**: We have created [BEGINNER_FIRST_UX_TERMINOLOGY_IA_DECISION_PACK.md](BEGINNER_FIRST_UX_TERMINOLOGY_IA_DECISION_PACK.md). This document contains the definitive list of recommended terms and navigation structures for external approval.
-> **Navigation Recommendation**: We are recommending a four-tab bottom navigation (**Home, Map, Items, Tasks**) as the primary hypothesis for initial prototypes.
-> **Terminology Standard**: Standardized on **Property Item** as the singular generic term, with a strict rule to prefer specific names (e.g., "Well") wherever possible.
-
-## Proposed Changes
-
-- Documentation-only planning pass.
-- Master Plan: APPROVED.
-- Terminology: EXTERNAL APPROVAL PENDING.
-- Information architecture: EXTERNAL APPROVAL PENDING.
-- Prototype creation: NOT STARTED.
-- Production redesign: NOT STARTED.
+- Documentation-only correction pass.
 - Production Kotlin changes: NONE.
 - Test changes: NONE.
 - Database changes: NONE.
@@ -24,39 +10,49 @@ This documentation-only pass turns the approved Beginner-First UX 2.0 strategy i
 - Version changes: NONE.
 - Gradle execution: NOT REQUIRED.
 - Emulator execution: NOT REQUIRED.
+- Prototype creation: NOT STARTED.
+- Production redesign: NOT STARTED.
 - Property Inventory: BLOCKED.
 
-### Redesign Decision Pack
+## Proposed Changes
 
-#### [NEW] [BEGINNER_FIRST_UX_TERMINOLOGY_IA_DECISION_PACK.md](BEGINNER_FIRST_UX_TERMINOLOGY_IA_DECISION_PACK.md)
-- Contains detailed decision matrices for terminology and information architecture.
-- Defines Home content priority and property-switching interactions.
-- Specifies the progressive disclosure strategy for advanced map controls.
-- Lists critical prototype validation questions.
+### Documentation
 
-### Documentation Housekeeping
+#### [MODIFY] [BEGINNER_FIRST_UX_MASTER_PLAN.md](file:///C:/Users/Justi/StudioProjects/mapstead_new/BEGINNER_FIRST_UX_MASTER_PLAN.md)
+- Added comprehensive **Purpose** section.
+- Corrected **Terminology** to use "Property Item" as the single generic term.
+- Restored the exact **Pool Pump reference journey** with an explicit Review step.
+- Completed **Beginner Acceptance Standards** and added **Practical Beginner Checks**.
+- Formalized **Scope Protections** (progressive disclosure vs. separate modes).
+- Detailed all **Open Decisions** requiring visual prototype review.
+- Corrected Slices 6 (Tasks) and 7 (Advanced Features) to align with existing functions.
+- Defined **Document Roles** and corrected the **Current Boundary**.
 
-#### [MODIFY] [README.md](README.md)
-- Accurate Phase 3A status: **IN PROGRESS / PHYSICAL-DEVICE ACCEPTANCE PENDING**.
-- Recorded **APPROVED** status for the UX 2.0 Master Plan.
+#### [MODIFY] [ROADMAP.md](file:///C:/Users/Justi/StudioProjects/mapstead_new/ROADMAP.md)
+- Resolved contradictions in **Phase 3A** status (Consistently: 3A1/3A2 COMPLETE, 3A3 IMPLEMENTED).
+- Updated **Beginner-First UX 2.0** statuses (Master-plan document: CREATED / EXTERNAL APPROVAL PENDING).
 
-#### [MODIFY] [ROADMAP.md](ROADMAP.md)
-- Updated UX 2.0 status with terminology and information architecture decision tracking.
-- Master-plan document: **APPROVED**.
+#### [MODIFY] [README.md](file:///C:/Users/Justi/StudioProjects/mapstead_new/README.md)
+- Added a concise status summary for **Beginner-First UX 2.0**.
+- Linked to the authoritative master plan.
 
-#### [MODIFY] [BEGINNER_FIRST_UX_MASTER_PLAN.md](BEGINNER_FIRST_UX_MASTER_PLAN.md)
-- Recorded Master Plan approval in the progress tracker.
-- Added link to the new Decision Pack companion document.
+#### [MODIFY] [implementation_plan.artifact.md](file:///C:/Users/Justi/StudioProjects/mapstead_new/implementation_plan.artifact.md)
+- Replaced stale plan with current correction pass details.
 
-#### [MODIFY] [CHANGELOG.md](CHANGELOG.md)
-- Added entry for Master Plan approval and Decision Pack creation.
+---
 
 ## Verification Plan
 
-### Automated Tests
-- NONE REQUIRED. (Documentation-only pass).
-
 ### Manual Verification
-- Verify all internal Markdown links in the root documents resolve correctly.
-- Verify consistency of status across all updated files.
-- Verify Beginner-First UX 2.0 production redesign remains marked **NOT STARTED**.
+- Verify `BEGINNER_FIRST_UX_MASTER_PLAN.md` exists and contains all requested sections.
+- Verify `ROADMAP.md` reflects consistent Phase 3A and UX 2.0 statuses.
+- Verify `README.md` includes the new status block.
+- Confirm all internal document links resolve correctly.
+
+### Technical Integrity
+- Production Kotlin changes: **NONE**.
+- Test changes: **NONE**.
+- Database changes: **NONE**.
+- Navigation changes: **NONE**.
+- Version: **0.03 (3)** preserved.
+- Gradle execution: **NOT REQUIRED**.

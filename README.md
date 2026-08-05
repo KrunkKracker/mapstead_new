@@ -5,20 +5,21 @@
 Mapstead is a local-first, private property management tool designed for homeowners, small-scale farmers, and rural property owners. It allows you to create high-precision maps of your land, document infrastructure and operational records (wells, septic, electrical), and track maintenance schedules without relying on third-party cloud services.
 
 > [!WARNING]
-> This is unreleased development software (v0.03 (3)).
+> This is unreleased development software (v0.03 / versionCode 3).
+> Phase 3A overall is in progress with physical-device acceptance pending.
+> Beginner-First UX 2.0 master planning is in progress.
 
-- **Phase 3A3 (Detail Navigation & Consistency)**: IMPLEMENTED / PHYSICAL-DEVICE ACCEPTANCE PENDING.
-- **Phase 3A2 (Unified Map Feature Details)**: COMPLETE.
-- **Phase 3A1 (Unified Infrastructure Details Foundation)**: COMPLETE.
-- **Phase 3A (Unified Item Details)**: IN PROGRESS / PHYSICAL-DEVICE ACCEPTANCE PENDING.
-
-### Beginner-First UX 2.0
-- Master plan created and awaiting external approval.
-- Production redesign not started.
-- Static prototype work not started.
+## Beginner-First UX 2.0 Status
+- The authoritative master plan has been created.
+- External approval remains pending.
+- Terminology approval has not started.
+- Information-architecture approval has not started.
+- Static prototype work has not started.
+- Production redesign has not started.
 - Phase 3A physical-device acceptance remains a separate open gate.
 - Property Inventory remains blocked.
-- Authoritative Document: [BEGINNER_FIRST_UX_MASTER_PLAN.md](BEGINNER_FIRST_UX_MASTER_PLAN.md)
+
+Authoritative Document: [BEGINNER_FIRST_UX_MASTER_PLAN.md](BEGINNER_FIRST_UX_MASTER_PLAN.md)
 
 ## Core Features
 - **MapTiler Integration**: High-quality Streets, Topo, and Satellite Hybrid imagery with resilient OpenFreeMap fallback.
@@ -29,12 +30,6 @@ Mapstead is a local-first, private property management tool designed for homeown
 - **Emergency Readiness**: One-tap access to emergency shut-off locations and instructions.
 - **Local-First Architecture**: All property data, maps, and photos stay on your device. Google Drive customer access is currently paused and hidden.
 - **Adaptive UI**: Optimized for Phones, Tablets, and Foldable devices.
-
-## Beginner-First UX Foundation
-The redesign prioritizes task-oriented entry points and plain language:
-- **Simplified Setup**: Name, Location, and Review steps with atomic Map creation.
-- **Add Something**: Replaces technical geometry-first choices with real-world object categories.
-- **Terminology Cleanup**: Hides technical jargon like "Map Feature" and "System Item" from guided workflows.
 
 ## Technical Foundation
 - **Modern Android**: 100% Kotlin, Jetpack Compose, and Navigation 3.
