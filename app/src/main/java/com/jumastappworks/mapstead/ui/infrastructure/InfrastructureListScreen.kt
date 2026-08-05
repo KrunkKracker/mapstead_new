@@ -33,17 +33,20 @@ fun InfrastructureListScreen(
     onBack: () -> Unit,
     onAddItemClick: () -> Unit,
     onEditItemClick: (UUID) -> Unit,
-    onHelpClick: (HelpTopicId) -> Unit
+    onHelpClick: (HelpTopicId) -> Unit,
+    isRoot: Boolean = false
 ) {
     val items by viewModel.infrastructureItems.collectAsState()
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.infrastructure), fontWeight = FontWeight.Bold) },
+                title = { Text(stringResource(R.string.nav_items_full), fontWeight = FontWeight.Bold) },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
+                    if (!isRoot) {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
+                        }
                     }
                 }
             )

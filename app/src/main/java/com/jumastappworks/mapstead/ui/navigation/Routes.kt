@@ -8,6 +8,20 @@ import java.util.UUID
 
 sealed interface Route : NavKey {
     @Serializable
+    data object Home : Route
+
+    @Serializable
+    data class MapRoot(
+        val launchAddSomething: Boolean = false
+    ) : Route
+
+    @Serializable
+    data object ItemsRoot : Route
+
+    @Serializable
+    data object TasksRoot : Route
+
+    @Serializable
     data object Properties : Route
 
     @Serializable
@@ -42,7 +56,8 @@ sealed interface Route : NavKey {
     data class MapEditor(
         @Serializable(with = UuidSerializer::class) val propertyId: UUID,
         @Serializable(with = UuidSerializer::class) val planId: UUID,
-        val featureId: String? = null
+        val featureId: String? = null,
+        val launchAddSomething: Boolean = false
     ) : Route
 
     @Serializable

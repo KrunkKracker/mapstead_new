@@ -4,10 +4,15 @@
 
 ### Added
 - **Beginner-First UX 2.0 Strategic Redesign**:
+    - **Production Slice 1**: Launched the beginner-first production app shell with Home, Map, Items, and Tasks navigation.
+    - **Property Home**: Implemented a real-data Property Home screen with "Add Something", "Find Something", and "Emergency Guide" shortcuts.
+    - **First Property Setup**: Re-routed first-time customers through the real Property Setup workflow with automatic map initialization.
+    - **Property Selector**: Added a high-visibility property switcher on the Home screen.
     - **Master Plan Approval**: Recorded external approval of the authoritative redesign strategy in `BEGINNER_FIRST_UX_MASTER_PLAN.md`.
     - **Decision Pack Creation**: Created `BEGINNER_FIRST_UX_TERMINOLOGY_IA_DECISION_PACK.md` providing specific recommendations for customer-facing terminology and information architecture.
     - **Navigation Strategy**: Proposed a Home/Map/Items/Tasks primary navigation structure for visual prototype evaluation.
     - **Prototype 1**: Implemented a debug-only isolated prototype for the beginner-first app shell and Pool Pump documentation journey.
+    - **Prototype 2**: Added Property Setup and Universal Add Something prototypes.
 - **Beginner-First UX Redesign Phase 3A3 — Detail Navigation & Consistency**:
     - **Maintenance Context Hub**: Corrected the Maintenance filter to be the true source of context for adding new records. Clearing the filter now correctly resets the preselected item for new tasks.
     - **Owner-Return Navigation**: Implemented a specialized `openOrReturnToInfrastructureOwner` routing helper. Returning to an item from its attachments or maintenance records now pops back to the existing detail screen instead of stacking duplicate copies.

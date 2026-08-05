@@ -784,7 +784,7 @@ fun PrototypeTasksScreen(appState: PrototypeAppState) {
                 PrototypeTaskStatus.entries.forEach { status ->
                     val tasks = appState.tasks.filter { it.status == status }
                     if (tasks.isNotEmpty()) {
-                        Text(status.name.replace("_", " ").lowercase().replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.outline)
+                        Text(status.name.replace("_", " ").lowercase().replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.US) else it.toString() }, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.outline)
                         tasks.forEach { task -> TaskCard(task) { task.relatedItemId?.let { appState.navigateTo(PrototypeDestination.ItemDetails(it)) } } }
                     }
                 }
@@ -889,7 +889,7 @@ fun TaskCard(task: PrototypeTask, onClick: () -> Unit) {
             Spacer(Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(task.title, fontWeight = FontWeight.Bold)
-                Text(task.status.name.replace("_", " ").lowercase().replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }, style = MaterialTheme.typography.bodySmall, color = color)
+                Text(task.status.name.replace("_", " ").lowercase().replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.US) else it.toString() }, style = MaterialTheme.typography.bodySmall, color = color)
             }
             Icon(Icons.Default.ChevronRight, contentDescription = null)
         }

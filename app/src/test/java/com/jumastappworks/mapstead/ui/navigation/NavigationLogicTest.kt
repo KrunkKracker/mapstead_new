@@ -30,28 +30,26 @@ class NavigationLogicTest {
         val propId = UUID.randomUUID()
         val planId = UUID.randomUUID()
 
-        // Properties section
-        assertEquals(MainDestination.Properties, Route.Properties.topLevelDestination())
-        assertEquals(MainDestination.Properties, Route.AddProperty.topLevelDestination())
-        assertEquals(MainDestination.Properties, Route.EditProperty(propId).topLevelDestination())
-        assertEquals(MainDestination.Properties, Route.PropertyDashboard(propId).topLevelDestination())
-        assertEquals(MainDestination.Properties, Route.InfrastructureList(propId).topLevelDestination())
-        assertEquals(MainDestination.Properties, Route.InfrastructureItemDetails(propId, UUID.randomUUID()).topLevelDestination())
-        assertEquals(MainDestination.Properties, Route.InfrastructureItemEditor(propId).topLevelDestination())
+        // Home section
+        assertEquals(MainDestination.Home, Route.Home.topLevelDestination())
+        assertEquals(MainDestination.Home, Route.Properties.topLevelDestination())
+        assertEquals(MainDestination.Home, Route.AddProperty.topLevelDestination())
+        assertEquals(MainDestination.Home, Route.Emergency(propId).topLevelDestination())
+        assertEquals(MainDestination.Home, Route.Settings.topLevelDestination())
 
         // Map section
+        assertEquals(MainDestination.Map, Route.MapRoot().topLevelDestination())
         assertEquals(MainDestination.Map, Route.Plans(propId).topLevelDestination())
-        assertEquals(MainDestination.Map, Route.CreatePlan(propId).topLevelDestination())
         assertEquals(MainDestination.Map, Route.MapEditor(propId, planId).topLevelDestination())
 
-        // Maintenance section
-        assertEquals(MainDestination.Maintenance, Route.Maintenance(propId).topLevelDestination())
+        // Items section
+        assertEquals(MainDestination.Items, Route.ItemsRoot.topLevelDestination())
+        assertEquals(MainDestination.Items, Route.InfrastructureList(propId).topLevelDestination())
+        assertEquals(MainDestination.Items, Route.InfrastructureItemDetails(propId, UUID.randomUUID()).topLevelDestination())
 
-        // Emergency section
-        assertEquals(MainDestination.Emergency, Route.Emergency(propId).topLevelDestination())
-
-        // Settings section
-        assertEquals(MainDestination.Settings, Route.Settings.topLevelDestination())
+        // Tasks section
+        assertEquals(MainDestination.Tasks, Route.TasksRoot.topLevelDestination())
+        assertEquals(MainDestination.Tasks, Route.Maintenance(propId).topLevelDestination())
     }
 
     @Test
@@ -59,27 +57,24 @@ class NavigationLogicTest {
         val propA = UUID.randomUUID()
         val propB = UUID.randomUUID()
 
-        // Plans for Property A matches Map root for Property A
-        assertTrue(Route.Plans(propA).matchesTopLevelRoot(MainDestination.Map, propA))
-        // Plans for Property A DOES NOT match Map root for Property B
-        assertFalse(Route.Plans(propA).matchesTopLevelRoot(MainDestination.Map, propB))
+        // Home root
+        assertTrue(Route.Home.matchesTopLevelRoot(MainDestination.Home, propA))
+        assertTrue(Route.Properties.matchesTopLevelRoot(MainDestination.Home, propA))
 
-        // Maintenance for Property A matches Maintenance root for Property A
-        assertTrue(Route.Maintenance(propA).matchesTopLevelRoot(MainDestination.Maintenance, propA))
-        // Maintenance for Property A DOES NOT match Property B
-        assertFalse(Route.Maintenance(propA).matchesTopLevelRoot(MainDestination.Maintenance, propB))
+        // Map root
+        assertTrue(Route.MapRoot().matchesTopLevelRoot(MainDestination.Map, propA))
+        assertTrue(Route.MapEditor(propA, UUID.randomUUID()).matchesTopLevelRoot(MainDestination.Map, propA))
+        assertFalse(Route.MapEditor(propA, UUID.randomUUID()).matchesTopLevelRoot(MainDestination.Map, propB))
 
-        // Emergency for Property A matches Emergency root for Property A
-        assertTrue(Route.Emergency(propA).matchesTopLevelRoot(MainDestination.Emergency, propA))
-        // Emergency for Property A DOES NOT match Property B
-        assertFalse(Route.Emergency(propA).matchesTopLevelRoot(MainDestination.Emergency, propB))
+        // Items root
+        assertTrue(Route.ItemsRoot.matchesTopLevelRoot(MainDestination.Items, propA))
+        assertTrue(Route.InfrastructureList(propA).matchesTopLevelRoot(MainDestination.Items, propA))
+        assertFalse(Route.InfrastructureList(propA).matchesTopLevelRoot(MainDestination.Items, propB))
 
-        // Settings matches the single Settings root (regardless of property)
-        assertTrue(Route.Settings.matchesTopLevelRoot(MainDestination.Settings, propA))
-        assertTrue(Route.Settings.matchesTopLevelRoot(MainDestination.Settings, null))
-
-        // Properties root matches Properties destination
-        assertTrue(Route.Properties.matchesTopLevelRoot(MainDestination.Properties, null))
+        // Tasks root
+        assertTrue(Route.TasksRoot.matchesTopLevelRoot(MainDestination.Tasks, propA))
+        assertTrue(Route.Maintenance(propA).matchesTopLevelRoot(MainDestination.Tasks, propA))
+        assertFalse(Route.Maintenance(propA).matchesTopLevelRoot(MainDestination.Tasks, propB))
     }
 
     @Test

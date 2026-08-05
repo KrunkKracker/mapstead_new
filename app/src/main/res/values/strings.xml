@@ -31,6 +31,9 @@
     <string name="desc_open_map">Open Map</string>
     <string name="desc_open_properties">Open Properties</string>
     <string name="desc_open_settings">Open Settings</string>
+    <string name="desc_open_home">Open Home</string>
+    <string name="desc_open_items">Open Items</string>
+    <string name="desc_open_tasks">Open Tasks</string>
     <string name="nav_emergency_compact">Emerg</string>
     <string name="nav_emergency_full">Emergency</string>
     <string name="nav_maintenance_compact">Maint</string>
@@ -41,6 +44,39 @@
     <string name="nav_properties_full">Properties</string>
     <string name="nav_settings_compact">Set</string>
     <string name="nav_settings_full">Settings</string>
+    <string name="nav_home_compact">Home</string>
+    <string name="nav_home_full">Home</string>
+    <string name="nav_items_compact">Items</string>
+    <string name="nav_items_full">Property Items</string>
+    <string name="nav_tasks_compact">Tasks</string>
+    <string name="nav_tasks_full">Tasks</string>
+
+    <!-- Welcome -->
+    <string name="welcome_to_mapstead">Welcome to Mapstead</string>
+    <string name="welcome_supporting_text">Mapstead helps you remember what is on your property, where it is, what needs attention, and what someone needs during an emergency.</string>
+    <string name="create_my_property_action">Create My Property</string>
+    <string name="property_created_title">Your property is ready</string>
+    <string name="property_created_supporting">Mapstead created your first property map. You can now add important places, equipment, boundaries, photos, and tasks.</string>
+    <string name="go_to_my_property_action">Go to My Property</string>
+    <string name="add_something_now_action">Add Something Now</string>
+
+    <!-- Empty States -->
+    <string name="nothing_added_yet_title">Nothing has been added yet</string>
+    <string name="nothing_added_yet_supporting">Add important places, equipment, boundaries, structures, and anything else you want to remember.</string>
+    <string name="no_tasks_attention_title">No tasks need attention</string>
+    <string name="no_tasks_attention_supporting">Tasks and maintenance reminders will appear here when you add them.</string>
+    <string name="no_recent_items">No recently viewed items.</string>
+
+    <!-- Home -->
+    <string name="home_add_something">Add Something</string>
+    <string name="home_find_something">Find Something</string>
+    <string name="home_emergency_guide">Emergency Guide</string>
+    <string name="home_emergency_guide_desc">Quickly find shutoffs, hazards, contacts, and emergency instructions.</string>
+    <string name="home_needs_attention">Needs Attention</string>
+    <string name="home_recently_updated">Recently Updated</string>
+    <string name="home_manage_maps">Manage Maps</string>
+    <string name="home_property_files">Property Photos &amp; Files</string>
+    <string name="home_related_items">Related Items</string>
 
     <!-- Dashboards -->
     <string name="property_dashboard">Property Dashboard</string>

@@ -48,7 +48,9 @@
 - [/] Beginner-First UX 2.0 — [Master Plan](BEGINNER_FIRST_UX_MASTER_PLAN.md) (IN PROGRESS)
     - [x] Master planning (COMPLETE)
     - [x] Master-plan document (APPROVED)
-    - [/] Prototype 1 — App Shell and Pool Pump Journey (SOURCE IMPLEMENTED / VISUAL REVIEW PENDING)
+    - [x] Prototype 1 — App Shell and Pool Pump Journey (COMPLETE)
+    - [x] Prototype 2 — First Property Setup and Universal Add Something (COMPLETE)
+    - [/] Production Slice 1 — Real App Shell, First Property Setup, and Property Home (SOURCE IMPLEMENTED / PHYSICAL-DEVICE REVIEW PENDING)
 - [ ] Phase 5E — Property Inventory (BLOCKED)
 
 ---

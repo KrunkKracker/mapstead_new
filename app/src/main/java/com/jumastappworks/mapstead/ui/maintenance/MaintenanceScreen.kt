@@ -32,7 +32,8 @@ fun MaintenanceScreen(
     onBack: () -> Unit,
     onAddRecord: (UUID?) -> Unit,
     onOpenRecord: (UUID, UUID) -> Unit,
-    onHelpClick: (HelpTopicId) -> Unit
+    onHelpClick: (HelpTopicId) -> Unit,
+    isRoot: Boolean = false
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
@@ -43,12 +44,14 @@ fun MaintenanceScreen(
                     val propertyName = (uiState as? MaintenanceUiState.Ready)?.property?.name ?: ""
                     Column {
                         Text(propertyName, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
-                        Text(stringResource(R.string.maintenance), fontWeight = FontWeight.Bold)
+                        Text(stringResource(R.string.nav_tasks_full), fontWeight = FontWeight.Bold)
                     }
                 },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.cancel))
+                    if (!isRoot) {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.cancel))
+                        }
                     }
                 },
                 actions = {

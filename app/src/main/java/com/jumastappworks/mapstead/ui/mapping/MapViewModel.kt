@@ -1124,12 +1124,15 @@ class MapViewModel @Inject constructor(
         )
     }.stateIn(viewModelScope, SharingStarted.Eagerly, MapUiState())
 
-    fun openMapContext(propertyId: UUID, planId: UUID, openingToken: String) {
+    fun openMapContext(propertyId: UUID, planId: UUID, openingToken: String, launchAddSomething: Boolean = false) {
         if (_openingToken.value == openingToken && _planId.value == planId && _propertyId.value == propertyId) {
             return
         }
         setProperty(propertyId)
         selectPlan(planId, openingToken = openingToken)
+        if (launchAddSomething) {
+            _showGuidedAddMenu.value = true
+        }
     }
 
     fun setProperty(id: UUID, force: Boolean = false) {

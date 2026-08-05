@@ -76,6 +76,7 @@ class MainActivity : ComponentActivity() {
                         relationshipRepository = relationshipRepository,
                         propertyRepository = propertyRepository,
                         selectionManager = selectionManager,
+                        mapRepository = mapRepository,
                         initialPropertyId = parsedPropertyId,
                         initialItemId = parsedItemId,
                         initialRecordId = parsedRecordId,
