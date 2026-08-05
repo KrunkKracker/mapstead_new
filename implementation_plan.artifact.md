@@ -1,58 +1,60 @@
-# Beginner-First UX 2.0 — Master Plan Review Corrections and Approval Preparation
+# Beginner-First UX 2.0 — Production Shell Build Closure and Property Home Foundation
 
-Documentation-only correction pass to finalize the strategic redesign plan for external approval.
-
-- Documentation-only correction pass.
-- Production Kotlin changes: NONE.
-- Test changes: NONE.
-- Database changes: NONE.
-- Navigation changes: NONE.
-- Version changes: NONE.
-- Gradle execution: NOT REQUIRED.
-- Emulator execution: NOT REQUIRED.
-- Prototype creation: NOT STARTED.
-- Production redesign: NOT STARTED.
-- Property Inventory: BLOCKED.
+Repair the incomplete production navigation shell and establish the real-data Property Home foundation.
 
 ## Proposed Changes
 
-### Documentation
+- Documentation-only planning pass (completed).
+- Production implementation of Home destination.
+- No database changes.
+- No version changes.
+- Version: **0.03 (3)** preserved.
 
-#### [MODIFY] [BEGINNER_FIRST_UX_MASTER_PLAN.md](file:///C:/Users/Justi/StudioProjects/mapstead_new/BEGINNER_FIRST_UX_MASTER_PLAN.md)
-- Added comprehensive **Purpose** section.
-- Corrected **Terminology** to use "Property Item" as the single generic term.
-- Restored the exact **Pool Pump reference journey** with an explicit Review step.
-- Completed **Beginner Acceptance Standards** and added **Practical Beginner Checks**.
-- Formalized **Scope Protections** (progressive disclosure vs. separate modes).
-- Detailed all **Open Decisions** requiring visual prototype review.
-- Corrected Slices 6 (Tasks) and 7 (Advanced Features) to align with existing functions.
-- Defined **Document Roles** and corrected the **Current Boundary**.
+### Dashboard
 
-#### [MODIFY] [ROADMAP.md](file:///C:/Users/Justi/StudioProjects/mapstead_new/ROADMAP.md)
-- Resolved contradictions in **Phase 3A** status (Consistently: 3A1/3A2 COMPLETE, 3A3 IMPLEMENTED).
-- Updated **Beginner-First UX 2.0** statuses (Master-plan document: CREATED / EXTERNAL APPROVAL PENDING).
+#### [NEW] [HomeViewModel.kt](file:///C:/Users/Justi/StudioProjects/mapstead_new/app/src/main/java/com/jumastappworks/mapstead/ui/dashboard/HomeViewModel.kt)
+- Define `HomeUiState` to hold property data, items, and tasks.
+- Implement `HomeViewModel` to observe `PropertyRepository`, `InfrastructureRepository`, and `MaintenanceRepository`.
+- Implement property-scoped data loading for "Needs Attention" (overdue/today tasks), "Upcoming" (next 3 tasks), and "Recently Added" (last 5 items).
 
-#### [MODIFY] [README.md](file:///C:/Users/Justi/StudioProjects/mapstead_new/README.md)
-- Added a concise status summary for **Beginner-First UX 2.0**.
-- Linked to the authoritative master plan.
+#### [NEW] [HomeScreen.kt](file:///C:/Users/Justi/StudioProjects/mapstead_new/app/src/main/java/com/jumastappworks/mapstead/ui/dashboard/HomeScreen.kt)
+- Implement `HomeScreen` composable with the following sections:
+    - **Top Bar**: Property selector with switching action and Settings entry.
+    - **Primary Actions**: "Add Something", "Find Something", "Emergency Guide" cards.
+    - **Needs Attention**: List of overdue or today's tasks with a clear empty state.
+    - **Recently Added**: List of latest property items.
+    - **Secondary Actions**: "Edit Property" and "Help Center" buttons.
+- Handle state transitions (Loading, Selected, Empty).
 
-#### [MODIFY] [implementation_plan.artifact.md](file:///C:/Users/Justi/StudioProjects/mapstead_new/implementation_plan.artifact.md)
-- Replaced stale plan with current correction pass details.
+### Navigation
 
----
+#### [MODIFY] [NavigationGraph.kt](file:///C:/Users/Justi/StudioProjects/mapstead_new/app/src/main/java/com/jumastappworks/mapstead/ui/navigation/NavigationGraph.kt)
+- Ensure `HomeScreen` and `HomeViewModel` references are correctly wired. (Current code already references them but files are missing).
+- Verify bottom navigation destinations: Home, Map, Items, Tasks.
 
 ## Verification Plan
 
-### Manual Verification
-- Verify `BEGINNER_FIRST_UX_MASTER_PLAN.md` exists and contains all requested sections.
-- Verify `ROADMAP.md` reflects consistent Phase 3A and UX 2.0 statuses.
-- Verify `README.md` includes the new status block.
-- Confirm all internal document links resolve correctly.
+### Automated Tests
+- **HomeViewModelTest**:
+    - Verify property ID sets correct scoped data.
+    - Verify switching properties clears old data and loads new data.
+    - Verify "Needs Attention" logic (Overdue + Today).
+    - Verify "Upcoming" logic (Future tasks, sorted, limited to 3).
+    - Verify "Recently Added" logic (Limited to 5, sorted by creation date).
+    - Verify empty states when no items or tasks exist.
 
-### Technical Integrity
-- Production Kotlin changes: **NONE**.
-- Test changes: **NONE**.
-- Database changes: **NONE**.
-- Navigation changes: **NONE**.
-- Version: **0.03 (3)** preserved.
-- Gradle execution: **NOT REQUIRED**.
+### Manual Verification
+- App startup reaches Home.
+- Property switching updates Home content immediately.
+- "Add Something" launches the guided mapping workflow.
+- "Find Something" navigates to Items tab.
+- "Tasks" navigates to Tasks tab.
+- "Emergency Guide" launches Emergency screen.
+- Clicking an item in "Recently Added" opens its details.
+- Settings button opens Settings.
+
+### Quality Gates
+- `gradlew.bat :app:compileDebugKotlin --no-parallel`
+- `gradlew.bat :app:testDebugUnitTest --no-parallel`
+- `gradlew.bat :app:assembleDebug`
+- `gradlew.bat :app:lintDebug --no-parallel`
