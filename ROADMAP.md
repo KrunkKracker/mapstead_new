@@ -46,11 +46,12 @@
 - [x] Stage 3 — Map Presentation and Guided Mapping (COMPLETE)
 - [/] Stage 4 — Guidance, Help, and Final Beginner Review (IN PROGRESS)
 - [/] Beginner-First UX 2.0 — [Master Plan](BEGINNER_FIRST_UX_MASTER_PLAN.md) (IN PROGRESS)
-    - [x] Master planning (COMPLETE)
-    - [x] Master-plan document (APPROVED)
-    - [x] Prototype 1 — App Shell and Pool Pump Journey (COMPLETE)
-    - [x] Prototype 2 — First Property Setup and Universal Add Something (COMPLETE)
-    - [/] Production Slice 1 — Real App Shell, First Property Setup, and Property Home (SOURCE IMPLEMENTED / PHYSICAL-DEVICE REVIEW PENDING)
+    - [/] Master planning (IN PROGRESS)
+    - [x] Master-plan document (CREATED / EXTERNAL APPROVAL PENDING)
+    - [ ] Terminology approval (NOT STARTED)
+    - [ ] Information architecture approval (NOT STARTED)
+    - [ ] Prototype creation (NOT STARTED)
+    - [ ] Production redesign (NOT STARTED)
 - [ ] Phase 5E — Property Inventory (BLOCKED)
 
 ---
@@ -88,11 +89,10 @@ Purpose: Provide in-context assistance and finalize the onboarding experience.
 
 ## Beginner-First UX 2.0
 Status:
-- Master planning: COMPLETE
-- Master-plan document: APPROVED
-- Terminology decision: IN PROGRESS / EXTERNAL APPROVAL PENDING
-- Information architecture decision: IN PROGRESS / EXTERNAL APPROVAL PENDING
-- Decision pack: IN PROGRESS
+- Master planning: IN PROGRESS
+- Master-plan document: CREATED / EXTERNAL APPROVAL PENDING
+- Terminology approval: NOT STARTED
+- Information architecture approval: NOT STARTED
 - Prototype creation: NOT STARTED
 - Production redesign: NOT STARTED
 - Property Inventory: BLOCKED

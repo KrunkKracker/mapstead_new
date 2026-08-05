@@ -13,14 +13,12 @@ Mapstead is a local-first, private property management tool designed for homeown
 - **Phase 3A (Unified Item Details)**: IN PROGRESS / PHYSICAL-DEVICE ACCEPTANCE PENDING.
 
 ### Beginner-First UX 2.0
-- Authoritative [Master Plan](BEGINNER_FIRST_UX_MASTER_PLAN.md) APPROVED.
-- Production redesign: NOT STARTED.
-- Static prototype work: NOT STARTED.
+- Master plan created and awaiting external approval.
+- Production redesign not started.
+- Static prototype work not started.
 - Phase 3A physical-device acceptance remains a separate open gate.
-- **Phase 2.2g (Deferred Reactive State Closure)**: COMPLETE.
-- **Phase 2.2h (Basemap Implementation)**: COMPLETE.
-- **Stage 4 (Guidance, Help, and Final Beginner Review)**: IN PROGRESS.
-- **Property Inventory**: BLOCKED.
+- Property Inventory remains blocked.
+- Authoritative Document: [BEGINNER_FIRST_UX_MASTER_PLAN.md](BEGINNER_FIRST_UX_MASTER_PLAN.md)
 
 ## Core Features
 - **MapTiler Integration**: High-quality Streets, Topo, and Satellite Hybrid imagery with resilient OpenFreeMap fallback.

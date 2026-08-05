@@ -1,13 +1,13 @@
 # Mapstead Beginner-First UX 2.0 Master Plan
 
-This document is the authoritative plan for redesigning Mapstead to support customers with very limited smartphone and technical experience.
+This document is the authoritative plan for redesigning Mapstead for customers with very limited smartphone and technical experience.
 
 ## Purpose
 
 Mapstead must be usable by customers who:
 - Rarely use complex smartphone applications.
-- Do not understand GIS terminology.
-- Do not understand Mapstead’s internal records.
+- Do not understand GIS terminology (Point, Line, Polygon).
+- Do not understand Mapstead’s internal records (Infrastructure vs. Map Feature).
 - Need clear, forgiving, and predictable workflows.
 - May need critical property information quickly.
 
@@ -36,8 +36,9 @@ A **Property Item** is a unified concept that internally may include:
 - Related items
 
 The customer experiences these as one cohesive item. They should not need to understand technical concepts such as:
-- Map Features vs. Infrastructure Records
-- Geometry types (Point, Line, Polygon)
+- Map Feature
+- Infrastructure Record
+- Geometry type
 - Attachment ownership
 - Repository structure
 - Database relationships
@@ -51,7 +52,16 @@ Mapstead will not be redesigned merely screen-by-screen or technical system-by-t
 A **vertical slice** is a complete customer goal crossing all necessary screens and technical systems.
 *Example:* Home → Find Main Water Shutoff → View Details → Show on Map → Add Photo → Return to Details.
 
-A screen is not considered complete until its entry path, exit path, back behavior, empty state, loading state, error behavior, completion state, and accessibility behavior are fully understandable for a beginner.
+A screen is not considered complete until its:
+- Entry path
+- Exit path
+- Back behavior
+- Empty state
+- Loading state
+- Error behavior
+- Completion state
+- Accessibility behavior
+are understandable for a beginner.
 
 ## Working Information Architecture (Initial Hypothesis)
 
@@ -62,8 +72,7 @@ The initial navigation hypothesis consists of:
 - **Property Items**: Searchable list of everything documented on the property using beginner-friendly categories, with clear map-location, task, and Emergency Guide status.
 - **Tasks**: Filtered views for Overdue, Due Soon, Upcoming, and Completed tasks, with clear association back to Property Items.
 
-> [!NOTE]
-> Specific navigation and architecture recommendations are being evaluated in the [Terminology and Information Architecture Decision Pack](BEGINNER_FIRST_UX_TERMINOLOGY_IA_DECISION_PACK.md).
+*Status: OPEN — REQUIRES VISUAL PROTOTYPE REVIEW*
 
 ### Emergency Guide
 The **Emergency Guide** is a prominent destination reachable from Home and relevant Property Item details. It is not necessarily a bottom-navigation tab.
@@ -84,7 +93,7 @@ The primary rule is: **Use the actual item name whenever possible** (e.g., Well,
 | Open Record | View Details |
 | Return to Property | Recenter on Property (for map camera action) |
 
-*Specific terminology recommendations are detailed in the [Decision Pack](BEGINNER_FIRST_UX_TERMINOLOGY_IA_DECISION_PACK.md).*
+*Status: OPEN — REQUIRES VISUAL PROTOTYPE REVIEW*
 
 ## Priority Customer Journeys
 
@@ -106,7 +115,7 @@ Each journey specification must define: Entry points, Main goal, Required screen
 
 **Scenario:** The customer is standing beside a pool pump in the backyard and wants to document it.
 
-**Path:**
+**Default Path:**
 Home → Add Something → Pool Equipment → I’m Standing Next to It → Confirm or adjust location → Take Photo → Review → Save → Pool Pump details.
 
 **The Review step includes:**
@@ -134,8 +143,8 @@ Customers must **never** be asked to choose between Point, Line, Polygon, Map Fe
 3.  **SLICE 3: Add Something** - Real-world presets, location/photo optionality, explicit Review screen.
 4.  **SLICE 4: Emergency Guide** - Critical item elevation, instructions, contacts, offline access.
 5.  **SLICE 5: Photos and Files** - Unified acquisition (Take/Choose), ownership management.
-6.  **SLICE 6: Tasks** - Overdue, Due Soon, Upcoming, and Completed views; association with items; history.
-7.  **SLICE 7: Advanced Features** - Related Items, Reports, Backup and Restore, Property Handoff, Data Transfer, Advanced map controls, technical metadata, and settings.
+6.  **SLICE 6: Tasks** - Overdue, Due Soon, Upcoming, and Completed views; Related Property Item; "What needs to be done"; Mark complete; History under progressive disclosure.
+7.  **SLICE 7: Advanced Features** - Related Items, Reports, Backup and Restore, Property Handoff, Data Transfer, Advanced map controls, Technical coordinates and metadata, and less-common settings.
 
 ## Prototype Phase
 
@@ -171,17 +180,17 @@ Emergency Guide information must remain available offline.
 
 A vertical slice is not complete until it meets these requirements:
 - One obvious primary action.
-- Plain language (no technical jargon).
+- Plain language (no unexplained technical terms).
 - Home reachable predictably.
 - Back never loses customer context.
 - No dependency on hidden gestures.
 - Minimum 48dp touch targets.
 - Usability at Android font scale 2.0.
 - TalkBack compatibility.
-- Clear empty/loading/error states.
+- Clear empty/loading states.
+- Actionable errors.
 - Safe cancellation.
 - No whole-world map resets.
-- Actionable errors.
 - No duplicate destinations.
 - No requirement to understand internal records.
 
@@ -193,15 +202,15 @@ A vertical slice is not complete until it meets these requirements:
 - A new customer can return Home without repeatedly pressing Back.
 - A customer never has to choose a database, record, or geometry concept during a normal preset workflow.
 
-> [!NOTE]
+> [!IMPORTANT]
 > Documentation completion is not customer acceptance. Physical-device journey testing remains required.
 
 ## Scope Protection
 
-- No major new features until the core is cohesive.
+- Do not add major new features while the beginner-first core remains fragmented.
 - Do not remove working repositories to simplify presentation.
 - Do not expose advanced controls on primary screens.
-- Use progressive disclosure instead of separate "Simple/Advanced" modes.
+- Do not introduce separate Simple and Advanced application modes. Use progressive disclosure instead.
 - Do not treat documentation completion as customer acceptance.
 - Require physical-device journey testing before a slice is accepted.
 - Property Inventory remains **BLOCKED** until the foundation is coherent.
@@ -231,7 +240,7 @@ Marked: OPEN — REQUIRES VISUAL PROTOTYPE REVIEW
 ## Progress Tracker
 
 - [x] Master-plan document created
-- [x] Master plan approved
+- [ ] Master plan approved
 - [ ] Terminology approved
 - [ ] Information architecture approved
 - [ ] Prototype journeys created
@@ -248,7 +257,8 @@ Marked: OPEN — REQUIRES VISUAL PROTOTYPE REVIEW
 
 ## Current Boundary
 
-Planning and prototype work may proceed while final Phase 3A physical acceptance remains separate. Production navigation replacement must not begin until all of the following are true:
+Planning and prototype work may proceed while final Phase 3A physical acceptance remains separate.
+Production navigation replacement must not begin until all of the following are true:
 - The stable pre-redesign baseline is recorded.
 - The master plan is approved.
 - Terminology and information architecture decisions are approved.
