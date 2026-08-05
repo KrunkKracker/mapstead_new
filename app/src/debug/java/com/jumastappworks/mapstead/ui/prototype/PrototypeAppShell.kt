@@ -52,7 +52,7 @@ fun PrototypeAppShell() {
         Box(modifier = Modifier.padding(innerPadding)) {
             when (val dest = currentDest) {
                 PrototypeDestination.Home -> PrototypeHomeScreen(appState)
-                is PrototypeDestination.Map -> PrototypeMapScreen(appState, dest.highlightItemId)
+                is PrototypeDestination.Map -> PrototypeMapScreen(appState, dest.highlightItemId, dest.returnToDetails)
                 PrototypeDestination.Items -> PrototypeItemsScreen(appState)
                 PrototypeDestination.Tasks -> PrototypeTasksScreen(appState)
                 PrototypeDestination.EmergencyGuide -> PrototypeEmergencyGuide(appState)

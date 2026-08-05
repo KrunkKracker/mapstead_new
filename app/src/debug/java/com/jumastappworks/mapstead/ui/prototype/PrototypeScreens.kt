@@ -25,6 +25,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import java.util.UUID
 import java.util.Locale
 
@@ -44,7 +45,7 @@ fun PrototypeHomeScreen(appState: PrototypeAppState) {
         }
 
         Button(
-            onClick = { appState.navigateTo(PrototypeDestination.AddJourney(AddStep.Category)) },
+            onClick = { appState.startAddJourney() },
             modifier = Modifier.fillMaxWidth().heightIn(min = 64.dp),
             shape = RoundedCornerShape(16.dp)
         ) {
@@ -100,7 +101,7 @@ fun PrototypeHomeScreen(appState: PrototypeAppState) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PrototypeMapScreen(appState: PrototypeAppState, highlightItemId: UUID? = null) {
+fun PrototypeMapScreen(appState: PrototypeAppState, highlightItemId: UUID? = null, returnToDetails: Boolean = false) {
     var customerLocation by remember { mutableStateOf(Offset(200f, 300f)) }
     var mapCenter by remember { mutableStateOf(Offset(0f, 0f)) }
     var zoomLevel by remember { mutableStateOf(1f) }
@@ -133,17 +134,19 @@ fun PrototypeMapScreen(appState: PrototypeAppState, highlightItemId: UUID? = nul
             
             // Items
             appState.items.forEach { item ->
-                val offset = Offset(
-                    (((item.longitude ?: 0.0) + 118.567) * 10000f).toFloat(),
-                    (((item.latitude ?: 0.0) - 34.123) * 10000f).toFloat()
-                ) * zoomLevel
-                
-                val isHighlighted = item.id == highlightItemId
-                drawCircle(
-                    if (isHighlighted) Color.Red else Color.Blue,
-                    center = center + offset,
-                    radius = if (isHighlighted) 12f * zoomLevel else 8f * zoomLevel
-                )
+                if (!item.needsLocation) {
+                    val offset = Offset(
+                        (((item.longitude ?: 0.0) + 118.567) * 10000f).toFloat(),
+                        (((item.latitude ?: 0.0) - 34.123) * 10000f).toFloat()
+                    ) * zoomLevel
+                    
+                    val isHighlighted = item.id == highlightItemId
+                    drawCircle(
+                        if (isHighlighted) Color.Red else Color.Blue,
+                        center = center + offset,
+                        radius = if (isHighlighted) 12f * zoomLevel else 8f * zoomLevel
+                    )
+                }
             }
             
             // Customer
@@ -185,7 +188,7 @@ fun PrototypeMapScreen(appState: PrototypeAppState, highlightItemId: UUID? = nul
             FloatingActionButton(onClick = { appState.mapOptionsOpen = true }, containerColor = MaterialTheme.colorScheme.surface) {
                 Icon(Icons.Default.Layers, contentDescription = "Map Options")
             }
-            FloatingActionButton(onClick = { appState.navigateTo(PrototypeDestination.AddJourney(AddStep.Category)) }) {
+            FloatingActionButton(onClick = { appState.startAddJourney() }) {
                 Icon(Icons.Default.Add, contentDescription = "Add Something")
             }
         }
@@ -204,8 +207,14 @@ fun PrototypeMapScreen(appState: PrototypeAppState, highlightItemId: UUID? = nul
                             Text(item.name, fontWeight = FontWeight.Bold)
                             Text(item.locationDescription, style = MaterialTheme.typography.bodySmall)
                         }
-                        TextButton(onClick = { appState.navigateTo(PrototypeDestination.ItemDetails(item.id)) }) {
-                            Text("Details")
+                        if (returnToDetails) {
+                            Button(onClick = { appState.goBack() }) {
+                                Text("Return to Details")
+                            }
+                        } else {
+                            TextButton(onClick = { appState.navigateTo(PrototypeDestination.ItemDetails(item.id)) }) {
+                                Text("Details")
+                            }
                         }
                     }
                 }
@@ -278,8 +287,10 @@ fun PrototypeItemsScreen(appState: PrototypeAppState) {
             }
         } else {
             LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                items(filteredItems) { item ->
-                    ItemRow(item) { appState.navigateTo(PrototypeDestination.ItemDetails(item.id)) }
+                items(appState.items.toList(), key = { it.id }) { item ->
+                    if (item in filteredItems) {
+                        ItemRow(item) { appState.navigateTo(PrototypeDestination.ItemDetails(item.id)) }
+                    }
                 }
             }
         }
@@ -367,7 +378,7 @@ fun PrototypeItemDetails(appState: PrototypeAppState, itemId: UUID) {
             modifier = Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
-            // Main Photo
+            // Priority Content
             Box(modifier = Modifier.fillMaxWidth().height(200.dp).background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) {
                 if (item.hasPhoto) {
                     Icon(Icons.Default.CameraAlt, contentDescription = null, modifier = Modifier.size(48.dp), tint = MaterialTheme.colorScheme.primary)
@@ -382,7 +393,7 @@ fun PrototypeItemDetails(appState: PrototypeAppState, itemId: UUID) {
                     Text("Status: ${item.status}", style = MaterialTheme.typography.bodyMedium)
                 }
                 if (!item.needsLocation) {
-                    Button(onClick = { appState.navigateTo(PrototypeDestination.Map(highlightItemId = item.id)) }) {
+                    Button(onClick = { appState.navigateTo(PrototypeDestination.Map(highlightItemId = item.id, returnToDetails = true)) }) {
                         Icon(Icons.Default.Map, contentDescription = null)
                         Spacer(Modifier.width(8.dp))
                         Text("Show on Map")
@@ -391,7 +402,7 @@ fun PrototypeItemDetails(appState: PrototypeAppState, itemId: UUID) {
             }
 
             DetailSection("At a Glance") {
-                Text(item.locationDescription)
+                Text("Location: ${item.locationDescription}")
                 item.note?.let { 
                     Spacer(Modifier.height(8.dp))
                     Text("Note: $it", style = MaterialTheme.typography.bodyMedium)
@@ -447,6 +458,8 @@ fun PrototypeItemDetails(appState: PrototypeAppState, itemId: UUID) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PrototypeAddJourney(appState: PrototypeAppState, step: AddStep) {
+    val draft = appState.addDraft ?: return
+    
     Scaffold(
         topBar = {
             TopAppBar(
@@ -461,34 +474,37 @@ fun PrototypeAddJourney(appState: PrototypeAppState, step: AddStep) {
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp)) {
             when (step) {
-                AddStep.Category -> CategoryStep { appState.navigateTo(PrototypeDestination.AddJourney(AddStep.Preset(it))) }
-                is AddStep.Preset -> PresetStep(step.category) { appState.navigateTo(PrototypeDestination.AddJourney(AddStep.LocationChoice(it, step.category))) }
+                AddStep.Category -> CategoryStep { 
+                    appState.addDraft = draft.copy(category = it)
+                    appState.navigateTo(PrototypeDestination.AddJourney(AddStep.Preset(it))) 
+                }
+                is AddStep.Preset -> PresetStep(step.category) { 
+                    appState.addDraft = draft.copy(name = it)
+                    appState.navigateTo(PrototypeDestination.AddJourney(AddStep.LocationChoice(it, step.category))) 
+                }
                 is AddStep.LocationChoice -> LocationChoiceStep(step.name) { choice ->
                     when (choice) {
                         "Standing" -> appState.navigateTo(PrototypeDestination.AddJourney(AddStep.LocationConfirm(step.name, step.category)))
                         "Map" -> appState.navigateTo(PrototypeDestination.AddJourney(AddStep.LocationManual(step.name, step.category)))
-                        "Later" -> appState.navigateTo(PrototypeDestination.AddJourney(AddStep.Photo(step.name, step.category, "Needs Location", needsLocation = true)))
+                        "Later" -> {
+                            appState.addDraft = draft.copy(locationDescription = "Needs Location", needsLocation = true, latitude = null, longitude = null)
+                            appState.navigateTo(PrototypeDestination.AddJourney(AddStep.Photo(step.name, step.category)))
+                        }
                     }
                 }
                 is AddStep.LocationConfirm -> LocationConfirmStep(step.name) { confirmedDesc ->
-                    appState.navigateTo(PrototypeDestination.AddJourney(AddStep.Photo(step.name, step.category, confirmedDesc)))
+                    appState.addDraft = draft.copy(locationDescription = confirmedDesc, needsLocation = false, latitude = 34.1235, longitude = -118.5671)
+                    appState.navigateTo(PrototypeDestination.AddJourney(AddStep.Photo(step.name, step.category)))
                 }
                 is AddStep.LocationManual -> LocationManualStep(step.name) { confirmedDesc ->
-                    appState.navigateTo(PrototypeDestination.AddJourney(AddStep.Photo(step.name, step.category, confirmedDesc)))
+                    appState.addDraft = draft.copy(locationDescription = confirmedDesc, needsLocation = false, latitude = 34.1238, longitude = -118.5675)
+                    appState.navigateTo(PrototypeDestination.AddJourney(AddStep.Photo(step.name, step.category)))
                 }
                 is AddStep.Photo -> PhotoStep { hasPhoto ->
-                    val draft = PrototypePropertyItem(
-                        name = step.name,
-                        category = step.category,
-                        locationDescription = step.locationDescription,
-                        hasPhoto = hasPhoto,
-                        needsLocation = step.needsLocation,
-                        latitude = if (step.needsLocation) null else 34.1235,
-                        longitude = if (step.needsLocation) null else -118.5671
-                    )
-                    appState.navigateTo(PrototypeDestination.AddJourney(AddStep.Review(draft)))
+                    appState.addDraft = draft.copy(hasPhoto = hasPhoto)
+                    appState.navigateTo(PrototypeDestination.AddJourney(AddStep.Review))
                 }
-                is AddStep.Review -> ReviewStep(step.draft, appState)
+                AddStep.Review -> ReviewStep(appState)
             }
         }
     }
@@ -597,16 +613,16 @@ fun PhotoStep(onNext: (Boolean) -> Unit) {
 }
 
 @Composable
-fun ReviewStep(initialDraft: PrototypePropertyItem, appState: PrototypeAppState) {
-    var draft by remember { mutableStateOf(initialDraft) }
-    var note by remember { mutableStateOf("") }
+fun ReviewStep(appState: PrototypeAppState) {
+    val draft = appState.addDraft ?: return
+    var showNameDialog by remember { mutableStateOf(false) }
 
     Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
         Text("Review & Save", style = MaterialTheme.typography.titleLarge)
         
         Card(modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                ReviewRow("Name", draft.name, Icons.Default.Edit) { /* Edit name dialog simulated */ }
+                ReviewRow("Name", draft.name, Icons.Default.Edit) { showNameDialog = true }
                 ReviewRow("Category", draft.category, null) {}
                 ReviewRow("Location", draft.locationDescription, Icons.Default.Place) {
                     appState.goBack() // Simplified return to location choice
@@ -616,8 +632,8 @@ fun ReviewStep(initialDraft: PrototypePropertyItem, appState: PrototypeAppState)
                 }
                 
                 OutlinedTextField(
-                    value = note,
-                    onValueChange = { note = it },
+                    value = draft.note ?: "",
+                    onValueChange = { appState.addDraft = draft.copy(note = it) },
                     label = { Text("Add a note (optional)") },
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -625,11 +641,28 @@ fun ReviewStep(initialDraft: PrototypePropertyItem, appState: PrototypeAppState)
         }
 
         Button(onClick = { 
-            val finalItem = draft.copy(note = note.takeIf { it.isNotBlank() })
-            appState.saveItem(finalItem)
-            appState.replaceTop(PrototypeDestination.ItemDetails(finalItem.id))
+            appState.completeAddJourney(draft)
         }, modifier = Modifier.fillMaxWidth().height(56.dp)) {
             Text("Save Item", fontWeight = FontWeight.Bold)
+        }
+    }
+
+    if (showNameDialog) {
+        var newName by remember { mutableStateOf(draft.name) }
+        Dialog(onDismissRequest = { showNameDialog = false }) {
+            Card(shape = RoundedCornerShape(16.dp)) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Text("Edit Name", style = MaterialTheme.typography.titleMedium)
+                    OutlinedTextField(value = newName, onValueChange = { newName = it }, modifier = Modifier.fillMaxWidth())
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                        TextButton(onClick = { showNameDialog = false }) { Text("Cancel") }
+                        TextButton(onClick = { 
+                            appState.addDraft = draft.copy(name = newName)
+                            showNameDialog = false 
+                        }) { Text("OK") }
+                    }
+                }
+            }
         }
     }
 }

@@ -5,7 +5,7 @@ import java.util.UUID
 
 sealed interface PrototypeDestination {
     data object Home : PrototypeDestination
-    data class Map(val highlightItemId: UUID? = null, val returnTo: PrototypeDestination? = null) : PrototypeDestination
+    data class Map(val highlightItemId: UUID? = null, val returnToDetails: Boolean = false) : PrototypeDestination
     data object Items : PrototypeDestination
     data object Tasks : PrototypeDestination
     data object EmergencyGuide : PrototypeDestination
@@ -19,8 +19,8 @@ sealed interface AddStep {
     data class LocationChoice(val name: String, val category: String) : AddStep
     data class LocationConfirm(val name: String, val category: String) : AddStep
     data class LocationManual(val name: String, val category: String) : AddStep
-    data class Photo(val name: String, val category: String, val locationDescription: String, val needsLocation: Boolean = false) : AddStep
-    data class Review(val draft: PrototypePropertyItem) : AddStep
+    data class Photo(val name: String, val category: String) : AddStep
+    data object Review : AddStep
 }
 
 class PrototypeAppState {
@@ -30,6 +30,9 @@ class PrototypeAppState {
     // Data State
     val items = mutableStateListOf<PrototypePropertyItem>()
     val tasks = mutableStateListOf<PrototypeTask>()
+    
+    // Journey State
+    var addDraft by mutableStateOf<PrototypePropertyItem?>(null)
     
     // UI State
     var searchQuery by mutableStateOf("")
@@ -50,6 +53,7 @@ class PrototypeAppState {
         currentDestination = PrototypeDestination.Home
         backStack.clear()
         backStack.add(PrototypeDestination.Home)
+        addDraft = null
     }
 
     fun navigateTo(destination: PrototypeDestination) {
@@ -62,19 +66,34 @@ class PrototypeAppState {
         currentDestination = destination
     }
 
-    fun replaceTop(destination: PrototypeDestination) {
-        if (backStack.isNotEmpty()) {
-            backStack.removeAt(backStack.size - 1)
-        }
-        backStack.add(destination)
-        currentDestination = destination
-    }
-
     fun goBack() {
         if (backStack.size > 1) {
             backStack.removeAt(backStack.size - 1)
             currentDestination = backStack.last()
         }
+    }
+
+    fun startAddJourney() {
+        addDraft = PrototypePropertyItem(name = "", category = "", locationDescription = "")
+        navigateTo(PrototypeDestination.AddJourney(AddStep.Category))
+    }
+
+    fun completeAddJourney(savedItem: PrototypePropertyItem) {
+        // 1. Identify where the journey started
+        val journeyStartIndex = backStack.indexOfFirst { it is PrototypeDestination.AddJourney }
+        
+        // 2. Remove all AddJourney steps from backstack
+        if (journeyStartIndex != -1) {
+            while (backStack.size > journeyStartIndex) {
+                backStack.removeAt(backStack.size - 1)
+            }
+        }
+
+        saveItem(savedItem)
+        addDraft = null
+        
+        // 3. Push details (Now the top is the origin, e.g. Home or Items)
+        navigateTo(PrototypeDestination.ItemDetails(savedItem.id))
     }
 
     fun saveItem(item: PrototypePropertyItem) {
@@ -83,13 +102,20 @@ class PrototypeAppState {
             items[index] = item
         } else {
             items.add(item)
+            // Update tasks referencing this name (e.g., "pool-pump" vs "Pool Pump")
+            val searchToken = item.name.replace(" ", "-")
+            tasks.forEachIndexed { i, task ->
+                if (task.title.contains(searchToken, ignoreCase = true) && task.relatedItemId == null) {
+                    tasks[i] = task.copy(relatedItemId = item.id)
+                }
+            }
         }
     }
 }
 
 private val initialFakeItems = listOf(
     PrototypePropertyItem(name = "Main Water Shutoff", category = "Water & Plumbing", locationDescription = "Front of house, near driveway", isEmergency = true, latitude = 34.1235, longitude = -118.5670),
-    PrototypePropertyItem(name = "Pool Pump", category = "Pool Equipment", locationDescription = "Behind equipment wall near shed", latitude = 34.1230, longitude = -118.5675),
+    // Pool Pump removed for Add Journey demonstration
     PrototypePropertyItem(name = "Well", category = "Water & Plumbing", locationDescription = "North pasture, marked by well house", latitude = 34.1240, longitude = -118.5680),
     PrototypePropertyItem(name = "Septic Tank", category = "Water & Plumbing", locationDescription = "South lawn, access near oak tree", latitude = 34.1220, longitude = -118.5672),
     PrototypePropertyItem(name = "Electrical Panel", category = "Power & Electrical", locationDescription = "Garage, west wall", isEmergency = true, latitude = 34.1233, longitude = -118.5668),
@@ -100,8 +126,8 @@ private val initialFakeItems = listOf(
 )
 
 private val initialFakeTasks = listOf(
-    PrototypeTask(title = "Replace pool-pump filter", status = PrototypeTaskStatus.OVERDUE, relatedItemId = initialFakeItems[1].id),
-    PrototypeTask(title = "Inspect well pressure tank", status = PrototypeTaskStatus.DUE_SOON, relatedItemId = initialFakeItems[2].id),
+    PrototypeTask(title = "Replace pool-pump filter", status = PrototypeTaskStatus.OVERDUE, relatedItemId = null),
+    PrototypeTask(title = "Inspect well pressure tank", status = PrototypeTaskStatus.DUE_SOON, relatedItemId = initialFakeItems[1].id),
     PrototypeTask(title = "Service generator", status = PrototypeTaskStatus.UPCOMING),
-    PrototypeTask(title = "Septic inspection", status = PrototypeTaskStatus.COMPLETED, relatedItemId = initialFakeItems[3].id)
+    PrototypeTask(title = "Septic inspection", status = PrototypeTaskStatus.COMPLETED, relatedItemId = initialFakeItems[2].id)
 )
