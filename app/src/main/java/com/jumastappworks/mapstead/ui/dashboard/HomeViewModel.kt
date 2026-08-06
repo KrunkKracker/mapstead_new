@@ -91,7 +91,9 @@ class HomeViewModel @Inject constructor(
                     emit(HomeUiState.Loading)
                     
                     val flowA = combine(
-                        flow { emit(propertyRepository.getPropertyById(id)) },
+                        propertyRepository.getAllProperties().map { list -> 
+                            list.find { it.id == id && it.deletedAt == null } 
+                        }.distinctUntilChanged(),
                         infrastructureRepository.getItemsForProperty(id),
                         maintenanceRepository.getRecordsForProperty(id),
                         mapRepository.getFeaturesForProperty(id)

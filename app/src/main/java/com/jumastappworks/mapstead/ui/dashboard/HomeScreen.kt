@@ -128,24 +128,30 @@ fun HomeScreen(
                 }
             }
             is HomeUiState.Ready -> {
-                HomeContent(
-                    modifier = Modifier.padding(padding),
-                    state = s,
-                    onAddSomething = onAddSomething,
-                    onFindSomething = onFindSomething,
-                    onOpenEmergency = onOpenEmergency,
-                    onOpenTasks = onOpenTasks,
-                    onOpenItemDetails = onOpenItemDetails,
-                    onEditProperty = { onEditProperty(s.property.id) },
-                    onNavigateToHelp = onNavigateToHelp,
-                    onDismissChecklist = { viewModel.dismissChecklist() },
-                    onStepClick = { stepId ->
-                        when (stepId) {
-                            GettingStartedStepId.CREATE_PROPERTY -> onEditProperty(s.property.id)
-                            else -> onAddSomething()
-                        }
+                if (s.property.id != selectedPropertyId) {
+                    Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
                     }
-                )
+                } else {
+                    HomeContent(
+                        modifier = Modifier.padding(padding),
+                        state = s,
+                        onAddSomething = onAddSomething,
+                        onFindSomething = onFindSomething,
+                        onOpenEmergency = onOpenEmergency,
+                        onOpenTasks = onOpenTasks,
+                        onOpenItemDetails = onOpenItemDetails,
+                        onEditProperty = { onEditProperty(s.property.id) },
+                        onNavigateToHelp = onNavigateToHelp,
+                        onDismissChecklist = { viewModel.dismissChecklist() },
+                        onStepClick = { stepId ->
+                            when (stepId) {
+                                GettingStartedStepId.CREATE_PROPERTY -> onEditProperty(s.property.id)
+                                else -> onAddSomething()
+                            }
+                        }
+                    )
+                }
             }
         }
     }

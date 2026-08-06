@@ -267,4 +267,4 @@ Production navigation replacement must not begin until all of the following are 
 - Information architecture is approved.
 - The first complete prototype journeys are visually reviewed.
 
-*Production Redesign Status: NOT STARTED*
+*Production Redesign Status: IN PROGRESS — Slice 1 source-implemented; physical-device acceptance pending.*
