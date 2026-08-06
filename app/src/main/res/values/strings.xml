@@ -68,15 +68,31 @@
     <string name="no_recent_items">No recently viewed items.</string>
 
     <!-- Home -->
+    <string name="home_title">Home</string>
     <string name="home_add_something">Add Something</string>
     <string name="home_find_something">Find Something</string>
     <string name="home_emergency_guide">Emergency Guide</string>
     <string name="home_emergency_guide_desc">Quickly find shutoffs, hazards, contacts, and emergency instructions.</string>
     <string name="home_needs_attention">Needs Attention</string>
-    <string name="home_recently_updated">Recently Updated</string>
+    <string name="home_recently_added">Recently Added</string>
+    <string name="home_upcoming">Upcoming</string>
     <string name="home_manage_maps">Manage Maps</string>
     <string name="home_property_files">Property Photos &amp; Files</string>
-    <string name="home_related_items">Related Items</string>
+    <string name="home_property_item">Property Item</string>
+    <string name="home_no_items_yet">Add your first item to get started.</string>
+    <string name="home_switch_property">Switch Property</string>
+    <string name="state_selected">Selected</string>
+    <string name="home_no_tasks_attention">Nothing needs attention right now.</string>
+    <string name="home_map_only_guidance">You have items on your map, but no details or tasks yet.</string>
+    <string name="home_error_loading">Failed to load property information.</string>
+    <string name="home_property_not_found">The selected property could not be found.</string>
+
+    <!-- Maintenance Labels -->
+    <string name="maint_overdue">Overdue</string>
+    <string name="maint_due_today">Due today</string>
+    <string name="maint_due_tomorrow">Due tomorrow</string>
+    <string name="maint_no_due_date">No due date</string>
+    <string name="maint_due_on">Due %1$s</string>
 
     <!-- Dashboards -->
     <string name="property_dashboard">Property Dashboard</string>

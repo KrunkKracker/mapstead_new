@@ -1,60 +1,67 @@
-# Beginner-First UX 2.0 — Production Shell Build Closure and Property Home Foundation
+# Beginner-First UX 2.0 — Property Home Reliability, Accessibility, and Closure
 
-Repair the incomplete production navigation shell and establish the real-data Property Home foundation.
+Close Property Home (Slice 1) defects related to state isolation, error retry, and adaptive layout.
 
 ## Proposed Changes
 
-- Documentation-only planning pass (completed).
-- Production implementation of Home destination.
+- Production implementation of reliability fixes.
 - No database changes.
-- No version changes.
 - Version: **0.03 (3)** preserved.
 
 ### Dashboard
 
-#### [NEW] [HomeViewModel.kt](file:///C:/Users/Justi/StudioProjects/mapstead_new/app/src/main/java/com/jumastappworks/mapstead/ui/dashboard/HomeViewModel.kt)
-- Define `HomeUiState` to hold property data, items, and tasks.
-- Implement `HomeViewModel` to observe `PropertyRepository`, `InfrastructureRepository`, and `MaintenanceRepository`.
-- Implement property-scoped data loading for "Needs Attention" (overdue/today tasks), "Upcoming" (next 3 tasks), and "Recently Added" (last 5 items).
+#### [MODIFY] [HomeViewModel.kt](file:///C:/Users/Justi/StudioProjects/mapstead_new/app/src/main/java/com/jumastappworks/mapstead/ui/dashboard/HomeViewModel.kt)
+- Refactored `uiState` to use `combine(_propertyId, _retryTrigger)` with `flatMapLatest`.
+- Ensured `emit(HomeUiState.Loading)` happens immediately on each property/retry cycle to clear stale state.
+- Implemented `catch` block inside `flatMapLatest` for in-context Error/Retry support.
+- Extracted deterministic maintenance classification helpers (`isTaskActive`, `isOverdueOrDueToday`, `isUpcoming`) using `LocalDate` parameters.
+- Standardized on `nextDueDate` as the authority for due states.
 
-#### [NEW] [HomeScreen.kt](file:///C:/Users/Justi/StudioProjects/mapstead_new/app/src/main/java/com/jumastappworks/mapstead/ui/dashboard/HomeScreen.kt)
-- Implement `HomeScreen` composable with the following sections:
-    - **Top Bar**: Property selector with switching action and Settings entry.
-    - **Primary Actions**: "Add Something", "Find Something", "Emergency Guide" cards.
-    - **Needs Attention**: List of overdue or today's tasks with a clear empty state.
-    - **Recently Added**: List of latest property items.
-    - **Secondary Actions**: "Edit Property" and "Help Center" buttons.
-- Handle state transitions (Loading, Selected, Empty).
+#### [MODIFY] [HomeScreen.kt](file:///C:/Users/Justi/StudioProjects/mapstead_new/app/src/main/java/com/jumastappworks/mapstead/ui/dashboard/HomeScreen.kt)
+- Implemented adaptive layout for `PrimaryActionsSection` using `LocalConfiguration` and `LocalDensity` fontScale.
+- Stack Find Something and Emergency Guide vertically on compact/high-font screens; use Row otherwise.
+- Localized all customer-facing text using `strings.xml`.
+- Implemented `NeedsAttentionEmptyState` for reassuring feedback when no tasks are due.
+- Added `ErrorScreen` with Retry support.
+- Improved accessibility with explicit roles and selected semantics.
 
-### Navigation
+### Localization
 
-#### [MODIFY] [NavigationGraph.kt](file:///C:/Users/Justi/StudioProjects/mapstead_new/app/src/main/java/com/jumastappworks/mapstead/ui/navigation/NavigationGraph.kt)
-- Ensure `HomeScreen` and `HomeViewModel` references are correctly wired. (Current code already references them but files are missing).
-- Verify bottom navigation destinations: Home, Map, Items, Tasks.
+#### [MODIFY] [strings.xml](file:///C:/Users/Justi/StudioProjects/mapstead_new/app/src/main/res/values/strings.xml)
+- Added missing Home and Maintenance labels (`home_title`, `home_switch_property`, `state_selected`, `maint_overdue`, etc.).
+
+### Tests
+
+#### [MODIFY] [HomeViewModelTest.kt](file:///C:/Users/Justi/StudioProjects/mapstead_new/app/src/test/java/com/jumastappworks/mapstead/ui/dashboard/HomeViewModelTest.kt)
+- Expanded coverage for:
+    - Initial Loading state.
+    - Property switch isolation (verified no stale ID leakage).
+    - Late emission rejection (verified correct item counts after interleaved emissions).
+    - Error and Retry flow (Error -> Fix -> Retry -> Ready).
+    - Deterministic date classification logic.
+    - Map-only content neutral guidance logic.
+
+#### [NEW] [HomeScreenTest.kt](file:///C:/Users/Justi/StudioProjects/mapstead_new/app/src/androidTest/java/com/jumastappworks/mapstead/ui/dashboard/HomeScreenTest.kt)
+- Added focused Compose UI tests for:
+    - Property name visibility.
+    - Primary action presence.
+    - Needs Attention empty state message.
 
 ## Verification Plan
 
 ### Automated Tests
-- **HomeViewModelTest**:
-    - Verify property ID sets correct scoped data.
-    - Verify switching properties clears old data and loads new data.
-    - Verify "Needs Attention" logic (Overdue + Today).
-    - Verify "Upcoming" logic (Future tasks, sorted, limited to 3).
-    - Verify "Recently Added" logic (Limited to 5, sorted by creation date).
-    - Verify empty states when no items or tasks exist.
-
-### Manual Verification
-- App startup reaches Home.
-- Property switching updates Home content immediately.
-- "Add Something" launches the guided mapping workflow.
-- "Find Something" navigates to Items tab.
-- "Tasks" navigates to Tasks tab.
-- "Emergency Guide" launches Emergency screen.
-- Clicking an item in "Recently Added" opens its details.
-- Settings button opens Settings.
+- **JVM Unit Tests**: `gradlew :app:testDebugUnitTest` (696 passed).
+- **Instrumented Tests**: `gradlew :app:assembleDebugAndroidTest`.
 
 ### Quality Gates
-- `gradlew.bat :app:compileDebugKotlin --no-parallel`
-- `gradlew.bat :app:testDebugUnitTest --no-parallel`
-- `gradlew.bat :app:assembleDebug`
-- `gradlew.bat :app:lintDebug --no-parallel`
+- `gradlew :app:compileDebugKotlin` -> SUCCESS.
+- `gradlew :app:assembleDebug` -> SUCCESS.
+- `gradlew :app:lintDebug` -> SUCCESS (Zero errors).
+
+---
+## Final Evidence Status
+
+- **JVM tests in source**: ~696 (Verified by Gradle XML).
+- **Executed count**: 696.
+- **Instrumented source methods**: ~3.
+- **Physical-device acceptance**: PENDING review on hardware.

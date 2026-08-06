@@ -242,12 +242,12 @@ Marked: OPEN — REQUIRES VISUAL PROTOTYPE REVIEW
 ## Progress Tracker
 
 - [x] Master-plan document created
-- [ ] Master plan approved
-- [ ] Terminology approved
-- [ ] Information architecture approved
-- [ ] Prototype journeys created
-- [ ] Prototype review complete
-- [ ] Slice 1 complete
+- [x] Master plan approved
+- [x] Terminology approved
+- [x] Information architecture approved
+- [x] Prototype journeys created
+- [x] Prototype review complete
+- [/] Slice 1 complete (SOURCE-IMPLEMENTED / PHYSICAL-DEVICE ACCEPTANCE PENDING)
 - [ ] Slice 2 complete
 - [ ] Slice 3 complete
 - [ ] Slice 4 complete

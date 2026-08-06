@@ -12,14 +12,28 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.jumastappworks.mapstead.R
 import com.jumastappworks.mapstead.data.db.entities.PropertyEntity
+import com.jumastappworks.mapstead.data.db.entities.MaintenanceRecordEntity
 import com.jumastappworks.mapstead.data.help.HelpTopicId
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 import java.util.UUID
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -40,8 +54,73 @@ fun HomeScreen(
     onOpenItemDetails: (UUID) -> Unit,
     onEditProperty: (UUID) -> Unit
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val state by viewModel.uiState.collectAsState()
 
+    when (val uiState = state) {
+        is HomeUiState.Loading -> {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+        }
+        is HomeUiState.Error -> {
+            ErrorScreen(
+                message = stringResource(uiState.messageRes),
+                onRetry = { viewModel.retry() },
+                onBack = onManageProperties // Fallback to list
+            )
+        }
+        is HomeUiState.NotFound -> {
+            ErrorScreen(
+                message = stringResource(R.string.home_property_not_found),
+                onRetry = { viewModel.retry() },
+                onBack = onManageProperties
+            )
+        }
+        is HomeUiState.Ready -> {
+            HomeScreenContent(
+                uiState = uiState,
+                properties = properties,
+                selectedPropertyId = selectedPropertyId,
+                onSelectProperty = onSelectProperty,
+                onAddProperty = onAddProperty,
+                onManageProperties = onManageProperties,
+                onNavigateToSettings = onNavigateToSettings,
+                onNavigateToHelp = onNavigateToHelp,
+                onAddSomething = onAddSomething,
+                onFindSomething = onFindSomething,
+                onOpenEmergency = onOpenEmergency,
+                onOpenTasks = onOpenTasks,
+                onOpenItemDetails = onOpenItemDetails,
+                onEditProperty = onEditProperty
+            )
+        }
+        HomeUiState.NoProperties -> {
+            // Handled by NavGraph usually, but safety fallback
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text(stringResource(R.string.empty_properties_title))
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun HomeScreenContent(
+    uiState: HomeUiState.Ready,
+    properties: List<PropertyEntity>,
+    selectedPropertyId: UUID,
+    onSelectProperty: (UUID) -> Unit,
+    onAddProperty: () -> Unit,
+    onManageProperties: () -> Unit,
+    onNavigateToSettings: () -> Unit,
+    onNavigateToHelp: (HelpTopicId) -> Unit,
+    onAddSomething: () -> Unit,
+    onFindSomething: () -> Unit,
+    onOpenEmergency: () -> Unit,
+    onOpenTasks: () -> Unit,
+    onOpenItemDetails: (UUID) -> Unit,
+    onEditProperty: (UUID) -> Unit
+) {
     Scaffold(
         topBar = {
             TopAppBar(
@@ -71,36 +150,58 @@ fun HomeScreen(
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
             // Primary Actions
-            PrimaryActionsRow(
+            PrimaryActionsSection(
                 onAddSomething = onAddSomething,
                 onFindSomething = onFindSomething,
                 onOpenEmergency = onOpenEmergency
             )
 
             // Needs Attention
-            if (uiState.needsAttentionTasks.isNotEmpty()) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 SectionHeader(
                     title = stringResource(R.string.home_needs_attention),
                     onViewAll = onOpenTasks
                 )
-                uiState.needsAttentionTasks.take(3).forEach { task ->
-                    TaskCard(task.title, task.serviceDate.toString(), onClick = onOpenTasks)
+                if (uiState.needsAttentionTasks.isNotEmpty()) {
+                    uiState.needsAttentionTasks.forEach { task ->
+                        TaskCard(task, onClick = onOpenTasks)
+                    }
+                } else {
+                    NeedsAttentionEmptyState()
                 }
-            } else if (!uiState.isLoading && uiState.property != null) {
-                NeedsAttentionEmptyState()
+            }
+
+            // Map Only Content Warning
+            if (uiState.hasMapFeaturesOnly) {
+                MapOnlyGuidanceCard(onAddSomething)
+            }
+
+            // Upcoming
+            if (uiState.upcomingTasks.isNotEmpty()) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    SectionHeader(
+                        title = stringResource(R.string.home_upcoming),
+                        onViewAll = onOpenTasks
+                    )
+                    uiState.upcomingTasks.forEach { task ->
+                        TaskCard(task, onClick = onOpenTasks)
+                    }
+                }
             }
 
             // Recently Added
             if (uiState.recentlyAddedItems.isNotEmpty()) {
-                SectionHeader(
-                    title = stringResource(R.string.home_recently_updated),
-                    onViewAll = onFindSomething
-                )
-                uiState.recentlyAddedItems.forEach { item ->
-                    ItemRow(item.name, item.category, onClick = { onOpenItemDetails(item.id) })
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    SectionHeader(
+                        title = stringResource(R.string.home_recently_added),
+                        onViewAll = onFindSomething
+                    )
+                    uiState.recentlyAddedItems.forEach { item ->
+                        ItemRow(item.name, item.category, onClick = { onOpenItemDetails(item.id) })
+                    }
                 }
-            } else if (!uiState.isLoading) {
-                // Guide customer to add first item
+            } else if (uiState.needsAttentionTasks.isEmpty() && !uiState.hasMapFeaturesOnly && uiState.upcomingTasks.isEmpty()) {
+                // Total empty state for first items
                 WelcomeGuideCard(onAddSomething)
             }
 
@@ -126,7 +227,11 @@ private fun PropertySelector(
     Box {
         Row(
             modifier = Modifier
-                .clickable { expanded = true }
+                .clickable(
+                    onClickLabel = stringResource(R.string.home_switch_property),
+                    role = Role.Button,
+                    onClick = { expanded = true }
+                )
                 .padding(vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -139,18 +244,26 @@ private fun PropertySelector(
             Icon(Icons.Default.ArrowDropDown, contentDescription = null)
         }
 
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
             properties.forEach { property ->
+                val isSelected = property.id == currentProperty?.id
                 DropdownMenuItem(
                     text = { Text(property.name) },
                     onClick = {
                         expanded = false
                         onSelectProperty(property.id)
                     },
-                    trailingIcon = {
-                        if (property.id == currentProperty?.id) {
-                            Icon(Icons.Default.Check, contentDescription = null)
-                        }
+                trailingIcon = {
+                    if (isSelected) {
+                        Icon(Icons.Default.Check, contentDescription = stringResource(R.string.state_selected))
+                    }
+                },
+                    modifier = Modifier.semantics {
+                        role = Role.RadioButton
+                        selected = isSelected
                     }
                 )
             }
@@ -176,39 +289,68 @@ private fun PropertySelector(
 }
 
 @Composable
-private fun PrimaryActionsRow(
+private fun PrimaryActionsSection(
     onAddSomething: () -> Unit,
     onFindSomething: () -> Unit,
     onOpenEmergency: () -> Unit
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
+    val configuration = LocalConfiguration.current
+    val density = LocalDensity.current
+    val fontScale = density.fontScale
+    val screenWidth = configuration.screenWidthDp.dp
+    
+    val stackSecondary = screenWidth < 400.dp || fontScale >= 1.5f
+
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         PrimaryActionCard(
             title = stringResource(R.string.home_add_something),
             icon = Icons.Default.AddCircle,
             containerColor = MaterialTheme.colorScheme.primaryContainer,
             contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-            modifier = Modifier.weight(1f),
+            isFullWidth = true,
             onClick = onAddSomething
         )
-        PrimaryActionCard(
-            title = stringResource(R.string.home_find_something),
-            icon = Icons.Default.Search,
-            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-            modifier = Modifier.weight(1f),
-            onClick = onFindSomething
-        )
-        PrimaryActionCard(
-            title = stringResource(R.string.home_emergency_guide),
-            icon = Icons.Default.Warning,
-            containerColor = MaterialTheme.colorScheme.errorContainer,
-            contentColor = MaterialTheme.colorScheme.onErrorContainer,
-            modifier = Modifier.weight(1f),
-            onClick = onOpenEmergency
-        )
+        
+        if (stackSecondary) {
+            PrimaryActionCard(
+                title = stringResource(R.string.home_find_something),
+                icon = Icons.Default.Search,
+                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                isFullWidth = true,
+                onClick = onFindSomething
+            )
+            PrimaryActionCard(
+                title = stringResource(R.string.home_emergency_guide),
+                icon = Icons.Default.Warning,
+                containerColor = MaterialTheme.colorScheme.errorContainer,
+                contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                isFullWidth = true,
+                onClick = onOpenEmergency
+            )
+        } else {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                PrimaryActionCard(
+                    title = stringResource(R.string.home_find_something),
+                    icon = Icons.Default.Search,
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                    modifier = Modifier.weight(1f),
+                    onClick = onFindSomething
+                )
+                PrimaryActionCard(
+                    title = stringResource(R.string.home_emergency_guide),
+                    icon = Icons.Default.Warning,
+                    containerColor = MaterialTheme.colorScheme.errorContainer,
+                    contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                    modifier = Modifier.weight(1f),
+                    onClick = onOpenEmergency
+                )
+            }
+        }
     }
 }
 
@@ -216,24 +358,45 @@ private fun PrimaryActionsRow(
 private fun PrimaryActionCard(
     title: String,
     icon: ImageVector,
-    containerColor: androidx.compose.ui.graphics.Color,
-    contentColor: androidx.compose.ui.graphics.Color,
+    containerColor: Color,
+    contentColor: Color,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isFullWidth: Boolean = false
 ) {
     Card(
         onClick = onClick,
-        modifier = modifier.height(100.dp),
+        modifier = modifier
+            .fillMaxWidth()
+            .heightIn(min = if (isFullWidth) 80.dp else 100.dp),
         colors = CardDefaults.cardColors(containerColor = containerColor, contentColor = contentColor)
     ) {
-        Column(
-            modifier = Modifier.fillMaxSize().padding(12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Icon(icon, contentDescription = null, modifier = Modifier.size(32.dp))
-            Spacer(Modifier.height(8.dp))
-            Text(title, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+        if (isFullWidth) {
+            Row(
+                modifier = Modifier.fillMaxSize().padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(icon, contentDescription = null, modifier = Modifier.size(32.dp))
+                Spacer(Modifier.width(16.dp))
+                Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.weight(1f))
+                Icon(Icons.Default.ChevronRight, contentDescription = null)
+            }
+        } else {
+            Column(
+                modifier = Modifier.fillMaxSize().padding(12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Icon(icon, contentDescription = null, modifier = Modifier.size(32.dp))
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    title, 
+                    style = MaterialTheme.typography.labelLarge, 
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center
+                )
+            }
         }
     }
 }
@@ -253,7 +416,7 @@ private fun SectionHeader(title: String, onViewAll: () -> Unit) {
 }
 
 @Composable
-private fun TaskCard(title: String, dueDate: String, onClick: () -> Unit) {
+private fun TaskCard(task: MaintenanceRecordEntity, onClick: () -> Unit) {
     Card(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
@@ -263,11 +426,19 @@ private fun TaskCard(title: String, dueDate: String, onClick: () -> Unit) {
             modifier = Modifier.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(Icons.AutoMirrored.Filled.Assignment, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            Icon(
+                Icons.AutoMirrored.Filled.Assignment, 
+                contentDescription = null, 
+                tint = MaterialTheme.colorScheme.primary
+            )
             Spacer(Modifier.width(16.dp))
             Column {
-                Text(title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
-                Text(dueDate, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
+                Text(task.title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+                Text(
+                    formatDueDate(task.nextDueDate), 
+                    style = MaterialTheme.typography.bodySmall, 
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }
@@ -292,15 +463,33 @@ private fun NeedsAttentionEmptyState() {
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                stringResource(R.string.no_tasks_attention_title),
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold
+                stringResource(R.string.home_no_tasks_attention),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+        }
+    }
+}
+
+@Composable
+private fun MapOnlyGuidanceCard(onAddSomething: () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                stringResource(R.string.no_tasks_attention_supporting),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.outline
+                stringResource(R.string.home_map_only_guidance),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSecondaryContainer
             )
+            Spacer(Modifier.height(12.dp))
+            TextButton(
+                onClick = onAddSomething,
+                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.primary)
+            ) {
+                Text(stringResource(R.string.home_add_something))
+            }
         }
     }
 }
@@ -353,6 +542,52 @@ private fun SecondaryActions(
             Icon(Icons.AutoMirrored.Filled.Help, contentDescription = null)
             Spacer(Modifier.width(8.dp))
             Text(stringResource(R.string.help_center_title))
+        }
+    }
+}
+
+@Composable
+private fun ErrorScreen(
+    message: String,
+    onRetry: () -> Unit,
+    onBack: () -> Unit
+) {
+    Column(
+        modifier = Modifier.fillMaxSize().padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(
+            Icons.Default.ErrorOutline, 
+            contentDescription = null, 
+            modifier = Modifier.size(64.dp),
+            tint = MaterialTheme.colorScheme.error
+        )
+        Spacer(Modifier.height(24.dp))
+        Text(message, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyLarge)
+        Spacer(Modifier.height(32.dp))
+        Button(onClick = onRetry, modifier = Modifier.fillMaxWidth()) {
+            Text(stringResource(R.string.retry))
+        }
+        TextButton(onClick = onBack) {
+            Text(stringResource(R.string.back))
+        }
+    }
+}
+
+@Composable
+private fun formatDueDate(date: LocalDate?): String {
+    if (date == null) return stringResource(R.string.maint_no_due_date)
+    val now = LocalDate.now()
+    return when (date) {
+        now -> stringResource(R.string.maint_due_today)
+        now.plusDays(1) -> stringResource(R.string.maint_due_tomorrow)
+        else -> {
+            if (date.isBefore(now)) {
+                stringResource(R.string.maint_overdue) + " (" + date.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)) + ")"
+            } else {
+                stringResource(R.string.maint_due_on, date.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)))
+            }
         }
     }
 }

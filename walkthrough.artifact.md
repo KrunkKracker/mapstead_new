@@ -1,55 +1,41 @@
-# Beginner-First UX Redesign Phase 2.2h5R9D Walkthrough
+# Walkthrough - Property Home Reliability & Accessibility (Phase 3A2.1)
 
-This phase finalizes the basemap preference authority, test truth, and evidence integrity work, ensuring that all documentation and staged binaries are synchronized for the v0.02 (2) milestone.
+Established the production-ready baseline for the Beginner-First Home screen, resolving critical reliability and accessibility defects.
 
-### 1. Transactional Pending Consumption
-The `MapViewModel` now transactionally consumes `PendingBasemapRequest` objects only after a concrete session-bound attempt is successfully issued. This ensures that user intent is never lost during rotation or render session gaps.
+## Key Changes
 
-### 2. Test Truth and Coverage
-Verified the complete baseline of 640 JVM unit tests, including exhaustive coverage for the `PendingBasemapResolver`, `MapBasemapStateMachine`, and `SecondaryBasemapController`. Both normal and no-key configurations were verified.
+### 1. Reliable Property Switching
+- **Isolation**: Refactored `HomeViewModel` to ensure that selecting a new property immediately emits `Loading` and cancels any active data collection from the previous property.
+- **Late Emission Rejection**: Implemented logic that ignores late repository responses from previous property contexts, preventing flickering or data leakage between properties.
 
-### 3. Documentation and Evidence Closure
-Synchronized all project documentation (README, ROADMAP, CHANGELOG, QA_WORKFLOW) and generated the final evidence package including APKs, SHA-256 manifests, and command transcripts.
+### 2. Recoverable Error Handling
+- **Retry Mechanism**: Implemented a generation-based retry trigger. Customers can now tap "Retry" on an error screen to restart data collection without leaving the page.
+- **Resilience**: Integrated `catch` handling directly into the property-scoped stream, preventing one failed request from completing the entire UI state flow.
 
-# Beginner-First UX Redesign Phase 2.2h5R9C Walkthrough
+### 3. Adaptive & Accessible UI
+- **Responsive Layout**: The primary actions (Find Something, Emergency Guide) now adapt to screen width and font scale. On narrow devices or at 200% font scale, they stack vertically to maintain readability and 48dp touch targets.
+- **Full-Width Add**: Kept "Add Something" as the most prominent, full-width primary action.
+- **Localization**: Removed all hard-coded strings. All text is now managed via `strings.xml`.
+- **Reassuring Empty States**: Added specific guidance for properties with no items or only map features.
 
-This phase redesigns the core mapping entry point to align with a real-world mental model. Beginners now select the object they want to document (e.g., "Well", "Fence", "House") rather than technical geometry. It also introduces automated record-keeping policies to reduce cognitive load.
-
-## Changes
-
-### 1. Task-Oriented "Add Something" Menu
-- **Single Entry Point**: Replaced technical labels with a clear "Add Something" action.
-- **Natural Categories**: Grouped presets into "Mark a Location", "Draw a Route", and "Outline an Area".
-- **Adaptive Preset Browser**: Introduced a responsive grid of cards with icons and plain-language purpose descriptions.
-
-### 2. Operational Record Policies
-Implemented three explicit policies to handle background documentation automatically:
-- **AUTOMATIC**: Critical items (Electrical Panel, Meter, Extinguisher) create and link service records without asking the user.
-- **OPTIONAL**: Equipment like Wells or Houses offer a benefit-oriented choice: "Keep records for this item."
-- **MAP_ONLY**: Purely spatial features (Boundaries, Gardens, Fences) create only map geometry.
-
-### 3. Simplified Review Form
-- **Hardenened Naming**: Prominent editable Name field with automatic unique numbering (e.g., Well 2).
-- **Deferred Complexity**: Hides GIS metadata (coordinates, layer IDs) from the primary creation flow.
-- **Plain Language Tracking**: Replaced technical "System Item" terminology with "Keep records for this item."
-
-### 4. Technical Integrity
-- **Atomic Transactions**: Ensured that features and their automatic records are committed together or rolled back on failure.
-- **Process Restoration**: All inputs and tracking choices survive rotation and process death via `SavedStateHandle`.
-- **Existing Data Safety**: Verified that existing linked data and power-user capabilities remain fully intact.
+### 4. Deterministic Maintenance Logic
+- **nextDueDate Authority**: Standardized on `nextDueDate` for all due-state classifications (Overdue, Due Today, Upcoming).
+- **Status Filtering**: Properly excludes "Completed" and "Cancelled" tasks (case-insensitive).
+- **Pure Helpers**: Extracted pure classification functions that use explicit `LocalDate` parameters for deterministic unit testing.
 
 ## Verification Results
 
 ### Automated Tests
-- **JVM Unit Tests**: **515 passed**, 0 failed. Added focused tests for policy mapping and atomic creation.
-- **Lint**: Passed with **0 errors**.
+- **696 JVM Unit Tests Passed**: Added 7 new exhaustive tests to `HomeViewModelTest`.
+- **Instrumented Tests Compiled**: Verified `HomeScreenTest` in the `androidTest` source set.
+- **Zero Lint Errors**: Passed strict lint checks on all new code.
 
-### Manual Verification Targets
-- [x] **Automatic Policy**: Added "Utility Meter"; verified record was created without a checkbox.
-- [x] **Optional Policy**: Added "Well"; verified "Keep records" toggle defaults to OFF.
-- [x] **Map-Only Policy**: Added "Property Boundary"; verified no records section appeared.
-- [x] **Terminology**: Confirmed "System Item" and "Geometry" are hidden from guided workflows.
-- [x] **Adaptive UI**: Verified preset grid layout on both phone and tablet-sized surfaces.
-
-## Status: PHASE 2 PREPARED
-Phase 2 is ready for the Phase 2 installed-device walkthrough. Phase 3 (Unified Detail Sheets) remains pending.
+### Manual Verification Path (Physical Device)
+1. Launch Mapstead with an existing property.
+2. Verify "Needs Attention" correctly reflects overdue tasks.
+3. Switch properties using the top-bar selector.
+4. **Verify**: The UI immediately shows a progress indicator and then the correct new data (Isolation).
+5. Increase system font scale to 2.0.
+6. **Verify**: "Find Something" and "Emergency Guide" stack vertically and remain readable (Adaptive).
+7. Tap "Add Something".
+8. **Verify**: The real guided mapping workflow launches correctly (Navigation).

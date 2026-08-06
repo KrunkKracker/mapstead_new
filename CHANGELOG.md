@@ -4,8 +4,10 @@
 
 ### Added
 - **Beginner-First UX 2.0 Strategic Redesign**:
-    - **Production Slice 1**: Launched the beginner-first production app shell with Home, Map, Items, and Tasks navigation.
-    - **Property Home**: Implemented a real-data Property Home screen with "Add Something", "Find Something", and "Emergency Guide" shortcuts.
+    - **Property Home Reliability (Slice 1)**: Corrected property switching isolation to immediately clear stale content and ignore late emissions. Implemented deterministic nextDueDate classification helpers and localized all Home text.
+    - **Error Recovery**: Refactored the dashboard flow to support in-context Retry without screen recreation, preserving subscription integrity.
+    - **Adaptive UI**: Implemented density-aware stacking for primary actions (Find Something, Emergency Guide) to maintain readability at high font scales and narrow widths.
+    - **Production Shell**: Launched the beginner-first production app shell with Home, Map, Items, and Tasks navigation.
     - **First Property Setup**: Re-routed first-time customers through the real Property Setup workflow with automatic map initialization.
     - **Property Selector**: Added a high-visibility property switcher on the Home screen.
     - **Master Plan Approval**: Recorded external approval of the authoritative redesign strategy in `BEGINNER_FIRST_UX_MASTER_PLAN.md`.
