@@ -202,7 +202,13 @@ private fun StepNameAndType(viewModel: AddPropertyViewModel, state: PropertySetu
                 isError = state.nameErrorRes != null,
                 supportingText = state.nameErrorRes?.let { { Text(stringResource(it)) } },
                 singleLine = true,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
+                keyboardOptions = KeyboardOptions(
+                    capitalization = KeyboardOptions.Default.capitalization.let { androidx.compose.ui.text.input.KeyboardCapitalization.Words },
+                    imeAction = ImeAction.Next
+                ),
+                keyboardActions = androidx.compose.foundation.text.KeyboardActions(
+                    onNext = { focusManager.moveFocus(androidx.compose.ui.focus.FocusDirection.Down) }
+                )
             )
         }
 

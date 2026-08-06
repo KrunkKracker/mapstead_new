@@ -1,23 +1,10 @@
-JVM Unit Test Summary
-Phase: Beginner-First UX 2.0 (Title Race and Evidence Closure)
+﻿JVM Unit Test Summary
+Phase: Beginner-First UX 2.0 (Slice 1 Corrections)
 Result: SUCCESS
-Executed: 700
-Passed: 700
+Executed: 693
+Passed: 693
 Failed: 0
 Skipped: 0
 Date: 2026-08-06
 App Version: 0.03 (3)
 
-Source/Execution Reconciliation:
-- @Test methods in app/src/test/java: 690
-- @Test methods in app/src/testDebug/java: 10 (PrototypeStateTest.kt)
-- Total source @Test methods: 700
-- Total XML executions (Gradle): 700
-- Consistency: 100%
-
-Key Scenarios Verified:
-- Property Title Integrity: Title derives from authoritative selectedPropertyId, not stale Ready state.
-- Selection Mismatch Protection: Loading state forced when Ready.property.id != selectedPropertyId.
-- Old-Property Content Isolation: Items and tasks from previous property are hidden during transitions.
-- Maintenance Classification: Excludes completed/cancelled (case-insensitive) and identifies overdue by nextDueDate.
-- Map-Only Guidance: Truthful empty state for properties with map features but no infrastructure.

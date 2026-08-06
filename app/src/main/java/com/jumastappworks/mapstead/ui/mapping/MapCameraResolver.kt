@@ -19,12 +19,39 @@ data class CameraResolution(
 )
 
 object MapCameraResolver {
+
+    /**
+     * Priority:
+     * 1. Valid restoration for the current plan
+     * 2. Valid saved Plan center
+     * 3. Property coordinates
+     * 4. Feature bounds
+     * 5. Safe fallback
+     */
     fun resolveInitialCamera(
         plan: PlanEntity?,
         property: PropertyEntity?,
-        features: List<MapFeatureEntity>
+        features: List<MapFeatureEntity>,
+        restoration: CameraRestorationRequest? = null
     ): CameraResolution {
-        // 1. Valid saved Plan center, zoom, and bearing
+        // 1. Valid restoration for this plan
+        if (restoration != null && plan != null && restoration.planId == plan.id) {
+            if (CameraValidation.isValid(restoration.latitude, restoration.longitude, restoration.zoom, restoration.bearing)) {
+                if (!CameraValidation.isDefaultWorldView(restoration.latitude, restoration.longitude, restoration.zoom)) {
+                    return CameraResolution(
+                        MapCameraFocus.Point(
+                            latitude = restoration.latitude,
+                            longitude = restoration.longitude,
+                            zoom = restoration.zoom.toFloat(),
+                            bearing = restoration.bearing
+                        ),
+                        CameraSource.SAVED_PLAN_CAMERA
+                    )
+                }
+            }
+        }
+
+        // 2. Valid saved Plan center
         if (plan != null) {
             val lat = plan.centerLatitude
             val lng = plan.centerLongitude
@@ -32,27 +59,34 @@ object MapCameraResolver {
             val bearing = CameraValidation.normalizeBearing(plan.bearing ?: 0.0)
             
             if (lat != null && lng != null && CameraValidation.isValid(lat, lng, zoom, bearing)) {
-                // PART 3: Reject default-like whole-world views IF better context exists
-                if (CameraValidation.isDefaultWorldView(lat, lng, zoom)) {
-                    val fallback = resolveRecenterCamera(property, features, null) // Don't pass plan to avoid loop
-                    if (fallback.source != CameraSource.SAFE_FALLBACK) {
-                        return CameraResolution(fallback.focus, CameraSource.REPAIRED_DEFAULT_CAMERA)
-                    }
+                if (!CameraValidation.isDefaultWorldView(lat, lng, zoom)) {
+                    return CameraResolution(
+                        MapCameraFocus.Point(
+                            latitude = lat,
+                            longitude = lng,
+                            zoom = zoom.toFloat(),
+                            bearing = bearing
+                        ),
+                        CameraSource.SAVED_PLAN_CAMERA
+                    )
                 }
-
-                return CameraResolution(
-                    MapCameraFocus.Point(
-                        latitude = lat,
-                        longitude = lng,
-                        zoom = zoom.toFloat(),
-                        bearing = bearing
-                    ),
-                    CameraSource.SAVED_PLAN_CAMERA
-                )
             }
         }
 
-        return resolveRecenterCamera(property, features, null)
+        // 3. Fallback to recenter logic (Property -> Features -> Fallback)
+        val recenter = resolveRecenterCamera(property, features, null)
+        
+        // If we found a useful fallback but the original was a default world view, mark it as repaired
+        if (plan != null && recenter.source != CameraSource.SAFE_FALLBACK) {
+             val lat = plan.centerLatitude
+             val lng = plan.centerLongitude
+             val zoom = plan.zoom ?: 0.0
+             if (lat != null && lng != null && CameraValidation.isDefaultWorldView(lat, lng, zoom)) {
+                 return CameraResolution(recenter.focus, CameraSource.REPAIRED_DEFAULT_CAMERA)
+             }
+        }
+
+        return recenter
     }
 
     fun resolveRecenterCamera(
@@ -102,17 +136,11 @@ object MapCameraResolver {
         )
     }
 
-    private fun resolveFallback(
-        property: PropertyEntity?,
-        features: List<MapFeatureEntity>
-    ): CameraResolution {
-        return resolveRecenterCamera(property, features, null)
-    }
-
     fun calculateFeatureBounds(features: List<MapFeatureEntity>): MapCameraFocus.Bounds? {
-        if (features.isEmpty()) return null
+        val activeFeatures = features.filter { it.deletedAt == null }
+        if (activeFeatures.isEmpty()) return null
         
-        val allVertices = features.flatMap { feature ->
+        val allVertices = activeFeatures.flatMap { feature ->
             val result = GeometryUtils.parseFeatureGeometry(feature.geometryJson, feature.geometryType)
             result.getOrNull() ?: emptyList()
         }.filter { (lng, lat) -> 

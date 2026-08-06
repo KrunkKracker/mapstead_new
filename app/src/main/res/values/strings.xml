@@ -79,13 +79,16 @@
     <string name="home_manage_maps">Manage Maps</string>
     <string name="home_property_files">Property Photos &amp; Files</string>
     <string name="home_property_item">Property Item</string>
-    <string name="home_no_items_yet">Add your first item to get started.</string>
-    <string name="home_add_more_guidance">Add more equipment and systems to see them here.</string>
+    <string name="home_add_first_item_title">Add Your First Item</string>
+    <string name="home_add_first_item_body">Save important things on your property so you can find them later.</string>
+    <string name="home_how_mapstead_works">How Mapstead Works</string>
     <string name="home_switch_property">Switch Property</string>
+    <string name="home_add_another_property">Add Another Property</string>
     <string name="state_selected">Selected</string>
     <string name="home_no_tasks_attention">Nothing needs attention right now.</string>
     <string name="home_map_only_guidance">You have items on your map, but no details or tasks yet.</string>
     <string name="home_error_loading">Failed to load property information.</string>
+    <string name="home_add_more_guidance">Add more equipment and systems to see them here.</string>
     <string name="home_property_not_found">The selected property could not be found.</string>
 
     <!-- Maintenance Labels -->

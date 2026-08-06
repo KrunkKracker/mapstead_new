@@ -95,8 +95,8 @@ Status:
 - Terminology approval: COMPLETE
 - Information architecture approval: COMPLETE
 - Prototype creation: COMPLETE (Removed UX Lab)
-- Production redesign: IN PROGRESS (Slice 1 Source-Implemented)
-- Physical-device verification: PENDING
+- Production redesign: Slice 1 COMPLETE (Physical-Device Retest PENDING)
+- Add Something category redesign: Slice 2 PLANNED
 - Property Inventory: BLOCKED
 
 Authoritative Document: [BEGINNER_FIRST_UX_MASTER_PLAN.md](BEGINNER_FIRST_UX_MASTER_PLAN.md)

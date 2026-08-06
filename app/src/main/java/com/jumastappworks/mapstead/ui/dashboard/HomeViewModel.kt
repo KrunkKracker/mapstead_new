@@ -28,6 +28,7 @@ sealed interface HomeUiState {
         val recentlyAddedItems: List<HomePropertyItemSummary>,
         val hasAnyPropertyContent: Boolean,
         val hasMapFeaturesOnly: Boolean = false,
+        val showOrientationCard: Boolean = false,
         val checklist: List<GettingStartedStep> = emptyList(),
         val showChecklist: Boolean = false
     ) : HomeUiState
@@ -87,13 +88,14 @@ class HomeViewModel @Inject constructor(
             if (id == null) flowOf(HomeUiState.Loading)
             else {
                 flow {
-                    // Immediately indicate loading for the new property
                     emit(HomeUiState.Loading)
                     
+                    val propertyFlow = propertyRepository.getAllProperties().map { list -> 
+                        list.find { it.id == id && it.deletedAt == null } 
+                    }.distinctUntilChanged()
+
                     val flowA = combine(
-                        propertyRepository.getAllProperties().map { list -> 
-                            list.find { it.id == id && it.deletedAt == null } 
-                        }.distinctUntilChanged(),
+                        propertyFlow,
                         infrastructureRepository.getItemsForProperty(id),
                         maintenanceRepository.getRecordsForProperty(id),
                         mapRepository.getFeaturesForProperty(id)
@@ -112,7 +114,6 @@ class HomeViewModel @Inject constructor(
                             HomeUiState.NotFound
                         } else {
                             val today = LocalDate.now()
-                            
                             val activeRecords = a.records.filter { isTaskActive(it) }
 
                             val needsAttention = activeRecords
@@ -158,8 +159,9 @@ class HomeViewModel @Inject constructor(
                                 recentlyAddedItems = recentItems,
                                 hasAnyPropertyContent = hasAnyContent,
                                 hasMapFeaturesOnly = mapFeaturesOnly,
+                                showOrientationCard = !hasAnyContent,
                                 checklist = checklist,
-                                showChecklist = !progress.dismissed && !allDone
+                                showChecklist = false // Never show automatically on Home as an inline card if we have the orientation card
                             )
                         }
                     }.collect { emit(it) }

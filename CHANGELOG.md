@@ -4,6 +4,12 @@
 
 ### Added
 - **Beginner-First UX 2.0 Strategic Redesign**:
+    - **Physical-Acceptance Corrections (Slice 1)**: Corrected post-property onboarding, address-editing search, and map camera focus races identified during hardware testing.
+    - **No Automatic Onboarding**: Removed the blocking Getting Started popup after property creation to land customers directly on Home.
+    - **Reactive Title Integrity**: Fixed top-bar title races by deriving the property name from authoritative navigation state.
+    - **Address Search Restoration**: Re-enabled debounced address suggestions and coordinate resolution for existing property editing.
+    - **Deterministic Map Camera**: Implemented a prioritized camera resolution policy (Restoration > Saved > Property > Features) with world-view rejection.
+    - **Input Refinement**: Added natural word capitalization and corrected focus/keyboard behavior for name and address fields.
     - **Property Home Reliability (Slice 1)**: Corrected property switching isolation to immediately clear stale content and ignore late emissions. Implemented deterministic nextDueDate classification helpers and localized all Home text.
     - **Error Recovery**: Refactored the dashboard flow to support in-context Retry without screen recreation, preserving subscription integrity.
     - **Adaptive UI**: Implemented density-aware stacking for primary actions (Find Something, Emergency Guide) to maintain readability at high font scales and narrow widths.

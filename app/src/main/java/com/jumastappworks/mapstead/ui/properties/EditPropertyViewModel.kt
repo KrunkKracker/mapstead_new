@@ -11,6 +11,7 @@ import com.jumastappworks.mapstead.data.mapping.*
 import com.jumastappworks.mapstead.data.repository.PropertyRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.util.UUID
@@ -204,20 +205,40 @@ class EditPropertyViewModel @Inject constructor(
         }
     }
 
-    fun findCoordinatesFromAddress() {
-        val query = listOf(addressLine1, city, state, postalCode).filter { it.isNotBlank() }.joinToString(", ")
-        if (query.isBlank()) { _addressLookupState.value = AddressLookupStateLegacy.Error(R.string.error_invalid_query); return }
+    private var searchJob: Job? = null
+    private var searchGeneration = 0L
+
+    fun searchAddress(query: String) {
+        if (query.isBlank()) {
+            _addressLookupState.value = AddressLookupStateLegacy.Idle
+            return
+        }
+        
+        searchJob?.cancel()
+        val generation = ++searchGeneration
         _addressLookupState.value = AddressLookupStateLegacy.Searching
-        viewModelScope.launch {
+        
+        searchJob = viewModelScope.launch {
+            delay(500L) // Debounce
             try {
                 val result = addressResolver.search(query)
+                if (generation != searchGeneration) return@launch
+                
                 if (result is AddressSearchResult.Success && result.matches.isNotEmpty()) {
                     _addressLookupState.value = AddressLookupStateLegacy.Results(result.matches)
                 } else {
                     _addressLookupState.value = AddressLookupStateLegacy.Error(R.string.error_no_address_matches)
                 }
-            } catch (e: Exception) { _addressLookupState.value = AddressLookupStateLegacy.Error(R.string.error_generic_location) }
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                if (generation == searchGeneration) _addressLookupState.value = AddressLookupStateLegacy.Error(R.string.error_generic_location)
+            }
         }
+    }
+
+    fun findCoordinatesFromAddress() {
+        val query = listOf(addressLine1, city, state, postalCode).filter { it.isNotBlank() }.joinToString(", ")
+        searchAddress(query)
     }
 
     fun selectAddressMatch(match: AddressLocationMatch) { _addressLookupState.value = AddressLookupStateLegacy.ConfirmingSelection(match) }

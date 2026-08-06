@@ -256,7 +256,12 @@ internal fun HomeContent(
             }
         }
 
-        // Checklist
+        // Orientation / First Item Guidance
+        if (state.showOrientationCard) {
+            OrientationCard(onAddSomething, { onNavigateToHelp(HelpTopicId.GETTING_STARTED) })
+        }
+
+        // Checklist (Manual or deferred)
         if (state.showChecklist) {
             GettingStartedChecklist(
                 steps = state.checklist,
@@ -426,6 +431,37 @@ fun RecentItemRow(item: HomePropertyItemSummary, onClick: () -> Unit) {
 }
 
 @Composable
+private fun OrientationCard(onAddSomething: () -> Unit, onHelp: () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f))
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                stringResource(R.string.home_add_first_item_title),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                stringResource(R.string.home_add_first_item_body),
+                style = MaterialTheme.typography.bodyMedium
+            )
+            Spacer(Modifier.height(16.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(onClick = onAddSomething, shape = RoundedCornerShape(8.dp)) {
+                    Text(stringResource(R.string.home_add_something))
+                }
+                TextButton(onClick = onHelp) {
+                    Text(stringResource(R.string.home_how_mapstead_works))
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun NeedsAttentionEmptyState() {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -564,8 +600,14 @@ fun PropertySwitcherSheet(
             
             HorizontalDivider()
             
+            val addPropertyLabel = if (properties.size == 1) {
+                stringResource(R.string.home_add_another_property)
+            } else {
+                stringResource(R.string.add_property)
+            }
+            
             ListItem(
-                headlineContent = { Text(stringResource(R.string.add_property)) },
+                headlineContent = { Text(addPropertyLabel) },
                 leadingContent = { Icon(Icons.Default.Add, contentDescription = null) },
                 modifier = Modifier.clickable { onAddProperty() }
             )

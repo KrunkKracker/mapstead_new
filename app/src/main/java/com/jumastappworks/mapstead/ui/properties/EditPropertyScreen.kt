@@ -9,8 +9,10 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
@@ -196,11 +198,20 @@ fun EditPropertyScreen(
         item {
             OutlinedTextField(
                 value = viewModel.addressLine1,
-                onValueChange = { viewModel.addressLine1 = it },
+                onValueChange = { 
+                    viewModel.addressLine1 = it
+                    viewModel.searchAddress(it)
+                },
                 label = { Text(stringResource(R.string.address_line_1_label)) },
                 modifier = Modifier.fillMaxWidth().bringIntoViewOnFocus(addr1Controller),
-                keyboardOptions = KeyboardPolicy.getOptions(TextFieldSemanticType.ADDRESS),
-                keyboardActions = KeyboardPolicy.getActions(focusManager),
+                keyboardOptions = KeyboardOptions(
+                    capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Words,
+                    imeAction = ImeAction.Search
+                ),
+                keyboardActions = androidx.compose.foundation.text.KeyboardActions(onSearch = {
+                    viewModel.searchAddress(viewModel.addressLine1)
+                    focusManager.clearFocus()
+                }),
                 singleLine = true,
                 enabled = !viewModel.isSaving
             )
@@ -216,6 +227,21 @@ fun EditPropertyScreen(
                 singleLine = true,
                 enabled = !viewModel.isSaving
             )
+        }
+
+        if (addressLookupState is AddressLookupStateLegacy.Results) {
+            val results = (addressLookupState as AddressLookupStateLegacy.Results).matches
+            items(results) { match ->
+                ListItem(
+                    headlineContent = { Text(match.displayAddress) },
+                    supportingContent = { Text("${match.latitude}, ${match.longitude}") },
+                    modifier = Modifier.clickable { 
+                        focusManager.clearFocus()
+                        viewModel.selectAddressMatch(match) 
+                    },
+                    leadingContent = { Icon(Icons.Default.LocationOn, contentDescription = null) }
+                )
+            }
         }
 
         if (layoutInfo.isWidthCompact) {

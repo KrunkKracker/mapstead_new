@@ -1183,17 +1183,15 @@ class MapViewModel @Inject constructor(
 
             if (openingToken != null && _openingToken.value != openingToken) return@launch
             
-            // Priority: restoration > initial camera
-            val restoration = _viewportRestoration.value
-            if (restoration != null && restoration.planId == id) {
-                _cameraFocus.value = MapCameraFocus.Point(restoration.latitude, restoration.longitude, restoration.zoom.toFloat(), restoration.bearing)
-                _cameraPersistenceState.value = CameraPersistenceState.INITIAL_FOCUS_APPLYING
-            } else {
-                val resolution = MapCameraResolver.resolveInitialCamera(plan, prop, allFeatures)
-                _lastResolutionSource = resolution.source
-                _cameraFocus.value = resolution.focus
-                _cameraPersistenceState.value = CameraPersistenceState.INITIAL_FOCUS_APPLYING
-            }
+            val resolution = MapCameraResolver.resolveInitialCamera(
+                plan = plan,
+                property = prop,
+                features = allFeatures,
+                restoration = _viewportRestoration.value
+            )
+            _lastResolutionSource = resolution.source
+            _cameraFocus.value = resolution.focus
+            _cameraPersistenceState.value = CameraPersistenceState.INITIAL_FOCUS_APPLYING
         }
     }
 
@@ -1384,9 +1382,23 @@ class MapViewModel @Inject constructor(
         isRenderSessionReady = true
 
         val currentPlanId = _planId.value
-        val restoration = _viewportRestoration.value
-        if (_cameraFocus.value == null && restoration != null && restoration.planId == currentPlanId) {
-            _cameraFocus.value = MapCameraFocus.Point(restoration.latitude, restoration.longitude, restoration.zoom.toFloat(), restoration.bearing)
+        if (_cameraFocus.value == null && currentPlanId != null) {
+            viewModelScope.launch {
+                val plan = mapRepository.getPlanById(currentPlanId)
+                val propId = plan?.propertyId
+                val prop = if (propId != null) propertyRepository.getPropertyById(propId) else null
+                val allFeatures = mapRepository.getFeaturesForPlan(currentPlanId).firstOrNull() ?: emptyList()
+                
+                val resolution = MapCameraResolver.resolveInitialCamera(
+                    plan = plan,
+                    property = prop,
+                    features = allFeatures,
+                    restoration = _viewportRestoration.value
+                )
+                if (_cameraFocus.value == null && _planId.value == currentPlanId) {
+                    _cameraFocus.value = resolution.focus
+                }
+            }
         }
         
         val pending = _pendingBasemapRequest.value

@@ -251,8 +251,8 @@ The following structural decisions are approved and source-implemented in Slice 
 - [x] Prototype journeys created
 - [x] Prototype review complete
 - [/] Slice 1 complete (SOURCE-IMPLEMENTED / PHYSICAL-DEVICE ACCEPTANCE PENDING)
-- [ ] Slice 2 complete
-- [ ] Slice 3 complete
+- [/] Slice 2: Add Something Category and Discovery Redesign (PLANNED)
+- [ ] Slice 3: Unified Property Item Details
 - [ ] Slice 4 complete
 - [ ] Slice 5 complete
 - [ ] Slice 6 complete
