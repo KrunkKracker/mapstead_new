@@ -12,7 +12,7 @@ Mapstead is a local-first, private property management tool designed for homeown
 ## Beginner-First UX 2.0 Status
 - Authoritative [Master Plan](BEGINNER_FIRST_UX_MASTER_PLAN.md) APPROVED.
 - Terminology and IA decisions APPROVED.
-- Prototype review COMPLETE.
+- Prototype review COMPLETE (Work on isolated prototypes stopped).
 - Production Slice 1 (Property Home) SOURCE-IMPLEMENTED.
 - Physical-device acceptance PENDING.
 - Property Inventory remains blocked.

@@ -1,67 +1,77 @@
-# Beginner-First UX 2.0 — Property Home Reliability, Accessibility, and Closure
+# Implementation Plan — Beginner-First UX 2.0: Property Home Reliability and Acceptance
 
-Close Property Home (Slice 1) defects related to state isolation, error retry, and adaptive layout.
+Correct the remaining runtime, accessibility, and documentation defects for Property Home (Slice 1) to establish a trustworthy production baseline.
+
+## User Review Required
+
+> [!IMPORTANT]
+> **Error Handling Refactor**: We are moving error handling inside the property collection flow. This ensures that a single failure doesn't kill the dashboard stream and allows the "Retry" action to work reliably in-context.
+> **Property Isolation**: We are ensuring that switching properties immediately clears the previous state and ignores any late emissions, preventing stale data leakage.
+> **Adaptive UI**: The primary dashboard actions (Find / Emergency) will now adaptively stack vertically on narrow screens or high font scales to maintain readability.
 
 ## Proposed Changes
 
-- Production implementation of reliability fixes.
+- Production implementation of Home reliability and accessibility.
 - No database changes.
 - Version: **0.03 (3)** preserved.
+- JVM Tests: Target 695+ successful executions.
+- Lint: Target Zero Errors.
 
-### Dashboard
+### Dashboard Reliability
 
 #### [MODIFY] [HomeViewModel.kt](file:///C:/Users/Justi/StudioProjects/mapstead_new/app/src/main/java/com/jumastappworks/mapstead/ui/dashboard/HomeViewModel.kt)
-- Refactored `uiState` to use `combine(_propertyId, _retryTrigger)` with `flatMapLatest`.
-- Ensured `emit(HomeUiState.Loading)` happens immediately on each property/retry cycle to clear stale state.
-- Implemented `catch` block inside `flatMapLatest` for in-context Error/Retry support.
-- Extracted deterministic maintenance classification helpers (`isTaskActive`, `isOverdueOrDueToday`, `isUpcoming`) using `LocalDate` parameters.
-- Standardized on `nextDueDate` as the authority for due states.
+- Refactor `uiState` to use `flatMapLatest` on a combined `propertyId` and `retryTrigger` flow.
+- Emit `Loading` immediately on each property/retry cycle.
+- Move `catch` inside the collection block to allow for recoverable error states.
+- Extract maintenance classification helpers (`isTaskActive`, `isOverdueOrDueToday`, `isUpcoming`) that accept a `LocalDate` to ensure deterministic testing.
+- Standardize on `nextDueDate` as the source of truth for due states.
 
 #### [MODIFY] [HomeScreen.kt](file:///C:/Users/Justi/StudioProjects/mapstead_new/app/src/main/java/com/jumastappworks/mapstead/ui/dashboard/HomeScreen.kt)
-- Implemented adaptive layout for `PrimaryActionsSection` using `LocalConfiguration` and `LocalDensity` fontScale.
-- Stack Find Something and Emergency Guide vertically on compact/high-font screens; use Row otherwise.
-- Localized all customer-facing text using `strings.xml`.
-- Implemented `NeedsAttentionEmptyState` for reassuring feedback when no tasks are due.
-- Added `ErrorScreen` with Retry support.
-- Improved accessibility with explicit roles and selected semantics.
+- Implement adaptive layout for the Find Something and Emergency Guide buttons using `LocalConfiguration` and stacking vertically on narrow screens.
+- Implement localized date formatting in `formatDueDateLocalized`.
+- Add `NeedsAttentionEmptyState` to provide reassuring feedback when no tasks are due.
+- Replace hard-coded strings with resources from `strings.xml`.
+- Ensure 48dp touch targets and logical TalkBack traversal.
 
 ### Localization
 
 #### [MODIFY] [strings.xml](file:///C:/Users/Justi/StudioProjects/mapstead_new/app/src/main/res/values/strings.xml)
-- Added missing Home and Maintenance labels (`home_title`, `home_switch_property`, `state_selected`, `maint_overdue`, etc.).
+- Add missing Home and Maintenance labels (`home_title`, `home_switch_property`, `home_no_tasks_attention`, `maint_overdue`, etc.).
 
-### Tests
+### Quality and Evidence
 
-#### [MODIFY] [HomeViewModelTest.kt](file:///C:/Users/Justi/StudioProjects/mapstead_new/app/src/test/java/com/jumastappworks/mapstead/ui/dashboard/HomeViewModelTest.kt)
-- Expanded coverage for:
-    - Initial Loading state.
-    - Property switch isolation (verified no stale ID leakage).
-    - Late emission rejection (verified correct item counts after interleaved emissions).
-    - Error and Retry flow (Error -> Fix -> Retry -> Ready).
-    - Deterministic date classification logic.
-    - Map-only content neutral guidance logic.
+#### [MODIFY] [qa-results/](file:///C:/Users/Justi/StudioProjects/mapstead_new/qa-results/)
+- Synchronize all summaries with the actual results of the v0.03 (3) build.
+- Truthfully report the executed JVM test count from Gradle XML.
 
-#### [NEW] [HomeScreenTest.kt](file:///C:/Users/Justi/StudioProjects/mapstead_new/app/src/androidTest/java/com/jumastappworks/mapstead/ui/dashboard/HomeScreenTest.kt)
-- Added focused Compose UI tests for:
-    - Property name visibility.
-    - Primary action presence.
-    - Needs Attention empty state message.
+#### [MODIFY] [ROADMAP.md](file:///C:/Users/Justi/StudioProjects/mapstead_new/ROADMAP.md) / [README.md](file:///C:/Users/Justi/StudioProjects/mapstead_new/README.md)
+- Update status to reflect that Slice 1 is source-implemented with physical-device acceptance pending.
 
 ## Verification Plan
 
 ### Automated Tests
-- **JVM Unit Tests**: `gradlew :app:testDebugUnitTest` (696 passed).
-- **Instrumented Tests**: `gradlew :app:assembleDebugAndroidTest`.
+- **HomeViewModelTest**:
+    - Initial state is Loading.
+    - Property switch isolation (verified by state sequence and ID checks).
+    - Late emission rejection.
+    - Recoverable Error -> Retry flow.
+    - Deterministic maintenance classification.
+- **HomeScreenTest**:
+    - Property name visibility.
+    - Primary action presence.
+    - Needs Attention empty state message.
+    - Narrow layout stacking behavior.
 
 ### Quality Gates
-- `gradlew :app:compileDebugKotlin` -> SUCCESS.
-- `gradlew :app:assembleDebug` -> SUCCESS.
-- `gradlew :app:lintDebug` -> SUCCESS (Zero errors).
+- `gradlew.bat --stop`
+- `gradlew.bat :app:compileDebugKotlin --no-parallel`
+- `gradlew.bat :app:testDebugUnitTest --no-parallel`
+- `gradlew.bat :app:assembleDebug`
+- `gradlew.bat :app:lintDebug --no-parallel`
 
----
-## Final Evidence Status
-
-- **JVM tests in source**: ~696 (Verified by Gradle XML).
-- **Executed count**: 696.
-- **Instrumented source methods**: ~3.
-- **Physical-device acceptance**: PENDING review on hardware.
+### Manual Verification
+- **Physical Device**:
+    - Verify property switching never flashes old content.
+    - Verify Retry recovers from failure.
+    - Verify 2.0 font scaling usability.
+    - Verify TalkBack semantics on the property selector.

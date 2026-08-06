@@ -11,7 +11,6 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
-import com.jumastappworks.mapstead.util.MaintenanceStatus
 import java.time.LocalDate
 import java.util.UUID
 import javax.inject.Inject
@@ -28,6 +27,7 @@ sealed interface HomeUiState {
         val upcomingTasks: List<HomeTaskSummary>,
         val recentlyAddedItems: List<HomePropertyItemSummary>,
         val hasAnyPropertyContent: Boolean,
+        val hasMapFeaturesOnly: Boolean = false,
         val checklist: List<GettingStartedStep> = emptyList(),
         val showChecklist: Boolean = false
     ) : HomeUiState
@@ -82,11 +82,14 @@ class HomeViewModel @Inject constructor(
     private val _propertyId = MutableStateFlow<UUID?>(null)
     private val _retryTrigger = MutableStateFlow(0)
 
-    val uiState: StateFlow<HomeUiState> = _propertyId
+    val uiState: StateFlow<HomeUiState> = combine(_propertyId, _retryTrigger) { id, _ -> id }
         .flatMapLatest { id ->
             if (id == null) flowOf(HomeUiState.Loading)
             else {
-                _retryTrigger.flatMapLatest {
+                flow {
+                    // Immediately indicate loading for the new property
+                    emit(HomeUiState.Loading)
+                    
                     val flowA = combine(
                         flow { emit(propertyRepository.getPropertyById(id)) },
                         infrastructureRepository.getItemsForProperty(id),
@@ -108,17 +111,15 @@ class HomeViewModel @Inject constructor(
                         } else {
                             val today = LocalDate.now()
                             
-                            val activeRecords = a.records.filter { record ->
-                                record.deletedAt == null &&
-                                !MaintenanceStatus.isCompleted(record.status) &&
-                                !record.status.equals("Cancelled", ignoreCase = true)
-                            }
+                            val activeRecords = a.records.filter { isTaskActive(it) }
 
-                            val needsAttention = activeRecords.filter { it.nextDueDate != null && (it.nextDueDate.isBefore(today) || it.nextDueDate.isEqual(today)) }
-                                .sortedBy { it.nextDueDate }
+                            val needsAttention = activeRecords
+                                .filter { isOverdueOrDueToday(it, today) }
+                                .sortedWith(compareBy<MaintenanceRecordEntity> { it.nextDueDate }.thenBy { it.title })
                                 .map { it.toSummary(today) }
 
-                            val upcoming = activeRecords.filter { it.nextDueDate != null && it.nextDueDate.isAfter(today) }
+                            val upcoming = activeRecords
+                                .filter { isUpcoming(it, today) }
                                 .sortedBy { it.nextDueDate }
                                 .take(3)
                                 .map { it.toSummary(today) }
@@ -128,13 +129,16 @@ class HomeViewModel @Inject constructor(
                                 .take(5)
                                 .map { it.toSummary() }
 
-                            val hasAnyContent = a.items.any { it.deletedAt == null } || a.features.isNotEmpty()
+                            val hasAnyItems = a.items.any { it.deletedAt == null }
+                            val hasMapFeatures = a.features.any { it.deletedAt == null }
+                            val hasAnyContent = hasAnyItems || hasMapFeatures
+                            val mapFeaturesOnly = hasMapFeatures && !hasAnyItems
 
                             val progress = GettingStartedProgress(
                                 hasProperty = b.allProperties.isNotEmpty(),
                                 hasMap = b.plans.isNotEmpty(),
-                                hasMappedItem = a.features.isNotEmpty(),
-                                hasInfrastructure = a.items.isNotEmpty(),
+                                hasMappedItem = hasMapFeatures,
+                                hasInfrastructure = hasAnyItems,
                                 hasMaintenance = a.records.isNotEmpty(),
                                 hasAttachment = b.attachments.isNotEmpty(),
                                 emergencyReviewed = b.prefs.emergencyReviewedPropertyIds.contains(id.toString()),
@@ -151,17 +155,18 @@ class HomeViewModel @Inject constructor(
                                 upcomingTasks = upcoming,
                                 recentlyAddedItems = recentItems,
                                 hasAnyPropertyContent = hasAnyContent,
+                                hasMapFeaturesOnly = mapFeaturesOnly,
                                 checklist = checklist,
                                 showChecklist = !progress.dismissed && !allDone
                             )
                         }
-                    }.onStart { emit(HomeUiState.Loading) }
+                    }.collect { emit(it) }
+                }.catch { e ->
+                    if (e is CancellationException) throw e
+                    emit(HomeUiState.Error(R.string.home_error_loading))
                 }
             }
-        }.catch { e ->
-            if (e is CancellationException) throw e
-            emit(HomeUiState.Error(R.string.property_load_failed))
-        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), HomeUiState.Loading)
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, HomeUiState.Loading)
 
     fun setPropertyId(id: UUID) {
         _propertyId.value = id
@@ -217,5 +222,24 @@ class HomeViewModel @Inject constructor(
             status = status,
             createdAt = createdAt
         )
+    }
+
+    companion object {
+        fun isTaskActive(task: MaintenanceRecordEntity): Boolean {
+            if (task.deletedAt != null) return false
+            val status = task.status.trim().lowercase()
+            if (status == "completed" || status == "cancelled") return false
+            return true
+        }
+
+        fun isOverdueOrDueToday(task: MaintenanceRecordEntity, today: LocalDate): Boolean {
+            val due = task.nextDueDate ?: return false
+            return due.isBefore(today) || due.isEqual(today)
+        }
+
+        fun isUpcoming(task: MaintenanceRecordEntity, today: LocalDate): Boolean {
+            val due = task.nextDueDate ?: return false
+            return due.isAfter(today)
+        }
     }
 }

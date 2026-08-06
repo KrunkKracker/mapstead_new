@@ -1,8 +1,8 @@
 JVM Unit Test Summary
 Phase: Beginner-First UX 2.0 (Property Home Reliability)
 Result: SUCCESS
-Total: 696
-Passed: 696
+Executed: 695
+Passed: 695
 Failed: 0
 Skipped: 0
 Date: 2026-08-06

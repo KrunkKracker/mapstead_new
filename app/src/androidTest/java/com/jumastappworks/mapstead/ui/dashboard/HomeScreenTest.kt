@@ -22,27 +22,25 @@ class HomeScreenTest {
     fun selected_property_name_is_displayed() {
         val state = HomeUiState.Ready(
             property = dummyProperty,
+            formattedAddress = "123 Lane",
             needsAttentionTasks = emptyList(),
             upcomingTasks = emptyList(),
-            recentlyAddedItems = emptyList()
+            recentlyAddedItems = emptyList(),
+            hasAnyPropertyContent = true
         )
 
         composeTestRule.setContent {
-            HomeScreenContent(
-                uiState = state,
-                properties = listOf(dummyProperty),
-                selectedPropertyId = dummyProperty.id,
-                onSelectProperty = {},
-                onAddProperty = {},
-                onManageProperties = {},
-                onNavigateToSettings = {},
-                onNavigateToHelp = {},
+            HomeContent(
+                state = state,
                 onAddSomething = {},
                 onFindSomething = {},
                 onOpenEmergency = {},
                 onOpenTasks = {},
                 onOpenItemDetails = {},
-                onEditProperty = {}
+                onEditProperty = {},
+                onNavigateToHelp = {},
+                onDismissChecklist = {},
+                onStepClick = {}
             )
         }
 
@@ -52,32 +50,30 @@ class HomeScreenTest {
     @Test
     fun primary_actions_are_visible() {
         val state = HomeUiState.Ready(
-            property = dummyProperty
+            property = dummyProperty,
+            formattedAddress = "",
+            needsAttentionTasks = emptyList(),
+            upcomingTasks = emptyList(),
+            recentlyAddedItems = emptyList(),
+            hasAnyPropertyContent = true
         )
 
         composeTestRule.setContent {
-            HomeScreenContent(
-                uiState = state,
-                properties = listOf(dummyProperty),
-                selectedPropertyId = dummyProperty.id,
-                onSelectProperty = {},
-                onAddProperty = {},
-                onManageProperties = {},
-                onNavigateToSettings = {},
-                onNavigateToHelp = {},
+            HomeContent(
+                state = state,
                 onAddSomething = {},
                 onFindSomething = {},
                 onOpenEmergency = {},
                 onOpenTasks = {},
                 onOpenItemDetails = {},
-                onEditProperty = {}
+                onEditProperty = {},
+                onNavigateToHelp = {},
+                onDismissChecklist = {},
+                onStepClick = {}
             )
         }
 
-        // Check for primary action labels (using default English values for now, 
-        // but in real app they come from resources)
-        // We can use resource IDs if we use AndroidComposeTestRule, but createComposeRule is for unit-like tests.
-        // Mapstead usually uses text matching in these tests.
+        // Check for primary action labels (resources matched in English)
         composeTestRule.onNodeWithText("Add Something", ignoreCase = true).assertExists()
         composeTestRule.onNodeWithText("Find Something", ignoreCase = true).assertExists()
         composeTestRule.onNodeWithText("Emergency Guide", ignoreCase = true).assertExists()
@@ -87,25 +83,25 @@ class HomeScreenTest {
     fun empty_needs_attention_shows_reassuring_message() {
         val state = HomeUiState.Ready(
             property = dummyProperty,
-            needsAttentionTasks = emptyList()
+            formattedAddress = "",
+            needsAttentionTasks = emptyList(),
+            upcomingTasks = emptyList(),
+            recentlyAddedItems = emptyList(),
+            hasAnyPropertyContent = true
         )
 
         composeTestRule.setContent {
-            HomeScreenContent(
-                uiState = state,
-                properties = listOf(dummyProperty),
-                selectedPropertyId = dummyProperty.id,
-                onSelectProperty = {},
-                onAddProperty = {},
-                onManageProperties = {},
-                onNavigateToSettings = {},
-                onNavigateToHelp = {},
+            HomeContent(
+                state = state,
                 onAddSomething = {},
                 onFindSomething = {},
                 onOpenEmergency = {},
                 onOpenTasks = {},
                 onOpenItemDetails = {},
-                onEditProperty = {}
+                onEditProperty = {},
+                onNavigateToHelp = {},
+                onDismissChecklist = {},
+                onStepClick = {}
             )
         }
 

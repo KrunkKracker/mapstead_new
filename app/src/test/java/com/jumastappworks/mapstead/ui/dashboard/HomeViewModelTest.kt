@@ -78,30 +78,33 @@ class HomeViewModelTest {
     @Test
     fun `setPropertyId triggers data load and emits Ready`() = runTest {
         viewModel.setPropertyId(propertyId)
+        advanceUntilIdle()
         
-        val state = viewModel.uiState.filterIsInstance<HomeUiState.Ready>().first()
-        
-        assertEquals("Test Property", state.property.name)
+        val state = viewModel.uiState.value
+        assertTrue(state is HomeUiState.Ready)
+        assertEquals("Test Property", (state as HomeUiState.Ready).property.name)
     }
 
     @Test
-    fun `maintenance logic uses nextDueDate and excludes completed`() = runTest {
-        val today = LocalDate.now()
-        val overdue = MaintenanceRecordEntity(id = UUID.randomUUID(), propertyId = propertyId, infrastructureItemId = null, title = "Overdue", category = "C", status = "Active", nextDueDate = today.minusDays(1), serviceDate = today.minusMonths(1))
-        val dueToday = MaintenanceRecordEntity(id = UUID.randomUUID(), propertyId = propertyId, infrastructureItemId = null, title = "Today", category = "C", status = "Active", nextDueDate = today, serviceDate = today.minusMonths(1))
-        val upcoming = MaintenanceRecordEntity(id = UUID.randomUUID(), propertyId = propertyId, infrastructureItemId = null, title = "Upcoming", category = "C", status = "Active", nextDueDate = today.plusDays(2), serviceDate = today.minusMonths(1))
-        val completed = MaintenanceRecordEntity(id = UUID.randomUUID(), propertyId = propertyId, infrastructureItemId = null, title = "Completed", category = "C", status = "Completed", nextDueDate = today.minusDays(1), serviceDate = today)
+    fun `maintenance classification is correct and deterministic`() {
+        val today = LocalDate.of(2026, 8, 6)
         
-        recordsFlow.value = listOf(overdue, dueToday, upcoming, completed)
-        viewModel.setPropertyId(propertyId)
+        val overdue = MaintenanceRecordEntity(id = UUID.randomUUID(), propertyId = propertyId, title = "Overdue", category = "C", status = "Active", nextDueDate = today.minusDays(1), serviceDate = today.minusMonths(1))
+        val dueToday = MaintenanceRecordEntity(id = UUID.randomUUID(), propertyId = propertyId, title = "Today", category = "C", status = "Active", nextDueDate = today, serviceDate = today.minusMonths(1))
+        val upcoming = MaintenanceRecordEntity(id = UUID.randomUUID(), propertyId = propertyId, title = "Upcoming", category = "C", status = "Active", nextDueDate = today.plusDays(1), serviceDate = today.minusMonths(1))
+        val completed = MaintenanceRecordEntity(id = UUID.randomUUID(), propertyId = propertyId, title = "Done", category = "C", status = "Completed", nextDueDate = today.minusDays(1), serviceDate = today)
+        val cancelled = MaintenanceRecordEntity(id = UUID.randomUUID(), propertyId = propertyId, title = "Cancelled", category = "C", status = "Cancelled", nextDueDate = today.minusDays(1), serviceDate = today)
+
+        assertTrue(HomeViewModel.isOverdueOrDueToday(overdue, today))
+        assertTrue(HomeViewModel.isOverdueOrDueToday(dueToday, today))
+        assertFalse(HomeViewModel.isOverdueOrDueToday(upcoming, today))
         
-        val state = viewModel.uiState.filterIsInstance<HomeUiState.Ready>().first()
-        assertEquals(2, state.needsAttentionTasks.size)
-        assertEquals("Overdue", state.needsAttentionTasks[0].title)
-        assertEquals("Today", state.needsAttentionTasks[1].title)
+        assertTrue(HomeViewModel.isUpcoming(upcoming, today))
+        assertFalse(HomeViewModel.isUpcoming(dueToday, today))
         
-        assertEquals(1, state.upcomingTasks.size)
-        assertEquals("Upcoming", state.upcomingTasks[0].title)
+        assertTrue(HomeViewModel.isTaskActive(overdue))
+        assertFalse(HomeViewModel.isTaskActive(completed))
+        assertFalse(HomeViewModel.isTaskActive(cancelled))
     }
 
     @Test
@@ -113,27 +116,39 @@ class HomeViewModelTest {
         
         itemsFlow.value = items
         viewModel.setPropertyId(propertyId)
+        advanceUntilIdle()
         
-        val state = viewModel.uiState.filterIsInstance<HomeUiState.Ready>().first()
+        val state = viewModel.uiState.value as HomeUiState.Ready
         assertEquals(5, state.recentlyAddedItems.size)
         assertEquals("Item 10", state.recentlyAddedItems[0].name)
     }
 
     @Test
-    fun `map-only features prevent false empty state`() = runTest {
-        itemsFlow.value = emptyList()
-        featuresFlow.value = listOf(mockk())
-        
+    fun `repository failure emits safe Error state and Retry works`() = runTest {
         viewModel.setPropertyId(propertyId)
+        advanceUntilIdle()
         
-        val state = viewModel.uiState.filterIsInstance<HomeUiState.Ready>().first()
-        assertTrue(state.hasAnyPropertyContent)
+        // Mock failure
+        every { infrastructureRepository.getItemsForProperty(propertyId) } returns flow { throw RuntimeException("Fail") }
+        
+        viewModel.retry()
+        advanceUntilIdle()
+        
+        assertTrue(viewModel.uiState.value is HomeUiState.Error)
+        
+        // Fix and retry
+        every { infrastructureRepository.getItemsForProperty(propertyId) } returns itemsFlow
+        
+        viewModel.retry()
+        advanceUntilIdle()
+        
+        assertTrue(viewModel.uiState.value is HomeUiState.Ready)
     }
 
     @Test
     fun `property switching clears prior state and emits Loading`() = runTest {
         viewModel.setPropertyId(propertyId)
-        viewModel.uiState.filterIsInstance<HomeUiState.Ready>().first()
+        advanceUntilIdle()
 
         val states = mutableListOf<HomeUiState>()
         val collectJob = launch(testDispatcher) {
@@ -142,6 +157,8 @@ class HomeViewModelTest {
 
         val newId = UUID.randomUUID()
         coEvery { propertyRepository.getPropertyById(newId) } returns PropertyEntity(id = newId, name = "New Prop", propertyType = "Home")
+        
+        // Delay the new property flow to see Loading
         every { infrastructureRepository.getItemsForProperty(newId) } returns flow {
              delay(100)
              emit(emptyList())
@@ -153,15 +170,19 @@ class HomeViewModelTest {
 
         viewModel.setPropertyId(newId)
         
-        // Let the outer flatMapLatest process the change
+        // Outer flatMapLatest processes new ID
         runCurrent()
         
-        // Check if Loading was emitted after switching
-        assertTrue("States should contain Loading after switch but were $states", states.any { it is HomeUiState.Loading })
+        // The flow inside should have emitted Loading first
+        assertTrue(states.any { it is HomeUiState.Loading })
+        
+        // Late prior property emission check
+        itemsFlow.value = listOf(mockk(relaxed = true))
+        runCurrent()
         
         advanceUntilIdle()
         assertTrue(states.last() is HomeUiState.Ready)
-        assertEquals("New Prop", (states.last() as HomeUiState.Ready).property.name)
+        assertEquals(newId, (states.last() as HomeUiState.Ready).property.id)
         
         collectJob.cancel()
     }

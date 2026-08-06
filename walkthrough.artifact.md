@@ -1,40 +1,37 @@
-# Walkthrough — Beginner-First UX 2.0 — Property Home Correctness
+# Walkthrough - Property Home Reliability & Accessibility (Beginner-First UX 2.0 Slice 1)
 
-The Home screen has been finalized to ensure reliable, truthful, and strictly property-scoped behavior using real production data.
+This pass established a trustworthy production baseline for the Property Home screen, ensuring reliability across property transitions, error scenarios, and various device configurations.
 
 ## Key Improvements
 
-### 1. Robust Home Architecture
-- **Type-Safe State**: Replaced loose state fields with a `HomeUiState` sealed interface (`Loading`, `Ready`, `NotFound`, `Error`).
-- **Strict Isolation**: Used `flatMapLatest` and immediate `Loading` emission to ensure switching properties never leaks stale data from the previous selection.
-- **Retry Mechanism**: Added a dedicated retry trigger to safely restart repository collection upon failure.
+### 1. Reliable State Isolation & Property Switching
+- **Synchronous Loading**: Switching properties now immediately emits a `Loading` state, clearing stale data from the previous property.
+- **Emission Rejection**: Implemented logic in `HomeViewModel` that strictly ignores late repository emissions from previous property contexts.
+- **Recoverable Retry**: Refactored error handling so that a repository failure emits a recoverable `Error` state. The "Retry" action now correctly restarts the data collection flow within the existing screen context.
 
-### 2. Maintenance Logic Parity
-- **Due Date Authority**: Now uses `nextDueDate` (consistent with the Tasks destination) instead of `serviceDate` for status calculations.
-- **Needs Attention**: Highlights tasks that are Overdue or Due Today.
-- **Upcoming Section**: Introduced a new "Upcoming" section for future tasks, limited to the next three items with localized date formatting (e.g., "Due tomorrow").
-- **Exclusion Rules**: Correctly filters out deleted, completed, and cancelled records (case-insensitively).
+### 2. Adaptive & Accessible UI
+- **Responsive Layout**: The primary "Find Something" and "Emergency Guide" actions now adaptively stack vertically on narrow screens or when high font scaling (200%) is active, preventing text clipping and maintaining 48dp touch targets.
+- **Full-Width Call to Action**: "Add Something" remains the primary, full-width action, guiding beginners toward active property documentation.
+- **Localization**: Removed all remaining hard-coded strings. All customer-facing text is now managed via `strings.xml`.
+- **Reassuring Feedback**: Added a specific "Needs Attention" empty state to provide neutral, reassuring feedback when no tasks are overdue.
 
-### 3. Truthful Data Representation
-- **Map-Only Awareness**: The "Nothing added yet" empty state now queries `MapRepository` to check for map-only features. If features exist but infrastructure items don't, a neutral guidance message is shown instead of claiming the property is empty.
-- **Recently Added**: Sorted by `createdAt` descending and limited to the five most recent items.
-- **Presentation Models**: Decoupled the UI from Room entities using `HomeTaskSummary` and `HomePropertyItemSummary`.
+### 3. Deterministic Maintenance Logic
+- **nextDueDate Authority**: Standardized on `nextDueDate` for all task classification.
+- **Pure Helpers**: Moved status classification into pure static helpers that accept a `LocalDate`, ensuring logic is deterministic and easily testable without dependency on the current system time.
 
-### 4. Beginner-First UX & Accessibility
-- **Prominent Primary Action**: Made "Add Something" the strongest visual element (full-width button).
-- **Responsive Layout**: Replaced cramped horizontal cards with an adaptive arrangement that supports font scaling up to 2.0 without clipping.
-- **Accessible Switcher**: Enhanced the Property Selector with semantic state descriptions and proper touch targets.
-
-## Quality Gates & Verification
+## Quality & Verification Results
 
 ### Automated Tests
-- **JVM Tests**: 695 Passed (100%).
-- **New Coverage**: `HomeViewModelTest` provides deterministic verification of property switching, maintenance sorting, and truthful empty states.
+- **695 JVM Unit Tests Passed**: Verified exactly 695 successful executions via Gradle XML reports.
+- **Instrumented Test Compilation**: Confirmed that 72 instrumented tests (including the new `HomeScreenTest`) compile successfully.
+- **Zero Lint Errors**: The build passes strict lint checks with zero errors.
 
-### Build Results
-- **Kotlin Compilation**: PASS
-- **APK Assembly**: v0.03 Debug successfully produced.
-- **Lint**: Passed with 0 errors.
+### Physical-Device Verification Status
+> [!NOTE]
+> **Status: PENDING**. Slice 1 is source-implemented and verified via automation. Physical-device acceptance on hardware is required before Slice 1 is marked fully complete.
 
----
-**Commit Message**: `fix(home): complete property-scoped beginner home`
+## Technical Summary
+- **Version**: 0.03 (3)
+- **JVM Executed**: 695
+- **Lint Errors**: 0
+- **Stash**: `stash@{0}` preserved for baseline comparison.
