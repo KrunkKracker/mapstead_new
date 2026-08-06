@@ -94,7 +94,7 @@ Status:
 - Master-plan document: APPROVED
 - Terminology approval: COMPLETE
 - Information architecture approval: COMPLETE
-- Prototype creation: COMPLETE
+- Prototype creation: COMPLETE (Removed UX Lab)
 - Production redesign: IN PROGRESS (Slice 1 Source-Implemented)
 - Physical-device verification: PENDING
 - Property Inventory: BLOCKED

@@ -1,60 +1,62 @@
-# Beginner-First UX 2.0 — Property Home Title Integrity and Evidence Closure
+# Beginner-First UX 2.0 — Remove UX Lab and Restore Clean Physical-Device Testing
 
-Correct the final Property Home selection, reactive-property, test-evidence, and documentation defects.
+Remove the obsolete debug UX Lab launcher and fake prototype runtime code to ensure debug builds reflect only the real Mapstead application.
 
-## Goal Description
-This pass ensures that the Property Home screen is robust against navigation races and data updates. It makes the selected property reactive (updating automatically on edit) and prevents mismatched state from being displayed during property transitions. It also finalizes test evidence with explained counts.
+## User Review Required
+
+> [!IMPORTANT]
+> **Data Removal**: This pass deletes the prototype runtime source code. Git history preserves the implementation if needed for reference, but it will no longer be compiled into the debug APK.
+> **Single Launcher**: After this change, only one "Mapstead" icon will appear on the device launcher. The "UX Lab" icon will be removed.
+> **GPS Verification**: Property Setup will exclusively use actual phone location coordinates. The simulated "St. Petersburg" address will no longer exist in the code.
 
 ## Proposed Changes
 
-- Production implementation of Home selection integrity.
-- No database changes.
+- Remove debug-only prototype activity and runtime code.
+- Ensure a single launcher entry point in the merged manifest.
+- Verify real GPS provider binding and behavior.
 - Version: **0.03 (3)** preserved.
-- Project Root: **C:\Users\Justi\StudioProjects\mapstead_new**
 
-### Dashboard Reliability
+### Build and Manifest
 
-#### [MODIFY] [HomeViewModel.kt](file:///C:/Users/Justi/StudioProjects/mapstead_new/app/src/main/java/com/jumastappworks/mapstead/ui/dashboard/HomeViewModel.kt)
-- Replaced one-shot property lookup with a reactive flow from `propertyRepository.getAllProperties()`.
-- Home now updates automatically when property details (name, type, address) are edited.
-- Preserved `flatMapLatest` isolation and immediate `Loading` emission on ID change.
+#### [MODIFY] [app/src/debug/AndroidManifest.xml](file:///C:/Users/Justi/StudioProjects/mapstead_new/app/src/debug/AndroidManifest.xml)
+- Remove `PrototypeLabActivity` and its `<intent-filter>` containing `android.intent.action.MAIN` and `android.intent.category.LAUNCHER`.
 
-#### [MODIFY] [HomeScreen.kt](file:///C:/Users/Justi/StudioProjects/mapstead_new/app/src/main/java/com/jumastappworks/mapstead/ui/dashboard/HomeScreen.kt)
-- Implemented **Selection-to-State Mismatch Protection**: If `selectedPropertyId` (authoritative navigation state) does not match `s.property.id`, the screen forces a `Loading` state.
-- Derived the top-app-bar title directly from the `properties` list and `selectedPropertyId` to eliminate naming races.
+### Source Deletion
 
-### Evidence & Documentation
+#### [DELETE] [app/src/debug/java/com/jumastappworks/mapstead/ui/prototype/](file:///C:/Users/Justi/StudioProjects/mapstead_new/app/src/debug/java/com/jumastappworks/mapstead/ui/prototype/)
+- Remove all prototype Compose screens, navigation, and models.
 
-#### [MODIFY] [qa-results/unit-test-summary.txt](file:///C:/Users/Justi/StudioProjects/mapstead_new/qa-results/unit-test-summary.txt)
-- Truthful report of **700 executed tests** (verified by Gradle XML).
-- Source @Test count: **700** (690 in `test`, 10 in `testDebug`).
-- Consistency: 100%.
+#### [DELETE] [app/src/testDebug/java/com/jumastappworks/mapstead/ui/prototype/](file:///C:/Users/Justi/StudioProjects/mapstead_new/app/src/testDebug/java/com/jumastappworks/mapstead/ui/prototype/)
+- Remove obsolete prototype unit tests.
 
-#### [MODIFY] [ROADMAP.md](file:///C:/Users/Justi/StudioProjects/mapstead_new/ROADMAP.md) / [README.md](file:///C:/Users/Justi/StudioProjects/mapstead_new/README.md)
-- Status updated: **Slice 1 Property Home SOURCE-IMPLEMENTED / PHYSICAL-DEVICE ACCEPTANCE PENDING**.
-- Redesign Status: **IN PROGRESS**.
+### Verification and Clean-up
 
-#### [MODIFY] [BEGINNER_FIRST_UX_TERMINOLOGY_IA_DECISION_PACK.md](file:///C:/Users/Justi/StudioProjects/mapstead_new/BEGINNER_FIRST_UX_TERMINOLOGY_IA_DECISION_PACK.md)
-- Standardized terminology: "Map Item" -> "Property Item".
-- Removed "external approval pending" status.
+#### [VERIFY] [LocationTracker.kt](file:///C:/Users/Justi/StudioProjects/mapstead_new/app/src/main/java/com/jumastappworks/mapstead/data/mapping/LocationTracker.kt)
+- Confirmed use of `FusedLocationProviderClient`.
+- Confirmed binding in `RepositoryModule.kt`.
+
+#### [VERIFY] [AddPropertyViewModel.kt](file:///C:/Users/Justi/StudioProjects/mapstead_new/app/src/main/java/com/jumastappworks/mapstead/ui/properties/AddPropertyViewModel.kt)
+- Confirmed `requestGpsLocation` uses `locationProvider.getCurrentLocation()` and sets the candidate with the real coordinates and accuracy.
+- Confirmed it does not contain any hard-coded addresses.
+
+---
 
 ## Verification Plan
 
 ### Automated Tests
-- **HomeViewModelTest**:
-    - `same-ID property update refreshes Home reactively`: Proves name changes appear without re-selecting.
-    - `missing selected property emits NotFound`.
-    - `property switching clears prior state and rejects late emissions`.
-- **HomeScreenTest**:
-    - `selected_property_name_is_displayed`.
-    - `mismatched_ready_id_displays_loading`.
-    - `authoritative_title_shown_during_mismatch`.
+- **JVM Unit Tests**: `gradlew :app:testDebugUnitTest` (700 tests in source, target consistency).
+- **AddPropertyViewModelTest**: Verify GPS results use provided latitude/longitude/accuracy.
 
 ### Quality Gates
-- `gradlew :app:compileDebugKotlin` -> SUCCESS.
-- `gradlew :app:testDebugUnitTest` -> 700 Passed.
-- `gradlew :app:assembleDebug` -> SUCCESS.
-- `gradlew :app:lintDebug` -> SUCCESS (0 Errors).
+- `gradlew.bat --stop`
+- `gradlew.bat :app:processDebugMainManifest` -> Verify only `MainActivity` is a launcher.
+- `gradlew.bat :app:compileDebugKotlin` -> SUCCESS.
+- `gradlew.bat :app:testDebugUnitTest` -> SUCCESS.
+- `gradlew.bat :app:assembleDebug` -> SUCCESS.
+- `gradlew.bat :app:lintDebug` -> SUCCESS (0 Errors).
 
-### Manual Verification
-- **Physical Device**: Verify no stale data flicker during fast property switching. (PENDING)
+### Manual Verification (User Action Required)
+1. Uninstall existing Mapstead versions from the device (erases local data).
+2. Install the new debug APK.
+3. Confirm exactly one launcher icon: **Mapstead**.
+4. Confirm "Use My Current Location" in Property Setup accurately reflects physical position.

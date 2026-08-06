@@ -16,6 +16,10 @@
     - **Prototype 1**: Implemented a debug-only isolated prototype for the beginner-first app shell and Pool Pump documentation journey.
     - **Prototype 2**: Added Property Setup and Universal Add Something prototypes.
     - **Slice 1 Status**: Source implementation complete. Physical-device acceptance pending.
+- **Beginner-First UX 2.0 Maintenance and Clean-up**:
+    - **Remove UX Lab**: Deleted the obsolete debug-only UX Lab launcher and all fake prototype runtime code.
+    - **Clean-Install Preparation**: Verified the debug manifest contains exactly one launcher (MainActivity) to restore a production-like install experience.
+    - **GPS Integrity**: Confirmed Property Setup uses the real Android Fused Location provider and removed the simulated St. Petersburg prototype address.
 - **Beginner-First UX Redesign Phase 3A3 — Detail Navigation & Consistency**:
     - **Maintenance Context Hub**: Corrected the Maintenance filter to be the true source of context for adding new records. Clearing the filter now correctly resets the preselected item for new tasks.
     - **Owner-Return Navigation**: Implemented a specialized `openOrReturnToInfrastructureOwner` routing helper. Returning to an item from its attachments or maintenance records now pops back to the existing detail screen instead of stacking duplicate copies.

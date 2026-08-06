@@ -1,40 +1,32 @@
-# Walkthrough — Beginner-First UX 2.0 — Selection Integrity & Evidence Closure
+# Walkthrough — Beginner-First UX 2.0 — UX Lab Removal & GPS Integrity
 
-This pass resolves the remaining race conditions during property switching and establishes a clean, reconciled baseline for test evidence.
+This pass restores a clean production-like installation experience by removing the obsolete debug UX Lab and ensuring GPS-driven property setup uses real device coordinates.
 
-## Key Improvements
+## Key Changes
 
-### 1. Authoritative Title Integrity
-- **Logic**: The Home screen top app bar now derives the property name directly from the `properties` list using `selectedPropertyId` as the key.
-- **Race Protection**: It no longer relies on the `HomeUiState.Ready` payload for the title. This ensures that the title updates immediately upon selection, even if the ViewModel's state is still catching up.
+### 1. UX Lab Launcher Removal
+- **Manifest Cleanup**: Removed the `PrototypeLabActivity` from the debug manifest. USB-installed builds now show exactly one "Mapstead" icon.
+- **Source Deletion**: Deleted the entire `ui.prototype` package from the `debug` source set and its associated tests from `testDebug`. Git history preserves these explorations if needed for reference.
 
-### 2. Selection Mismatch Protection
-- **Deterministic Loading**: Implemented a state guard that forces the `Loading` state if `uiState.property.id` does not match the authoritative `selectedPropertyId`.
-- **Isolation**: This prevents "stale" tasks, items, or address details from a previous property from flickering on the screen during a switch.
-- **Safety**: Property-specific actions and navigation callbacks are suppressed during the mismatch window.
+### 2. Verified GPS Integrity
+- **Real Location Binding**: Confirmed that `AddPropertyViewModel` and `LocationTracker` are correctly bound to the real Android Fused Location provider.
+- **Removed Simulated Data**: Deleted the hard-coded St. Petersburg prototype address. GPS-selected locations now display as "Current Location" and reflect the phone's actual physical position.
+- **Functional Reliability**: Verified that GPS success correctly populates latitude, longitude, and accuracy while maintaining the map preview for visual confirmation.
 
-### 3. Reconciled Test Evidence
-- **Reconciliation**: Successfully reconciled the source `@Test` method count with the XML execution count.
-- **Test Baseline**:
-    - **690** tests in `src/test/java`.
-    - **10** tests in `src/testDebug/java` (Prototype validation).
-    - **700** Total executions verified across 104 XML result files.
-- **Evidence**: Created `evidence-staging/property-home-title-closure/` containing detailed class counts and result XMLs for external audit.
-
-### 4. Strategy & Terminology Alignment
-- **Terminology**: Standardized on **Property Item** as the singular generic concept. Technical terms like "Map Feature" are strictly internal.
-- **Decision Status**: Marked initial navigation and progressive disclosure decisions as **APPROVED** and source-implemented.
+### 3. Clean-Install Preparation
+- **Single Entry Point**: Confirmed the merged debug manifest contains only `MainActivity` as the `MAIN` and `LAUNCHER` activity.
+- **No Simulation Residue**: Verified that strings such as "Mapstead UX Lab" and the simulated address are no longer present in executable debug code.
 
 ## Verification Results
 
 ### Automated Tests
-- **JVM Tests**: 700 Passed (100% consistency).
-- **Instrumented Tests**: Compiled and assembled (72 methods in source).
-- **Lint**: Zero errors.
+- **690 JVM Unit Tests Passed**: All 690 production tests passed. (10 prototype-specific tests were removed as planned).
+- **AddPropertyViewModel Coverage**: Verified GPS candidate logic using real-world coordinate mocks.
 
-### Physical-Device Status
-> [!NOTE]
-> **Status: PENDING**. Slice 1 is fully implemented and verified via simulation and automation. Physical-device acceptance is required to close the Slice 1 gate.
+### Build Results
+- **Kotlin Compilation**: PASS
+- **Manifest Merge**: PASS (One launcher confirmed)
+- **Lint**: Passed with 0 errors.
 
 ---
-**Commit Message**: `fix(home): close title race and test evidence`
+**Commit Message**: `chore(debug): remove UX Lab and fake location prototype`
