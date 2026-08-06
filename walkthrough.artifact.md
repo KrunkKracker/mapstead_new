@@ -1,37 +1,40 @@
-# Walkthrough - Property Home Reliability & Accessibility (Beginner-First UX 2.0 Slice 1)
+# Walkthrough — Beginner-First UX 2.0 — Selection Integrity & Evidence Closure
 
-This pass established a trustworthy production baseline for the Property Home screen, ensuring reliability across property transitions, error scenarios, and various device configurations.
+This pass resolves the remaining race conditions during property switching and establishes a clean, reconciled baseline for test evidence.
 
 ## Key Improvements
 
-### 1. Reliable State Isolation & Property Switching
-- **Synchronous Loading**: Switching properties now immediately emits a `Loading` state, clearing stale data from the previous property.
-- **Emission Rejection**: Implemented logic in `HomeViewModel` that strictly ignores late repository emissions from previous property contexts.
-- **Recoverable Retry**: Refactored error handling so that a repository failure emits a recoverable `Error` state. The "Retry" action now correctly restarts the data collection flow within the existing screen context.
+### 1. Authoritative Title Integrity
+- **Logic**: The Home screen top app bar now derives the property name directly from the `properties` list using `selectedPropertyId` as the key.
+- **Race Protection**: It no longer relies on the `HomeUiState.Ready` payload for the title. This ensures that the title updates immediately upon selection, even if the ViewModel's state is still catching up.
 
-### 2. Adaptive & Accessible UI
-- **Responsive Layout**: The primary "Find Something" and "Emergency Guide" actions now adaptively stack vertically on narrow screens or when high font scaling (200%) is active, preventing text clipping and maintaining 48dp touch targets.
-- **Full-Width Call to Action**: "Add Something" remains the primary, full-width action, guiding beginners toward active property documentation.
-- **Localization**: Removed all remaining hard-coded strings. All customer-facing text is now managed via `strings.xml`.
-- **Reassuring Feedback**: Added a specific "Needs Attention" empty state to provide neutral, reassuring feedback when no tasks are overdue.
+### 2. Selection Mismatch Protection
+- **Deterministic Loading**: Implemented a state guard that forces the `Loading` state if `uiState.property.id` does not match the authoritative `selectedPropertyId`.
+- **Isolation**: This prevents "stale" tasks, items, or address details from a previous property from flickering on the screen during a switch.
+- **Safety**: Property-specific actions and navigation callbacks are suppressed during the mismatch window.
 
-### 3. Deterministic Maintenance Logic
-- **nextDueDate Authority**: Standardized on `nextDueDate` for all task classification.
-- **Pure Helpers**: Moved status classification into pure static helpers that accept a `LocalDate`, ensuring logic is deterministic and easily testable without dependency on the current system time.
+### 3. Reconciled Test Evidence
+- **Reconciliation**: Successfully reconciled the source `@Test` method count with the XML execution count.
+- **Test Baseline**:
+    - **690** tests in `src/test/java`.
+    - **10** tests in `src/testDebug/java` (Prototype validation).
+    - **700** Total executions verified across 104 XML result files.
+- **Evidence**: Created `evidence-staging/property-home-title-closure/` containing detailed class counts and result XMLs for external audit.
 
-## Quality & Verification Results
+### 4. Strategy & Terminology Alignment
+- **Terminology**: Standardized on **Property Item** as the singular generic concept. Technical terms like "Map Feature" are strictly internal.
+- **Decision Status**: Marked initial navigation and progressive disclosure decisions as **APPROVED** and source-implemented.
+
+## Verification Results
 
 ### Automated Tests
-- **695 JVM Unit Tests Passed**: Verified exactly 695 successful executions via Gradle XML reports.
-- **Instrumented Test Compilation**: Confirmed that 72 instrumented tests (including the new `HomeScreenTest`) compile successfully.
-- **Zero Lint Errors**: The build passes strict lint checks with zero errors.
+- **JVM Tests**: 700 Passed (100% consistency).
+- **Instrumented Tests**: Compiled and assembled (72 methods in source).
+- **Lint**: Zero errors.
 
-### Physical-Device Verification Status
+### Physical-Device Status
 > [!NOTE]
-> **Status: PENDING**. Slice 1 is source-implemented and verified via automation. Physical-device acceptance on hardware is required before Slice 1 is marked fully complete.
+> **Status: PENDING**. Slice 1 is fully implemented and verified via simulation and automation. Physical-device acceptance is required to close the Slice 1 gate.
 
-## Technical Summary
-- **Version**: 0.03 (3)
-- **JVM Executed**: 695
-- **Lint Errors**: 0
-- **Stash**: `stash@{0}` preserved for baseline comparison.
+---
+**Commit Message**: `fix(home): close title race and test evidence`

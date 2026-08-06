@@ -13,7 +13,7 @@ The primary rule for customer-facing text is to **prefer specific item names** (
 | Technical Concept | Approved Customer Term | Context / Usage |
 | :--- | :--- | :--- |
 | Infrastructure Item | **Property Item** | Used in list titles and generic instructions. |
-| Map Feature | **Map Item** (or Name) | Used when specifically referring to a visual item on the map. |
+| Map Feature | **Property Item** (or Name) | Used when referring to a visual item on the map. |
 | Attachment | **Photo or File** | Standard plural for all media and documents. |
 | Add Attachment | **Add Photo or File** | Action label for acquiring new media. |
 | Maintenance Record | **Task or Entry** | "Task" for scheduled items, "Entry" for history. |

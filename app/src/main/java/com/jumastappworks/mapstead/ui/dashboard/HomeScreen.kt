@@ -59,11 +59,15 @@ fun HomeScreen(
     val state by viewModel.uiState.collectAsState()
     var showPropertySwitcher by remember { mutableStateOf(false) }
 
+    val selectedProperty = remember(properties, selectedPropertyId) {
+        properties.find { it.id == selectedPropertyId }
+    }
+    val propertyName = selectedProperty?.name ?: stringResource(R.string.app_name)
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
-                    val propertyName = (state as? HomeUiState.Ready)?.property?.name ?: stringResource(R.string.app_name)
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier

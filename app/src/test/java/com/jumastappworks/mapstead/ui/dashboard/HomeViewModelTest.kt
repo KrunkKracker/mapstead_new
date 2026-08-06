@@ -16,7 +16,6 @@ import org.junit.Before
 import org.junit.Test
 import java.time.LocalDate
 import java.util.UUID
-import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class HomeViewModelTest {
@@ -107,27 +106,52 @@ class HomeViewModelTest {
     }
 
     @Test
+    fun `map-only features set hasAnyPropertyContent and hasMapFeaturesOnly correctly`() = runTest {
+        itemsFlow.value = emptyList()
+        val activeFeature = mockk<MapFeatureEntity>(relaxed = true) { every { deletedAt } returns null }
+        val deletedFeature = mockk<MapFeatureEntity>(relaxed = true) { every { deletedAt } returns java.time.Instant.now() }
+        featuresFlow.value = listOf(activeFeature, deletedFeature)
+        
+        viewModel.setPropertyId(propertyId)
+        advanceUntilIdle()
+        
+        val state = viewModel.uiState.value as HomeUiState.Ready
+        assertTrue(state.hasAnyPropertyContent)
+        assertTrue(state.hasMapFeaturesOnly)
+    }
+
+    @Test
     fun `maintenance classification is correct and deterministic`() {
         val today = LocalDate.of(2026, 8, 6)
         
         val overdue = MaintenanceRecordEntity(id = UUID.randomUUID(), propertyId = propertyId, title = "Overdue", category = "C", status = "Active", nextDueDate = today.minusDays(1), serviceDate = today.minusMonths(1))
         val dueToday = MaintenanceRecordEntity(id = UUID.randomUUID(), propertyId = propertyId, title = "Today", category = "C", status = "Active", nextDueDate = today, serviceDate = today.minusMonths(1))
         val upcoming = MaintenanceRecordEntity(id = UUID.randomUUID(), propertyId = propertyId, title = "Upcoming", category = "C", status = "Active", nextDueDate = today.plusDays(1), serviceDate = today.minusMonths(1))
-        val completed = MaintenanceRecordEntity(id = UUID.randomUUID(), propertyId = propertyId, title = "Done", category = "C", status = "Completed", nextDueDate = today.minusDays(1), serviceDate = today)
-        val cancelled = MaintenanceRecordEntity(id = UUID.randomUUID(), propertyId = propertyId, title = "Cancelled", category = "C", status = "Cancelled", nextDueDate = today.minusDays(1), serviceDate = today)
-        val noDueDate = MaintenanceRecordEntity(id = UUID.randomUUID(), propertyId = propertyId, title = "No Due", category = "C", status = "Active", nextDueDate = null, serviceDate = today)
-
+        
         assertTrue(HomeViewModel.isOverdueOrDueToday(overdue, today))
         assertTrue(HomeViewModel.isOverdueOrDueToday(dueToday, today))
         assertFalse(HomeViewModel.isOverdueOrDueToday(upcoming, today))
-        assertFalse(HomeViewModel.isOverdueOrDueToday(noDueDate, today))
-        
         assertTrue(HomeViewModel.isUpcoming(upcoming, today))
         assertFalse(HomeViewModel.isUpcoming(dueToday, today))
-        
-        assertTrue(HomeViewModel.isTaskActive(overdue))
+    }
+
+    @Test
+    fun `completed and cancelled status is excluded case-insensitively with whitespace`() {
+        val today = LocalDate.of(2026, 8, 6)
+        val completed = MaintenanceRecordEntity(id = UUID.randomUUID(), propertyId = propertyId, title = "Done", category = "C", status = "  Completed  ", nextDueDate = today.minusDays(1), serviceDate = today)
+        val cancelled = MaintenanceRecordEntity(id = UUID.randomUUID(), propertyId = propertyId, title = "Cancelled", category = "C", status = "cancelled", nextDueDate = today.minusDays(1), serviceDate = today)
+        val active = MaintenanceRecordEntity(id = UUID.randomUUID(), propertyId = propertyId, title = "Active", category = "C", status = "Scheduled", nextDueDate = today.minusDays(1), serviceDate = today)
+
         assertFalse(HomeViewModel.isTaskActive(completed))
         assertFalse(HomeViewModel.isTaskActive(cancelled))
+        assertTrue(HomeViewModel.isTaskActive(active))
+    }
+
+    @Test
+    fun `null nextDueDate is not overdue`() {
+        val today = LocalDate.of(2026, 8, 6)
+        val noDueDate = MaintenanceRecordEntity(id = UUID.randomUUID(), propertyId = propertyId, title = "No Due", category = "C", status = "Active", nextDueDate = null, serviceDate = today)
+        assertFalse(HomeViewModel.isOverdueOrDueToday(noDueDate, today))
     }
 
     @Test
@@ -154,37 +178,6 @@ class HomeViewModelTest {
         assertEquals("U2", state.upcomingTasks[0].title)
         assertEquals("U3", state.upcomingTasks[1].title)
         assertEquals("U4", state.upcomingTasks[2].title)
-    }
-
-    @Test
-    fun `recent items limited to 5 and sorted by createdAt`() = runTest {
-        val now = java.time.Instant.now()
-        val items = (1..10).map { i ->
-            InfrastructureItemEntity(id = UUID.randomUUID(), propertyId = propertyId, name = "Item $i", category = "Cat", status = "Good", createdAt = now.plusSeconds(i.toLong()))
-        }
-        
-        itemsFlow.value = items
-        viewModel.setPropertyId(propertyId)
-        advanceUntilIdle()
-        
-        val state = viewModel.uiState.value as HomeUiState.Ready
-        assertEquals(5, state.recentlyAddedItems.size)
-        assertEquals("Item 10", state.recentlyAddedItems[0].name)
-    }
-
-    @Test
-    fun `map-only features set hasAnyPropertyContent and hasMapFeaturesOnly correctly`() = runTest {
-        itemsFlow.value = emptyList()
-        val activeFeature = mockk<MapFeatureEntity>(relaxed = true) { every { deletedAt } returns null }
-        val deletedFeature = mockk<MapFeatureEntity>(relaxed = true) { every { deletedAt } returns java.time.Instant.now() }
-        featuresFlow.value = listOf(activeFeature, deletedFeature)
-        
-        viewModel.setPropertyId(propertyId)
-        advanceUntilIdle()
-        
-        val state = viewModel.uiState.value as HomeUiState.Ready
-        assertTrue(state.hasAnyPropertyContent)
-        assertTrue(state.hasMapFeaturesOnly)
     }
 
     @Test

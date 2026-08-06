@@ -224,20 +224,23 @@ A vertical slice is not complete until it meets these requirements:
 - **UX_REDESIGN_RESOURCES.md**: Supporting presets, examples, wireframes, and prototype resources.
 - **ROADMAP.md**: Concise source of current progress and links to the authoritative master plan.
 
-## Open Decisions (Requires Visual Prototype Review)
+## Resolved Information Architecture Decisions
 
-Marked: OPEN — REQUIRES VISUAL PROTOTYPE REVIEW
+The following structural decisions are approved and source-implemented in Slice 1:
 
-- Final bottom-navigation destinations.
-- Exact Home content priority.
-- Property switching interaction.
-- Search location.
-- Final customer term for Property Item.
-- Emergency Guide placement.
-- Whether Tasks remains a primary tab.
-- How advanced map controls are exposed.
-- How legacy navigation remains internally available during migration.
-- What constitutes minimum viable cutover.
+- **Primary Navigation**: Four-tab bottom navigation (**Home, Map, Items, Tasks**).
+- **Tasks Pillar**: Tasks remains a primary destination for maintenance and reminders.
+- **Search Entry**: Accessible via the **Items** list and the **Find Something** shortcut on Home.
+- **Emergency Guide**: Prominently elevated on the **Home** screen and available via the **Map** Emergency Mode.
+- **Progressive Disclosure**: Advanced map controls (layers, basemaps) are tucked under secondary icons.
+- **Standard Terminology**: Standardized on **Property Item** as the generic concept.
+
+## Open Decisions (Pending Physical-Device Review)
+
+- Minimum viable legacy-navigation cutover point.
+- Final criteria for retiring legacy screens after parallel-run verification.
+- Detailed Home content priority refinements based on real-world property data density.
+- Exact property-switching interaction refinement (Sheet vs. Full Screen) after hardware testing.
 
 ## Progress Tracker
 

@@ -1,4 +1,4 @@
-# Beginner-First UX 2.0 — Property Home Selection Integrity and Evidence Closure
+# Beginner-First UX 2.0 — Property Home Title Integrity and Evidence Closure
 
 Correct the final Property Home selection, reactive-property, test-evidence, and documentation defects.
 
@@ -15,27 +15,28 @@ This pass ensures that the Property Home screen is robust against navigation rac
 ### Dashboard Reliability
 
 #### [MODIFY] [HomeViewModel.kt](file:///C:/Users/Justi/StudioProjects/mapstead_new/app/src/main/java/com/jumastappworks/mapstead/ui/dashboard/HomeViewModel.kt)
-- Replaced one-shot `getPropertyById` with a reactive flow from `propertyRepository.getAllProperties()`.
-- Home now updates automatically when property name, type, or address is edited.
+- Replaced one-shot property lookup with a reactive flow from `propertyRepository.getAllProperties()`.
+- Home now updates automatically when property details (name, type, address) are edited.
 - Preserved `flatMapLatest` isolation and immediate `Loading` emission on ID change.
 
 #### [MODIFY] [HomeScreen.kt](file:///C:/Users/Justi/StudioProjects/mapstead_new/app/src/main/java/com/jumastappworks/mapstead/ui/dashboard/HomeScreen.kt)
-- Implemented **Selection-to-State Mismatch Protection**: If `selectedPropertyId` (authoritative navigation state) does not match `uiState.property.id`, the screen forces a `Loading` state.
-- This prevents stale items/tasks from flickering or being actionable under the wrong property context.
-- Ensured top-app-bar title corresponds to the intended property immediately.
+- Implemented **Selection-to-State Mismatch Protection**: If `selectedPropertyId` (authoritative navigation state) does not match `s.property.id`, the screen forces a `Loading` state.
+- Derived the top-app-bar title directly from the `properties` list and `selectedPropertyId` to eliminate naming races.
 
 ### Evidence & Documentation
 
 #### [MODIFY] [qa-results/unit-test-summary.txt](file:///C:/Users/Justi/StudioProjects/mapstead_new/qa-results/unit-test-summary.txt)
-- Truthful report of **699 executed tests** (verified by Gradle XML).
-- Source @Test count: **689**.
-- Explanation of difference: Parameterized geometry and basemap tests, and Robolectric/Suite repetition in `ExampleUnitTest` and `MapBasemapStateMachineTest`.
+- Truthful report of **700 executed tests** (verified by Gradle XML).
+- Source @Test count: **700** (690 in `test`, 10 in `testDebug`).
+- Consistency: 100%.
 
 #### [MODIFY] [ROADMAP.md](file:///C:/Users/Justi/StudioProjects/mapstead_new/ROADMAP.md) / [README.md](file:///C:/Users/Justi/StudioProjects/mapstead_new/README.md)
 - Status updated: **Slice 1 Property Home SOURCE-IMPLEMENTED / PHYSICAL-DEVICE ACCEPTANCE PENDING**.
 - Redesign Status: **IN PROGRESS**.
 
----
+#### [MODIFY] [BEGINNER_FIRST_UX_TERMINOLOGY_IA_DECISION_PACK.md](file:///C:/Users/Justi/StudioProjects/mapstead_new/BEGINNER_FIRST_UX_TERMINOLOGY_IA_DECISION_PACK.md)
+- Standardized terminology: "Map Item" -> "Property Item".
+- Removed "external approval pending" status.
 
 ## Verification Plan
 
@@ -46,13 +47,14 @@ This pass ensures that the Property Home screen is robust against navigation rac
     - `property switching clears prior state and rejects late emissions`.
 - **HomeScreenTest**:
     - `selected_property_name_is_displayed`.
-    - `primary_actions_are_visible`.
+    - `mismatched_ready_id_displays_loading`.
+    - `authoritative_title_shown_during_mismatch`.
 
 ### Quality Gates
-- `gradlew.bat :app:compileDebugKotlin` -> SUCCESS.
-- `gradlew.bat :app:testDebugUnitTest` -> 699 Passed.
-- `gradlew.bat :app:assembleDebug` -> SUCCESS.
-- `gradlew.bat :app:lintDebug` -> SUCCESS (0 Errors).
+- `gradlew :app:compileDebugKotlin` -> SUCCESS.
+- `gradlew :app:testDebugUnitTest` -> 700 Passed.
+- `gradlew :app:assembleDebug` -> SUCCESS.
+- `gradlew :app:lintDebug` -> SUCCESS (0 Errors).
 
 ### Manual Verification
 - **Physical Device**: Verify no stale data flicker during fast property switching. (PENDING)
