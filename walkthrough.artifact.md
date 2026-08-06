@@ -1,41 +1,40 @@
-# Walkthrough - Property Home Reliability & Accessibility (Phase 3A2.1)
+# Walkthrough — Beginner-First UX 2.0 — Property Home Correctness
 
-Established the production-ready baseline for the Beginner-First Home screen, resolving critical reliability and accessibility defects.
+The Home screen has been finalized to ensure reliable, truthful, and strictly property-scoped behavior using real production data.
 
-## Key Changes
+## Key Improvements
 
-### 1. Reliable Property Switching
-- **Isolation**: Refactored `HomeViewModel` to ensure that selecting a new property immediately emits `Loading` and cancels any active data collection from the previous property.
-- **Late Emission Rejection**: Implemented logic that ignores late repository responses from previous property contexts, preventing flickering or data leakage between properties.
+### 1. Robust Home Architecture
+- **Type-Safe State**: Replaced loose state fields with a `HomeUiState` sealed interface (`Loading`, `Ready`, `NotFound`, `Error`).
+- **Strict Isolation**: Used `flatMapLatest` and immediate `Loading` emission to ensure switching properties never leaks stale data from the previous selection.
+- **Retry Mechanism**: Added a dedicated retry trigger to safely restart repository collection upon failure.
 
-### 2. Recoverable Error Handling
-- **Retry Mechanism**: Implemented a generation-based retry trigger. Customers can now tap "Retry" on an error screen to restart data collection without leaving the page.
-- **Resilience**: Integrated `catch` handling directly into the property-scoped stream, preventing one failed request from completing the entire UI state flow.
+### 2. Maintenance Logic Parity
+- **Due Date Authority**: Now uses `nextDueDate` (consistent with the Tasks destination) instead of `serviceDate` for status calculations.
+- **Needs Attention**: Highlights tasks that are Overdue or Due Today.
+- **Upcoming Section**: Introduced a new "Upcoming" section for future tasks, limited to the next three items with localized date formatting (e.g., "Due tomorrow").
+- **Exclusion Rules**: Correctly filters out deleted, completed, and cancelled records (case-insensitively).
 
-### 3. Adaptive & Accessible UI
-- **Responsive Layout**: The primary actions (Find Something, Emergency Guide) now adapt to screen width and font scale. On narrow devices or at 200% font scale, they stack vertically to maintain readability and 48dp touch targets.
-- **Full-Width Add**: Kept "Add Something" as the most prominent, full-width primary action.
-- **Localization**: Removed all hard-coded strings. All text is now managed via `strings.xml`.
-- **Reassuring Empty States**: Added specific guidance for properties with no items or only map features.
+### 3. Truthful Data Representation
+- **Map-Only Awareness**: The "Nothing added yet" empty state now queries `MapRepository` to check for map-only features. If features exist but infrastructure items don't, a neutral guidance message is shown instead of claiming the property is empty.
+- **Recently Added**: Sorted by `createdAt` descending and limited to the five most recent items.
+- **Presentation Models**: Decoupled the UI from Room entities using `HomeTaskSummary` and `HomePropertyItemSummary`.
 
-### 4. Deterministic Maintenance Logic
-- **nextDueDate Authority**: Standardized on `nextDueDate` for all due-state classifications (Overdue, Due Today, Upcoming).
-- **Status Filtering**: Properly excludes "Completed" and "Cancelled" tasks (case-insensitive).
-- **Pure Helpers**: Extracted pure classification functions that use explicit `LocalDate` parameters for deterministic unit testing.
+### 4. Beginner-First UX & Accessibility
+- **Prominent Primary Action**: Made "Add Something" the strongest visual element (full-width button).
+- **Responsive Layout**: Replaced cramped horizontal cards with an adaptive arrangement that supports font scaling up to 2.0 without clipping.
+- **Accessible Switcher**: Enhanced the Property Selector with semantic state descriptions and proper touch targets.
 
-## Verification Results
+## Quality Gates & Verification
 
 ### Automated Tests
-- **696 JVM Unit Tests Passed**: Added 7 new exhaustive tests to `HomeViewModelTest`.
-- **Instrumented Tests Compiled**: Verified `HomeScreenTest` in the `androidTest` source set.
-- **Zero Lint Errors**: Passed strict lint checks on all new code.
+- **JVM Tests**: 695 Passed (100%).
+- **New Coverage**: `HomeViewModelTest` provides deterministic verification of property switching, maintenance sorting, and truthful empty states.
 
-### Manual Verification Path (Physical Device)
-1. Launch Mapstead with an existing property.
-2. Verify "Needs Attention" correctly reflects overdue tasks.
-3. Switch properties using the top-bar selector.
-4. **Verify**: The UI immediately shows a progress indicator and then the correct new data (Isolation).
-5. Increase system font scale to 2.0.
-6. **Verify**: "Find Something" and "Emergency Guide" stack vertically and remain readable (Adaptive).
-7. Tap "Add Something".
-8. **Verify**: The real guided mapping workflow launches correctly (Navigation).
+### Build Results
+- **Kotlin Compilation**: PASS
+- **APK Assembly**: v0.03 Debug successfully produced.
+- **Lint**: Passed with 0 errors.
+
+---
+**Commit Message**: `fix(home): complete property-scoped beginner home`

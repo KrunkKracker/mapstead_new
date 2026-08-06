@@ -1,47 +1,45 @@
 package com.jumastappworks.mapstead.ui.dashboard
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.role
-import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.jumastappworks.mapstead.R
 import com.jumastappworks.mapstead.data.db.entities.PropertyEntity
-import com.jumastappworks.mapstead.data.db.entities.MaintenanceRecordEntity
+import com.jumastappworks.mapstead.data.help.GettingStartedStepId
 import com.jumastappworks.mapstead.data.help.HelpTopicId
-import java.time.LocalDate
-import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
+import com.jumastappworks.mapstead.ui.components.GettingStartedChecklist
 import java.util.UUID
+import java.time.format.DateTimeFormatter
+import java.time.LocalDate
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     viewModel: HomeViewModel,
     properties: List<PropertyEntity>,
-    selectedPropertyId: UUID,
+    selectedPropertyId: UUID?,
     onSelectProperty: (UUID) -> Unit,
     onAddProperty: () -> Unit,
     onManageProperties: () -> Unit,
@@ -55,539 +53,369 @@ fun HomeScreen(
     onEditProperty: (UUID) -> Unit
 ) {
     val state by viewModel.uiState.collectAsState()
+    var showPropertySwitcher by remember { mutableStateOf(false) }
 
-    when (val uiState = state) {
-        is HomeUiState.Loading -> {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    val propertyName = (state as? HomeUiState.Ready)?.property?.name ?: "Mapstead"
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .clickable { showPropertySwitcher = true }
+                            .minimumInteractiveComponentSize()
+                    ) {
+                        Text(
+                            text = propertyName,
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false)
+                        )
+                        Icon(Icons.Default.ExpandMore, contentDescription = "Switch Property", modifier = Modifier.padding(start = 4.dp))
+                    }
+                },
+                actions = {
+                    IconButton(onClick = onNavigateToSettings) {
+                        Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.settings))
+                    }
+                    IconButton(onClick = { onNavigateToHelp(HelpTopicId.GETTING_STARTED) }) {
+                        Icon(Icons.Default.HelpOutline, contentDescription = "Help")
+                    }
+                }
+            )
+        }
+    ) { padding ->
+        when (val s = state) {
+            HomeUiState.Loading -> {
+                Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+            }
+            HomeUiState.NotFound -> {
+                Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(24.dp)) {
+                        Text(stringResource(R.string.property_not_found), style = MaterialTheme.typography.titleMedium)
+                        Spacer(Modifier.height(16.dp))
+                        Button(onClick = onManageProperties) {
+                            Text("Manage Properties")
+                        }
+                    }
+                }
+            }
+            is HomeUiState.Error -> {
+                Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(24.dp)) {
+                        Text(stringResource(s.messageRes), color = MaterialTheme.colorScheme.error, textAlign = TextAlign.Center)
+                        Spacer(Modifier.height(16.dp))
+                        Button(onClick = { viewModel.retry() }) {
+                            Text(stringResource(R.string.retry))
+                        }
+                    }
+                }
+            }
+            is HomeUiState.Ready -> {
+                HomeContent(
+                    modifier = Modifier.padding(padding),
+                    state = s,
+                    onAddSomething = onAddSomething,
+                    onFindSomething = onFindSomething,
+                    onOpenEmergency = onOpenEmergency,
+                    onOpenTasks = onOpenTasks,
+                    onOpenItemDetails = onOpenItemDetails,
+                    onDismissChecklist = { viewModel.dismissChecklist() },
+                    onStepClick = { stepId ->
+                        when (stepId) {
+                            GettingStartedStepId.CREATE_PROPERTY -> onEditProperty(s.property.id)
+                            else -> onAddSomething()
+                        }
+                    }
+                )
             }
         }
-        is HomeUiState.Error -> {
-            ErrorScreen(
-                message = stringResource(uiState.messageRes),
-                onRetry = { viewModel.retry() },
-                onBack = onManageProperties // Fallback to list
-            )
-        }
-        is HomeUiState.NotFound -> {
-            ErrorScreen(
-                message = stringResource(R.string.home_property_not_found),
-                onRetry = { viewModel.retry() },
-                onBack = onManageProperties
-            )
-        }
-        is HomeUiState.Ready -> {
-            HomeScreenContent(
-                uiState = uiState,
-                properties = properties,
-                selectedPropertyId = selectedPropertyId,
-                onSelectProperty = onSelectProperty,
-                onAddProperty = onAddProperty,
-                onManageProperties = onManageProperties,
-                onNavigateToSettings = onNavigateToSettings,
-                onNavigateToHelp = onNavigateToHelp,
-                onAddSomething = onAddSomething,
-                onFindSomething = onFindSomething,
-                onOpenEmergency = onOpenEmergency,
-                onOpenTasks = onOpenTasks,
-                onOpenItemDetails = onOpenItemDetails,
-                onEditProperty = onEditProperty
-            )
-        }
-        HomeUiState.NoProperties -> {
-            // Handled by NavGraph usually, but safety fallback
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(stringResource(R.string.empty_properties_title))
+    }
+
+    if (showPropertySwitcher) {
+        PropertySwitcherSheet(
+            properties = properties,
+            selectedPropertyId = selectedPropertyId,
+            onSelect = { onSelectProperty(it); showPropertySwitcher = false },
+            onAddProperty = { onAddProperty(); showPropertySwitcher = false },
+            onManageProperties = { onManageProperties(); showPropertySwitcher = false },
+            onDismiss = { showPropertySwitcher = false }
+        )
+    }
+}
+
+@Composable
+fun HomeContent(
+    modifier: Modifier = Modifier,
+    state: HomeUiState.Ready,
+    onAddSomething: () -> Unit,
+    onFindSomething: () -> Unit,
+    onOpenEmergency: () -> Unit,
+    onOpenTasks: () -> Unit,
+    onOpenItemDetails: (UUID) -> Unit,
+    onDismissChecklist: () -> Unit,
+    onStepClick: (GettingStartedStepId) -> Unit
+) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(24.dp)
+    ) {
+        // 1. Current Property Card
+        Card(modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(state.property.propertyType, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                Text(state.property.name, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                if (state.formattedAddress.isNotBlank()) {
+                    Text(state.formattedAddress, style = MaterialTheme.typography.bodyMedium)
+                }
             }
+        }
+
+        // 2. Add Something (Strongest Action)
+        Button(
+            onClick = onAddSomething,
+            modifier = Modifier.fillMaxWidth().heightIn(min = 64.dp),
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Icon(Icons.Default.Add, contentDescription = null)
+            Spacer(Modifier.width(8.dp))
+            Text(stringResource(R.string.home_add_something), fontSize = 18.sp, fontWeight = FontWeight.Bold)
+        }
+
+        // 3. Primary Grid (Find / Emergency)
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            OutlinedButton(
+                onClick = onFindSomething,
+                modifier = Modifier.weight(1f).heightIn(min = 56.dp),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Icon(Icons.Default.Search, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.home_find_something))
+            }
+            
+            FilledTonalButton(
+                onClick = onOpenEmergency,
+                modifier = Modifier.weight(1f).heightIn(min = 56.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.filledTonalButtonColors(
+                    containerColor = MaterialTheme.colorScheme.errorContainer,
+                    contentColor = MaterialTheme.colorScheme.onErrorContainer
+                )
+            ) {
+                Icon(Icons.Default.Warning, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.home_emergency_guide))
+            }
+        }
+
+        // Checklist
+        if (state.showChecklist) {
+            GettingStartedChecklist(
+                steps = state.checklist,
+                onStepClick = onStepClick,
+                onDismiss = onDismissChecklist,
+                onHelpClick = {}
+            )
+        }
+
+        // 4. Needs Attention
+        if (state.needsAttentionTasks.isNotEmpty()) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                SectionHeader(stringResource(R.string.home_needs_attention), onOpenTasks)
+                state.needsAttentionTasks.forEach { task ->
+                    HomeTaskRow(task) { onOpenTasks() }
+                }
+            }
+        }
+
+        // 5. Upcoming
+        if (state.upcomingTasks.isNotEmpty()) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                SectionHeader("Upcoming", onOpenTasks)
+                state.upcomingTasks.forEach { task ->
+                    HomeTaskRow(task) { onOpenTasks() }
+                }
+            }
+        }
+
+        // 6. Recently Added or Truthful Empty State
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text("Recently Added", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            
+            if (state.recentlyAddedItems.isEmpty()) {
+                if (!state.hasAnyPropertyContent) {
+                    Card(modifier = Modifier.fillMaxWidth()) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text(stringResource(R.string.nothing_added_yet_title), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                            Spacer(Modifier.height(4.dp))
+                            Text(stringResource(R.string.nothing_added_yet_supporting), style = MaterialTheme.typography.bodyMedium)
+                            TextButton(onClick = onAddSomething, modifier = Modifier.align(Alignment.End)) {
+                                Text("Add Something")
+                            }
+                        }
+                    }
+                } else {
+                    // Property has map-only content but no infrastructure items yet
+                    Text("Add more equipment and systems to see them here.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.outline)
+                }
+            } else {
+                state.recentlyAddedItems.forEach { item ->
+                    RecentItemRow(item, onClick = { onOpenItemDetails(item.itemId) })
+                }
+            }
+        }
+        
+        Spacer(Modifier.height(16.dp))
+    }
+}
+
+@Composable
+private fun SectionHeader(title: String, onAction: () -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onAction() }
+            .minimumInteractiveComponentSize()
+    ) {
+        Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+        Text("View All", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
+    }
+}
+
+@Composable
+fun HomeTaskRow(task: HomeTaskSummary, onClick: () -> Unit) {
+    val color = when (task.dueState) {
+        HomeTaskDueState.OVERDUE -> MaterialTheme.colorScheme.error
+        HomeTaskDueState.TODAY -> Color(0xFFF57C00)
+        HomeTaskDueState.UPCOMING -> MaterialTheme.colorScheme.primary
+    }
+    
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+    ) {
+        Row(
+            modifier = Modifier.padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(modifier = Modifier.size(8.dp).background(color, RoundedCornerShape(4.dp)))
+            Spacer(Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(task.title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(formatDueDate(task.dueDate), style = MaterialTheme.typography.bodySmall, color = color)
+            }
+            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.outline)
+        }
+    }
+}
+
+@Composable
+fun RecentItemRow(item: HomePropertyItemSummary, onClick: () -> Unit) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+    ) {
+        Row(modifier = Modifier.padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Surface(
+                modifier = Modifier.size(40.dp),
+                shape = RoundedCornerShape(8.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(if (item.isEmergency) Icons.Default.Warning else Icons.Default.Foundation, contentDescription = null, modifier = Modifier.size(24.dp), tint = if (item.isEmergency) Color(0xFFF97316) else MaterialTheme.colorScheme.primary)
+                }
+            }
+            Spacer(Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(item.name, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(item.category, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
+            }
+            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.outline)
         }
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun HomeScreenContent(
-    uiState: HomeUiState.Ready,
+fun PropertySwitcherSheet(
     properties: List<PropertyEntity>,
-    selectedPropertyId: UUID,
-    onSelectProperty: (UUID) -> Unit,
+    selectedPropertyId: UUID?,
+    onSelect: (UUID) -> Unit,
     onAddProperty: () -> Unit,
     onManageProperties: () -> Unit,
-    onNavigateToSettings: () -> Unit,
-    onNavigateToHelp: (HelpTopicId) -> Unit,
-    onAddSomething: () -> Unit,
-    onFindSomething: () -> Unit,
-    onOpenEmergency: () -> Unit,
-    onOpenTasks: () -> Unit,
-    onOpenItemDetails: (UUID) -> Unit,
-    onEditProperty: (UUID) -> Unit
+    onDismiss: () -> Unit
 ) {
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    PropertySelector(
-                        currentProperty = uiState.property,
-                        properties = properties,
-                        onSelectProperty = onSelectProperty,
-                        onAddProperty = onAddProperty,
-                        onManageProperties = onManageProperties
-                    )
-                },
-                actions = {
-                    IconButton(onClick = onNavigateToSettings) {
-                        Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.settings))
-                    }
-                }
-            )
-        }
-    ) { padding ->
+    ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(24.dp)
+                .padding(16.dp)
+                .padding(bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Primary Actions
-            PrimaryActionsSection(
-                onAddSomething = onAddSomething,
-                onFindSomething = onFindSomething,
-                onOpenEmergency = onOpenEmergency
-            )
-
-            // Needs Attention
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                SectionHeader(
-                    title = stringResource(R.string.home_needs_attention),
-                    onViewAll = onOpenTasks
-                )
-                if (uiState.needsAttentionTasks.isNotEmpty()) {
-                    uiState.needsAttentionTasks.forEach { task ->
-                        TaskCard(task, onClick = onOpenTasks)
-                    }
-                } else {
-                    NeedsAttentionEmptyState()
-                }
-            }
-
-            // Map Only Content Warning
-            if (uiState.hasMapFeaturesOnly) {
-                MapOnlyGuidanceCard(onAddSomething)
-            }
-
-            // Upcoming
-            if (uiState.upcomingTasks.isNotEmpty()) {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    SectionHeader(
-                        title = stringResource(R.string.home_upcoming),
-                        onViewAll = onOpenTasks
-                    )
-                    uiState.upcomingTasks.forEach { task ->
-                        TaskCard(task, onClick = onOpenTasks)
-                    }
-                }
-            }
-
-            // Recently Added
-            if (uiState.recentlyAddedItems.isNotEmpty()) {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    SectionHeader(
-                        title = stringResource(R.string.home_recently_added),
-                        onViewAll = onFindSomething
-                    )
-                    uiState.recentlyAddedItems.forEach { item ->
-                        ItemRow(item.name, item.category, onClick = { onOpenItemDetails(item.id) })
-                    }
-                }
-            } else if (uiState.needsAttentionTasks.isEmpty() && !uiState.hasMapFeaturesOnly && uiState.upcomingTasks.isEmpty()) {
-                // Total empty state for first items
-                WelcomeGuideCard(onAddSomething)
-            }
-
-            // Secondary Actions / Quick Links
-            SecondaryActions(
-                onEditProperty = { onEditProperty(selectedPropertyId) },
-                onHelp = { onNavigateToHelp(HelpTopicId.GETTING_STARTED) }
-            )
-        }
-    }
-}
-
-@Composable
-private fun PropertySelector(
-    currentProperty: PropertyEntity?,
-    properties: List<PropertyEntity>,
-    onSelectProperty: (UUID) -> Unit,
-    onAddProperty: () -> Unit,
-    onManageProperties: () -> Unit
-) {
-    var expanded by remember { mutableStateOf(false) }
-
-    Box {
-        Row(
-            modifier = Modifier
-                .clickable(
-                    onClickLabel = stringResource(R.string.home_switch_property),
-                    role = Role.Button,
-                    onClick = { expanded = true }
-                )
-                .padding(vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = currentProperty?.name ?: stringResource(R.string.loading),
-                style = MaterialTheme.typography.titleLarge,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Icon(Icons.Default.ArrowDropDown, contentDescription = null)
-        }
-
-        DropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false }
-        ) {
-            properties.forEach { property ->
-                val isSelected = property.id == currentProperty?.id
-                DropdownMenuItem(
-                    text = { Text(property.name) },
-                    onClick = {
-                        expanded = false
-                        onSelectProperty(property.id)
-                    },
-                trailingIcon = {
+            Text("Switch Property", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            
+            properties.forEach { p ->
+                val isSelected = p.id == selectedPropertyId
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onSelect(p.id) }
+                        .padding(vertical = 12.dp)
+                        .semantics(mergeDescendants = true) {
+                            if (isSelected) {
+                                stateDescription = "Selected"
+                            }
+                        },
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Default.Home, contentDescription = null, tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline)
+                    Spacer(Modifier.width(16.dp))
+                    Text(p.name, modifier = Modifier.weight(1f), fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal)
                     if (isSelected) {
-                        Icon(Icons.Default.Check, contentDescription = stringResource(R.string.state_selected))
+                        Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                     }
-                },
-                    modifier = Modifier.semantics {
-                        role = Role.RadioButton
-                        selected = isSelected
-                    }
-                )
+                }
             }
+            
             HorizontalDivider()
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.add_property)) },
-                onClick = {
-                    expanded = false
-                    onAddProperty()
-                },
-                leadingIcon = { Icon(Icons.Default.Add, contentDescription = null) }
+            
+            ListItem(
+                headlineContent = { Text(stringResource(R.string.add_property)) },
+                leadingContent = { Icon(Icons.Default.Add, contentDescription = null) },
+                modifier = Modifier.clickable { onAddProperty() }
             )
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.desc_open_properties)) },
-                onClick = {
-                    expanded = false
-                    onManageProperties()
-                },
-                leadingIcon = { Icon(Icons.AutoMirrored.Filled.List, contentDescription = null) }
+            
+            ListItem(
+                headlineContent = { Text("Manage Properties") },
+                leadingContent = { Icon(Icons.Default.Settings, contentDescription = null) },
+                modifier = Modifier.clickable { onManageProperties() }
             )
         }
     }
 }
 
-@Composable
-private fun PrimaryActionsSection(
-    onAddSomething: () -> Unit,
-    onFindSomething: () -> Unit,
-    onOpenEmergency: () -> Unit
-) {
-    val configuration = LocalConfiguration.current
-    val density = LocalDensity.current
-    val fontScale = density.fontScale
-    val screenWidth = configuration.screenWidthDp.dp
-    
-    val stackSecondary = screenWidth < 400.dp || fontScale >= 1.5f
-
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        PrimaryActionCard(
-            title = stringResource(R.string.home_add_something),
-            icon = Icons.Default.AddCircle,
-            containerColor = MaterialTheme.colorScheme.primaryContainer,
-            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-            isFullWidth = true,
-            onClick = onAddSomething
-        )
-        
-        if (stackSecondary) {
-            PrimaryActionCard(
-                title = stringResource(R.string.home_find_something),
-                icon = Icons.Default.Search,
-                containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                isFullWidth = true,
-                onClick = onFindSomething
-            )
-            PrimaryActionCard(
-                title = stringResource(R.string.home_emergency_guide),
-                icon = Icons.Default.Warning,
-                containerColor = MaterialTheme.colorScheme.errorContainer,
-                contentColor = MaterialTheme.colorScheme.onErrorContainer,
-                isFullWidth = true,
-                onClick = onOpenEmergency
-            )
-        } else {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                PrimaryActionCard(
-                    title = stringResource(R.string.home_find_something),
-                    icon = Icons.Default.Search,
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                    modifier = Modifier.weight(1f),
-                    onClick = onFindSomething
-                )
-                PrimaryActionCard(
-                    title = stringResource(R.string.home_emergency_guide),
-                    icon = Icons.Default.Warning,
-                    containerColor = MaterialTheme.colorScheme.errorContainer,
-                    contentColor = MaterialTheme.colorScheme.onErrorContainer,
-                    modifier = Modifier.weight(1f),
-                    onClick = onOpenEmergency
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun PrimaryActionCard(
-    title: String,
-    icon: ImageVector,
-    containerColor: Color,
-    contentColor: Color,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    isFullWidth: Boolean = false
-) {
-    Card(
-        onClick = onClick,
-        modifier = modifier
-            .fillMaxWidth()
-            .heightIn(min = if (isFullWidth) 80.dp else 100.dp),
-        colors = CardDefaults.cardColors(containerColor = containerColor, contentColor = contentColor)
-    ) {
-        if (isFullWidth) {
-            Row(
-                modifier = Modifier.fillMaxSize().padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(icon, contentDescription = null, modifier = Modifier.size(32.dp))
-                Spacer(Modifier.width(16.dp))
-                Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                Spacer(Modifier.weight(1f))
-                Icon(Icons.Default.ChevronRight, contentDescription = null)
-            }
-        } else {
-            Column(
-                modifier = Modifier.fillMaxSize().padding(12.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                Icon(icon, contentDescription = null, modifier = Modifier.size(32.dp))
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    title, 
-                    style = MaterialTheme.typography.labelLarge, 
-                    fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.Center
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun SectionHeader(title: String, onViewAll: () -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-        TextButton(onClick = onViewAll) {
-            Text(stringResource(R.string.view_all))
-        }
-    }
-}
-
-@Composable
-private fun TaskCard(task: MaintenanceRecordEntity, onClick: () -> Unit) {
-    Card(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-    ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                Icons.AutoMirrored.Filled.Assignment, 
-                contentDescription = null, 
-                tint = MaterialTheme.colorScheme.primary
-            )
-            Spacer(Modifier.width(16.dp))
-            Column {
-                Text(task.title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
-                Text(
-                    formatDueDate(task.nextDueDate), 
-                    style = MaterialTheme.typography.bodySmall, 
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun ItemRow(name: String, category: String, onClick: () -> Unit) {
-    ListItem(
-        headlineContent = { Text(name) },
-        supportingContent = { Text(category) },
-        leadingContent = { Icon(Icons.Default.Foundation, contentDescription = null) },
-        trailingContent = { Icon(Icons.Default.ChevronRight, contentDescription = null) },
-        modifier = Modifier.clickable(onClick = onClick)
-    )
-}
-
-@Composable
-private fun NeedsAttentionEmptyState() {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                stringResource(R.string.home_no_tasks_attention),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
-}
-
-@Composable
-private fun MapOnlyGuidanceCard(onAddSomething: () -> Unit) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                stringResource(R.string.home_map_only_guidance),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSecondaryContainer
-            )
-            Spacer(Modifier.height(12.dp))
-            TextButton(
-                onClick = onAddSomething,
-                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.primary)
-            ) {
-                Text(stringResource(R.string.home_add_something))
-            }
-        }
-    }
-}
-
-@Composable
-private fun WelcomeGuideCard(onAddSomething: () -> Unit) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                stringResource(R.string.nothing_added_yet_title),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(Modifier.height(8.dp))
-            Text(
-                stringResource(R.string.nothing_added_yet_supporting),
-                style = MaterialTheme.typography.bodyMedium
-            )
-            Spacer(Modifier.height(16.dp))
-            Button(onClick = onAddSomething) {
-                Text(stringResource(R.string.add_something_now_action))
-            }
-        }
-    }
-}
-
-@Composable
-private fun SecondaryActions(
-    onEditProperty: () -> Unit,
-    onHelp: () -> Unit
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        OutlinedButton(
-            onClick = onEditProperty,
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(8.dp)
-        ) {
-            Icon(Icons.Default.Edit, contentDescription = null)
-            Spacer(Modifier.width(8.dp))
-            Text(stringResource(R.string.edit_property))
-        }
-        OutlinedButton(
-            onClick = onHelp,
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(8.dp)
-        ) {
-            Icon(Icons.AutoMirrored.Filled.Help, contentDescription = null)
-            Spacer(Modifier.width(8.dp))
-            Text(stringResource(R.string.help_center_title))
-        }
-    }
-}
-
-@Composable
-private fun ErrorScreen(
-    message: String,
-    onRetry: () -> Unit,
-    onBack: () -> Unit
-) {
-    Column(
-        modifier = Modifier.fillMaxSize().padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Icon(
-            Icons.Default.ErrorOutline, 
-            contentDescription = null, 
-            modifier = Modifier.size(64.dp),
-            tint = MaterialTheme.colorScheme.error
-        )
-        Spacer(Modifier.height(24.dp))
-        Text(message, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyLarge)
-        Spacer(Modifier.height(32.dp))
-        Button(onClick = onRetry, modifier = Modifier.fillMaxWidth()) {
-            Text(stringResource(R.string.retry))
-        }
-        TextButton(onClick = onBack) {
-            Text(stringResource(R.string.back))
-        }
-    }
-}
-
-@Composable
-private fun formatDueDate(date: LocalDate?): String {
-    if (date == null) return stringResource(R.string.maint_no_due_date)
-    val now = LocalDate.now()
-    return when (date) {
-        now -> stringResource(R.string.maint_due_today)
-        now.plusDays(1) -> stringResource(R.string.maint_due_tomorrow)
-        else -> {
-            if (date.isBefore(now)) {
-                stringResource(R.string.maint_overdue) + " (" + date.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)) + ")"
-            } else {
-                stringResource(R.string.maint_due_on, date.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)))
-            }
-        }
+fun formatDueDate(date: LocalDate?): String {
+    if (date == null) return "No due date"
+    val today = LocalDate.now()
+    return when {
+        date.isBefore(today) -> "Overdue"
+        date.isEqual(today) -> "Due today"
+        date.isEqual(today.plusDays(1)) -> "Due tomorrow"
+        else -> "Due ${date.format(DateTimeFormatter.ofPattern("MMM d"))}"
     }
 }

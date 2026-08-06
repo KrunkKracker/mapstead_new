@@ -46,46 +46,7 @@
 - [x] Stage 3 — Map Presentation and Guided Mapping (COMPLETE)
 - [/] Stage 4 — Guidance, Help, and Final Beginner Review (IN PROGRESS)
 - [/] Beginner-First UX 2.0 — [Master Plan](BEGINNER_FIRST_UX_MASTER_PLAN.md) (IN PROGRESS)
-    - [x] Master planning (COMPLETE)
-    - [x] Master-plan document (APPROVED)
-    - [x] Terminology approval (COMPLETE)
-    - [x] Information architecture approval (COMPLETE)
-    - [x] Prototype creation (COMPLETE)
-    - [x] Prototype review (COMPLETE)
-    - [/] Production Slice 1 — Real App Shell and Property Home (SOURCE-IMPLEMENTED / PHYSICAL-DEVICE ACCEPTANCE PENDING)
 - [ ] Phase 5E — Property Inventory (BLOCKED)
-
----
-
-## Beginner-First UX Redesign Stages
-
-### Stage 4 — Guidance, Help, and Final Beginner Review
-Purpose: Provide in-context assistance and finalize the onboarding experience.
-
-**ACTIVE PHASE**:
-- **Phase 3A — Unified Item Details**: Finalization of consistency across infrastructure and map surfaces. (IN PROGRESS / PHYSICAL-DEVICE ACCEPTANCE PENDING)
-- **Phase 2.2g — Deferred Reactive State Closure**: Hardening reactive compositions in ViewModels and protecting user edits from late repository results. (COMPLETE)
-- **Phase 2.2h — Basemap Implementation**: Resilient MapTiler v4 integration with bundled branding and automated style repair. (COMPLETE)
-
-**COMPLETED WORK**:
-- Property Home Reliability (Beginner-First UX 2.0 Slice 1): Resolved property switching isolation, deterministic date logic, error retry flows, and adaptive primary actions.
-- Final Basemap Runtime and QA Closure (Phase 2.2h5R9F): Verified exact source provenance, behavioral test truth, and packaging integrity.
-- Preference Confirmation and Authority: Implemented `lastObservedRepositoryBasemapId` confirmation logic, stale emission filtering, and generation-validated selection authority.
-- Stale-Pending Recovery and Transactional Reissue: Refactored `onMapReady` to use `PendingBasemapResolver`, ensuring transactional issue and reissue of authoritative preferences.
-- Secondary Backup-Only: Hardened `SecondaryBasemapController` to correctly handle sources without primaries using the `BACKUP` role and reason.
-- Preference Authority and Transactional Requests: Implemented `_customerBasemapPreferenceOverride`, generation-validated pending requests, and hardened disposal terminal reasons.
-- Recreation Lifecycle and Version Closure: Hardened recreation state preservation in MapViewModel, implemented formal secondary disposal lifecycle, and enforced authoritative pending requests.
-- Pending Request Authority: Ensured semantic intent survives render session gaps with typed pending requests and exhaustive regression tests.
-- Loader Atomicity and Repair Epoch: Verified atomic outcomes, precise repair epochs, and session-scoped camera isolation.
-- Camera and Repair Closure: Verified session-matched camera guards, authoritative snapshot restoration, repair epoch epochs, and strict callback validation.
-- Final Basemap Runtime Closure: Verified session-aware interaction guards, reactive style restoration, terminal tracking, and strict callback validation.
-- Basemap Implementation: Resilient MapTiler v4 integration with bundled branding, attempt-scoped isolation, and automated style repair.
-- Alpha Readiness: Naming service, system item policies, property-specific guidance, address lookup, and creation photo lifecycle.
-- Integrity: System Item draft lifecycle and terminal state cleanup.
-- Reliability: Persistence guard, initial camera stability, and default-world repair.
-- Wizard: Simplified Property setup with atomic Map creation.
-- Tasks: Task-oriented "Add Something" and operational record policies.
-- Location: GPS permission recovery and request-state independence.
 
 ---
 
@@ -95,9 +56,9 @@ Status:
 - Master-plan document: APPROVED
 - Terminology approval: COMPLETE
 - Information architecture approval: COMPLETE
-- Prototype creation: COMPLETE
-- Prototype review: COMPLETE
-- Production redesign: IN PROGRESS (Slice 1 Implemented)
+- Prototype creation: COMPLETE (WIP work stopped)
+- Production redesign: Slice 1 COMPLETE (Home, Map, Items, Tasks shell)
+- Physical-device verification: PENDING
 - Property Inventory: BLOCKED
 
 Authoritative Document: [BEGINNER_FIRST_UX_MASTER_PLAN.md](BEGINNER_FIRST_UX_MASTER_PLAN.md)

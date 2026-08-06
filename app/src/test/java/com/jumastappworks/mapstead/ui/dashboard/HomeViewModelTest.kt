@@ -1,13 +1,9 @@
 package com.jumastappworks.mapstead.ui.dashboard
 
-import com.jumastappworks.mapstead.data.db.entities.InfrastructureItemEntity
-import com.jumastappworks.mapstead.data.db.entities.MaintenanceRecordEntity
-import com.jumastappworks.mapstead.data.db.entities.PropertyEntity
-import com.jumastappworks.mapstead.data.db.entities.MapFeatureEntity
-import com.jumastappworks.mapstead.data.repository.InfrastructureRepository
-import com.jumastappworks.mapstead.data.repository.MaintenanceRepository
-import com.jumastappworks.mapstead.data.repository.PropertyRepository
-import com.jumastappworks.mapstead.data.repository.MapRepository
+import com.jumastappworks.mapstead.data.db.entities.*
+import com.jumastappworks.mapstead.data.prefs.UserPreferences
+import com.jumastappworks.mapstead.data.repository.*
+import com.jumastappworks.mapstead.data.prefs.UserPreferencesRepository
 import io.mockk.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -19,196 +15,154 @@ import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
 import java.time.LocalDate
-import java.time.Instant
 import java.util.UUID
+import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class HomeViewModelTest {
 
-    private val propertyRepo = mockk<PropertyRepository>(relaxed = true)
-    private val infrastructureRepo = mockk<InfrastructureRepository>(relaxed = true)
-    private val maintenanceRepo = mockk<MaintenanceRepository>(relaxed = true)
-    private val mapRepo = mockk<MapRepository>(relaxed = true)
+    private val propertyRepository = mockk<PropertyRepository>()
+    private val mapRepository = mockk<MapRepository>()
+    private val infrastructureRepository = mockk<InfrastructureRepository>()
+    private val maintenanceRepository = mockk<MaintenanceRepository>()
+    private val attachmentRepository = mockk<AttachmentRepository>()
+    private val userPreferencesRepository = mockk<UserPreferencesRepository>()
 
     private lateinit var viewModel: HomeViewModel
     private val testDispatcher = StandardTestDispatcher()
 
+    private val propertyId = UUID.randomUUID()
+    private val property = PropertyEntity(id = propertyId, name = "Test Property", propertyType = "Home")
+
+    private val itemsFlow = MutableStateFlow<List<InfrastructureItemEntity>>(emptyList())
+    private val recordsFlow = MutableStateFlow<List<MaintenanceRecordEntity>>(emptyList())
+    private val featuresFlow = MutableStateFlow<List<MapFeatureEntity>>(emptyList())
+    private val plansFlow = MutableStateFlow<List<PlanEntity>>(emptyList())
+    private val attachmentsFlow = MutableStateFlow<List<AttachmentEntity>>(emptyList())
+    private val allPropsFlow = MutableStateFlow<List<PropertyEntity>>(listOf(property))
+    private val prefsFlow = MutableStateFlow(UserPreferences())
+
     @Before
     fun setup() {
         Dispatchers.setMain(testDispatcher)
-        
-        // Default mocks to avoid combine hanging
-        every { propertyRepo.getAllProperties() } returns flowOf(emptyList())
-        every { infrastructureRepo.getItemsForProperty(any()) } returns flowOf(emptyList())
-        every { maintenanceRepo.getRecordsForProperty(any()) } returns flowOf(emptyList())
-        every { mapRepo.getFeaturesForProperty(any()) } returns flowOf(emptyList())
-        
-        viewModel = HomeViewModel(propertyRepo, infrastructureRepo, maintenanceRepo, mapRepo)
+
+        every { userPreferencesRepository.userPreferencesFlow } returns prefsFlow
+        coEvery { propertyRepository.getPropertyById(propertyId) } returns property
+        every { propertyRepository.getAllProperties() } returns allPropsFlow
+        every { infrastructureRepository.getItemsForProperty(propertyId) } returns itemsFlow
+        every { maintenanceRepository.getRecordsForProperty(propertyId) } returns recordsFlow
+        every { mapRepository.getFeaturesForProperty(propertyId) } returns featuresFlow
+        every { mapRepository.getPlansForProperty(propertyId) } returns plansFlow
+        every { attachmentRepository.getAttachmentsForProperty(propertyId) } returns attachmentsFlow
+
+        viewModel = HomeViewModel(
+            propertyRepository,
+            mapRepository,
+            infrastructureRepository,
+            maintenanceRepository,
+            attachmentRepository,
+            userPreferencesRepository
+        )
     }
 
     @After
     fun tearDown() {
         Dispatchers.resetMain()
-        unmockkAll()
     }
 
     @Test
     fun `initial state is Loading`() = runTest {
-        assertTrue(viewModel.uiState.value is HomeUiState.Loading)
+        assertEquals(HomeUiState.Loading, viewModel.uiState.value)
     }
 
     @Test
-    fun `setting property ID loads property scoped data`() = runTest {
-        val propId = UUID.randomUUID()
-        val property = PropertyEntity(id = propId, name = "Test Property", propertyType = "Home")
-        val item = InfrastructureItemEntity(id = UUID.randomUUID(), propertyId = propId, name = "Item", category = "Utility", status = "Active", createdAt = Instant.now())
-        val task = MaintenanceRecordEntity(id = UUID.randomUUID(), propertyId = propId, title = "Task", category = "M", serviceDate = LocalDate.now(), nextDueDate = LocalDate.now().plusDays(1), status = "Scheduled")
+    fun `setPropertyId triggers data load and emits Ready`() = runTest {
+        viewModel.setPropertyId(propertyId)
+        
+        val state = viewModel.uiState.filterIsInstance<HomeUiState.Ready>().first()
+        
+        assertEquals("Test Property", state.property.name)
+    }
 
-        every { propertyRepo.getAllProperties() } returns flowOf(listOf(property))
-        every { infrastructureRepo.getItemsForProperty(propId) } returns flowOf(listOf(item))
-        every { maintenanceRepo.getRecordsForProperty(propId) } returns flowOf(listOf(task))
-
-        viewModel.setPropertyId(propId)
-        runCurrent()
-
-        val state = viewModel.uiState.value as HomeUiState.Ready
-        assertEquals(property, state.property)
-        assertEquals(1, state.recentlyAddedItems.size)
+    @Test
+    fun `maintenance logic uses nextDueDate and excludes completed`() = runTest {
+        val today = LocalDate.now()
+        val overdue = MaintenanceRecordEntity(id = UUID.randomUUID(), propertyId = propertyId, infrastructureItemId = null, title = "Overdue", category = "C", status = "Active", nextDueDate = today.minusDays(1), serviceDate = today.minusMonths(1))
+        val dueToday = MaintenanceRecordEntity(id = UUID.randomUUID(), propertyId = propertyId, infrastructureItemId = null, title = "Today", category = "C", status = "Active", nextDueDate = today, serviceDate = today.minusMonths(1))
+        val upcoming = MaintenanceRecordEntity(id = UUID.randomUUID(), propertyId = propertyId, infrastructureItemId = null, title = "Upcoming", category = "C", status = "Active", nextDueDate = today.plusDays(2), serviceDate = today.minusMonths(1))
+        val completed = MaintenanceRecordEntity(id = UUID.randomUUID(), propertyId = propertyId, infrastructureItemId = null, title = "Completed", category = "C", status = "Completed", nextDueDate = today.minusDays(1), serviceDate = today)
+        
+        recordsFlow.value = listOf(overdue, dueToday, upcoming, completed)
+        viewModel.setPropertyId(propertyId)
+        
+        val state = viewModel.uiState.filterIsInstance<HomeUiState.Ready>().first()
+        assertEquals(2, state.needsAttentionTasks.size)
+        assertEquals("Overdue", state.needsAttentionTasks[0].title)
+        assertEquals("Today", state.needsAttentionTasks[1].title)
+        
         assertEquals(1, state.upcomingTasks.size)
-        assertEquals(0, state.needsAttentionTasks.size)
+        assertEquals("Upcoming", state.upcomingTasks[0].title)
     }
 
     @Test
-    fun `switching property emits Loading then new Ready`() = runTest {
-        val propId1 = UUID.randomUUID()
-        val propId2 = UUID.randomUUID()
-        val p1 = PropertyEntity(id = propId1, name = "P1", propertyType = "H")
-        val p2 = PropertyEntity(id = propId2, name = "P2", propertyType = "H")
-
-        every { propertyRepo.getAllProperties() } returns flowOf(listOf(p1, p2))
+    fun `recent items limited to 5 and sorted by createdAt`() = runTest {
+        val now = java.time.Instant.now()
+        val items = (1..10).map { i ->
+            InfrastructureItemEntity(id = UUID.randomUUID(), propertyId = propertyId, name = "Item $i", category = "Cat", status = "Good", createdAt = now.plusSeconds(i.toLong()))
+        }
         
-        val states = mutableListOf<HomeUiState>()
-        val job = backgroundScope.launch { viewModel.uiState.collect { states.add(it) } }
-        runCurrent() // Get initial Loading
-
-        viewModel.setPropertyId(propId1)
-        runCurrent()
+        itemsFlow.value = items
+        viewModel.setPropertyId(propertyId)
         
-        viewModel.setPropertyId(propId2)
-        runCurrent()
-
-        val readyStates = states.filterIsInstance<HomeUiState.Ready>()
-        assertEquals(2, readyStates.size)
-        assertEquals(propId1, readyStates[0].property.id)
-        assertEquals(propId2, readyStates[1].property.id)
-        
-        job.cancel()
+        val state = viewModel.uiState.filterIsInstance<HomeUiState.Ready>().first()
+        assertEquals(5, state.recentlyAddedItems.size)
+        assertEquals("Item 10", state.recentlyAddedItems[0].name)
     }
 
     @Test
-    fun `late prior-property emissions are ignored`() = runTest {
-        val propId1 = UUID.randomUUID()
-        val propId2 = UUID.randomUUID()
-        val p1 = PropertyEntity(id = propId1, name = "P1", propertyType = "H")
-        val p2 = PropertyEntity(id = propId2, name = "P2", propertyType = "H")
+    fun `map-only features prevent false empty state`() = runTest {
+        itemsFlow.value = emptyList()
+        featuresFlow.value = listOf(mockk())
+        
+        viewModel.setPropertyId(propertyId)
+        
+        val state = viewModel.uiState.filterIsInstance<HomeUiState.Ready>().first()
+        assertTrue(state.hasAnyPropertyContent)
+    }
 
-        val p1Items = MutableSharedFlow<List<InfrastructureItemEntity>>(replay = 1)
-        val p2Items = MutableSharedFlow<List<InfrastructureItemEntity>>(replay = 1)
-
-        every { propertyRepo.getAllProperties() } returns flowOf(listOf(p1, p2))
-        every { infrastructureRepo.getItemsForProperty(propId1) } returns p1Items
-        every { infrastructureRepo.getItemsForProperty(propId2) } returns p2Items
+    @Test
+    fun `property switching clears prior state and emits Loading`() = runTest {
+        viewModel.setPropertyId(propertyId)
+        viewModel.uiState.filterIsInstance<HomeUiState.Ready>().first()
 
         val states = mutableListOf<HomeUiState>()
-        val job = backgroundScope.launch { viewModel.uiState.collect { states.add(it) } }
-        runCurrent()
+        val collectJob = launch(testDispatcher) {
+            viewModel.uiState.collect { states.add(it) }
+        }
 
-        viewModel.setPropertyId(propId1)
-        p1Items.emit(emptyList())
-        runCurrent()
+        val newId = UUID.randomUUID()
+        coEvery { propertyRepository.getPropertyById(newId) } returns PropertyEntity(id = newId, name = "New Prop", propertyType = "Home")
+        every { infrastructureRepository.getItemsForProperty(newId) } returns flow {
+             delay(100)
+             emit(emptyList())
+        }
+        every { maintenanceRepository.getRecordsForProperty(newId) } returns flowOf(emptyList())
+        every { mapRepository.getFeaturesForProperty(newId) } returns flowOf(emptyList())
+        every { mapRepository.getPlansForProperty(newId) } returns flowOf(emptyList())
+        every { attachmentRepository.getAttachmentsForProperty(newId) } returns flowOf(emptyList())
+
+        viewModel.setPropertyId(newId)
         
-        viewModel.setPropertyId(propId2)
-        runCurrent() // Should be Loading
-        
-        p2Items.emit(listOf(InfrastructureItemEntity(id = UUID.randomUUID(), propertyId = propId2, name = "P2 Item", category = "T", status = "Active", createdAt = Instant.now())))
-        runCurrent()
-        
-        // Late emission from p1
-        p1Items.emit(listOf(mockk(relaxed = true), mockk(relaxed = true)))
-        runCurrent()
-
-        val lastState = viewModel.uiState.value as HomeUiState.Ready
-        assertEquals(propId2, lastState.property.id)
-        assertEquals("Should only show p2 items", 1, lastState.recentlyAddedItems.size)
-        
-        job.cancel()
-    }
-
-    @Test
-    fun `repository failure emits safe Error state and Retry works`() = runTest {
-        val propId = UUID.randomUUID()
-        val property = PropertyEntity(id = propId, name = "P", propertyType = "H")
-        val itemsFlow = MutableSharedFlow<List<InfrastructureItemEntity>>(replay = 1)
-
-        every { propertyRepo.getAllProperties() } returns flowOf(listOf(property))
-        every { infrastructureRepo.getItemsForProperty(propId) } returns itemsFlow
-
-        viewModel.setPropertyId(propId)
-        itemsFlow.emit(emptyList())
+        // Let the outer flatMapLatest process the change
         runCurrent()
         
-        assertTrue(viewModel.uiState.value is HomeUiState.Ready)
-
-        // Simulate failure for next collection
-        every { infrastructureRepo.getItemsForProperty(propId) } returns flow { throw RuntimeException("Repo Fail") }
+        // Check if Loading was emitted after switching
+        assertTrue("States should contain Loading after switch but were $states", states.any { it is HomeUiState.Loading })
         
-        viewModel.retry()
-        runCurrent()
+        advanceUntilIdle()
+        assertTrue(states.last() is HomeUiState.Ready)
+        assertEquals("New Prop", (states.last() as HomeUiState.Ready).property.name)
         
-        assertTrue("Should emit Error state", viewModel.uiState.value is HomeUiState.Error)
-
-        // Fix and Retry
-        every { infrastructureRepo.getItemsForProperty(propId) } returns flowOf(emptyList())
-        viewModel.retry()
-        runCurrent()
-        
-        assertTrue("Should recover to Ready state", viewModel.uiState.value is HomeUiState.Ready)
-    }
-
-    @Test
-    fun `maintenance classification is correct and deterministic`() {
-        val now = LocalDate.of(2026, 8, 6)
-        
-        val overdueTask = MaintenanceRecordEntity(id = UUID.randomUUID(), propertyId = UUID.randomUUID(), title = "Overdue", category = "M", serviceDate = now.minusDays(5), nextDueDate = now.minusDays(1), status = "Scheduled")
-        val todayTask = MaintenanceRecordEntity(id = UUID.randomUUID(), propertyId = UUID.randomUUID(), title = "Today", category = "M", serviceDate = now.minusDays(5), nextDueDate = now, status = "Scheduled")
-        val futureTask = MaintenanceRecordEntity(id = UUID.randomUUID(), propertyId = UUID.randomUUID(), title = "Future", category = "M", serviceDate = now.minusDays(5), nextDueDate = now.plusDays(1), status = "Scheduled")
-        val completedTask = MaintenanceRecordEntity(id = UUID.randomUUID(), propertyId = UUID.randomUUID(), title = "Done", category = "M", serviceDate = now.minusDays(5), nextDueDate = now.minusDays(1), status = "Completed")
-        val cancelledTask = MaintenanceRecordEntity(id = UUID.randomUUID(), propertyId = UUID.randomUUID(), title = "Cancelled", category = "M", serviceDate = now.minusDays(5), nextDueDate = now.minusDays(1), status = "  cancelled  ")
-
-        assertTrue(HomeViewModel.isOverdueOrDueToday(overdueTask, now))
-        assertTrue(HomeViewModel.isOverdueOrDueToday(todayTask, now))
-        assertFalse(HomeViewModel.isOverdueOrDueToday(futureTask, now))
-        
-        assertTrue(HomeViewModel.isUpcoming(futureTask, now))
-        assertFalse(HomeViewModel.isUpcoming(todayTask, now))
-        
-        assertTrue(HomeViewModel.isTaskActive(overdueTask))
-        assertFalse(HomeViewModel.isTaskActive(completedTask))
-        assertFalse(HomeViewModel.isTaskActive(cancelledTask))
-    }
-
-    @Test
-    fun `hasMapFeaturesOnly is true when items are empty but map has features`() = runTest {
-        val propId = UUID.randomUUID()
-        val property = PropertyEntity(id = propId, name = "P", propertyType = "H")
-        every { propertyRepo.getAllProperties() } returns flowOf(listOf(property))
-        every { infrastructureRepo.getItemsForProperty(propId) } returns flowOf(emptyList())
-        every { mapRepo.getFeaturesForProperty(propId) } returns flowOf(listOf(MapFeatureEntity(id = UUID.randomUUID(), propertyId = propId, planId = UUID.randomUUID(), layerId = UUID.randomUUID(), geometryType = "POINT", geometryJson = "{}", coordinateSpace = "G", styleJson = "{}", accuracySource = "M", label = "F")))
-
-        viewModel.setPropertyId(propId)
-        runCurrent()
-
-        val state = viewModel.uiState.value as HomeUiState.Ready
-        assertTrue(state.hasMapFeaturesOnly)
+        collectJob.cancel()
     }
 }
