@@ -52,12 +52,13 @@
 
 ## Beginner-First UX 2.0
 Status:
-- Master planning: IN PROGRESS
-- Master-plan document: CREATED / EXTERNAL APPROVAL PENDING
-- Terminology approval: NOT STARTED
-- Information architecture approval: NOT STARTED
-- Prototype creation: NOT STARTED
-- Production redesign: NOT STARTED
+- Master planning: COMPLETE
+- Master-plan document: APPROVED
+- Terminology approval: COMPLETE
+- Information architecture approval: COMPLETE
+- Prototype creation: COMPLETE (WIP work stopped)
+- Production redesign: Slice 1 COMPLETE (Home, Map, Items, Tasks shell)
+- Physical-device verification: PENDING
 - Property Inventory: BLOCKED
 
 Authoritative Document: [BEGINNER_FIRST_UX_MASTER_PLAN.md](BEGINNER_FIRST_UX_MASTER_PLAN.md)
